@@ -1,0 +1,27 @@
+# Tema "craft oscuro". Los valores hex salen de los tokens OKLCH de chatbot/ui.py.
+[theme]
+base = "dark"
+primaryColor = "#41d2b3"
+backgroundColor = "#0a0c0f"
+secondaryBackgroundColor = "#111316"
+textColor = "#f0f2f4"
+borderColor = "#24272a"
+showWidgetBorder = true
+baseRadius = "10px"
+buttonRadius = "8px"
+baseFontSize = 15
+font = "Geist:https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap"
+codeFont = "Geist Mono:https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap"
+headingFontWeights = [560, 540, 520, 500, 500, 500]
+linkColor = "#41d2b3"
+
+[theme.sidebar]
+backgroundColor = "#0d0f12"
+secondaryBackgroundColor = "#141619"
+borderColor = "#1e2124"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

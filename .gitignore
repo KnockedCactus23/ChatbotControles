@@ -4,3 +4,9 @@ __pycache__/
 .pytest_cache/
 .claude/
 .claude
+
+# Catálogo CIS generado desde el Excel oficial (licencia CC BY-NC-ND: no se redistribuye)
+chatbot/data/
+
+# Evaluaciones guardadas (pueden contener los PDF del caso)
+evaluaciones/

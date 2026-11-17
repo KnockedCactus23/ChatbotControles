@@ -1,69 +1,83 @@
-# ChatbotControles — Asistente de diagnóstico de controles de ciberseguridad
+# ChatbotControles — "Centinela IG1", agente de evaluación CIS Controls v8.1 IG1
 
 ## Qué es
-Chatbot conversacional que entrevista al **responsable de ciberseguridad** de una empresa y:
-1. Recibe el contexto de la empresa (el usuario siempre inicia la conversación).
-2. Hace un **análisis inicial** de controles con base en **ISO/IEC 27002:2022** y **CIS Controls v8**.
-3. Para los controles que no quedaron claros, hace **preguntas cerradas (Sí / No)** — no se suben evidencias.
-4. Actualiza el estado de cada control con cada respuesta.
-5. Con el contexto completo, entrega un **reporte**: controles cubiertos / parciales / no cubiertos, **quick wins** y **recomendaciones** priorizadas.
+Agente de IA para la actividad **M3.6** (diseño de un agente para la evaluación integral de CIS Controls v8.1 — IG1). Actúa como consultor de ciberseguridad:
+1. **Etapa 1:** identidad, alcance, reglas R1–R12 y escala en un **prompt maestro** (`prompts.prompt_maestro()`, descargable). Prueba preliminar: `engine.explain()`.
+2. **Etapa 2:** lee el **PDF 1** (contexto) y genera la **ficha de contexto** en 10 dimensiones con página y cita por hallazgo. El equipo la valida; los ajustes se registran (`Proyecto.ajustes`).
+3. **Etapa 3:** evalúa las **56 salvaguardas IG1** (3 lotes por control) → matriz con aplicabilidad, 5 estados, justificación, evidencia, cita y observaciones; indicadores con las fórmulas oficiales.
+4. **Etapas 3.5–4:** resumen ejecutivo (postura, controles con mayores brechas, información faltante, riesgos, resultados preliminares), **5 riesgos**, **5 iniciativas** (quick win / proyecto) y dashboard. Cierra la **v1**.
+5. **Etapa 5:** lee el **PDF 2**, propone cambios con cita; el auditor aprueba, rechaza o deja pendiente; se crea la **v2** solo con los aprobados y su reporte comparativo.
+6. Preguntas Sí/No **opcionales** (decisión del equipo: se conservan): se registran como *declaración del responsable*, no como evidencia documental; "No sé" deja No verificado.
 
-Proyecto académico de equipo. **Decisión del equipo (2026-11-03): el chatbot usa la API gratuita de Google Gemini** mediante el SDK oficial `google-genai` (se descartó la API de Claude porque requiere pago aparte). No mezclar otros proveedores ni capas como LangChain. Este archivo se llama CLAUDE.md solo porque es la configuración de Claude Code, que se usa como asistente de desarrollo.
+Proyecto académico de equipo. **Decisión del equipo (2026-11-03): usa la API gratuita de Google Gemini** con el SDK oficial `google-genai`. No mezclar otros proveedores ni capas como LangChain. Este archivo se llama CLAUDE.md solo porque es la configuración de Claude Code (asistente de desarrollo).
+
+## Decisiones del equipo (no cambiarlas sin preguntar)
+- Alcance: **solo IG1** (56 salvaguardas; están en 15 controles: 13, 16 y 18 no tienen IG1). `controls.IG_EVALUADO = 1`.
+- **Única referencia normativa: CIS v8.1 IG1 (R2).** ISO 27002 se eliminó por completo.
+- Nombre del agente: **Centinela IG1** (`prompts.NOMBRE_AGENTE`).
+- Guardado automático local en `evaluaciones/` (ignorado por git) para conservar v1 y v2 entre semanas.
+- Escala obligatoria: `implementado`=1, `parcial`=0.5, `no_implementado`=0, `no_verificado`=—, `no_aplicable`=—.
 
 ## Stack
-- Python 3.14 (el `python3` del sistema es 3.15 y algunas dependencias aún no tienen wheels; usar `python3.14`).
-- `google-genai` (SDK oficial de Gemini), `streamlit` (UI de chat), `python-dotenv`.
-- Modelo por defecto `gemini-3.5-flash-lite` (plan gratuito, estable). No usar `gemini-2.5-flash`: está obsoleto y desde el 2026-12-01 se redirige a 3.5 Flash-Lite.
-- Plan gratuito: tiene límites por minuto y por día (error 429), y **Google puede usar el contenido para mejorar sus productos**, así que no se deben ingresar datos reales o sensibles de empresas; usar casos ficticios.
-- Sin base de datos: el estado vive en `st.session_state` durante la sesión.
+- Python 3.14 (el `python3` del sistema es 3.15 y algunas dependencias aún no tienen wheels).
+- `google-genai`, `streamlit`, `python-dotenv`, `openpyxl` (importador y Excel), `pypdf` (texto del PDF para verificar citas).
+- Modelo por defecto `gemini-3.5-flash-lite` (`GEMINI_MODEL` en `.env`; el equipo usa `gemini-3.1-flash-lite` cuando el otro está saturado). No usar `gemini-2.5-flash` (obsoleto desde 2026-12-01).
+- Plan gratuito: límites por minuto/día y **Google puede usar el contenido**: usar casos ficticios o los del profesor.
 
 ## Estructura
 ```
-app.py                     # UI Streamlit (chat, botones Sí/No, panel de estado, reporte)
+app.py                     # UI por etapas; tareas lentas con pedir() y ejecución al FINAL del script
 chatbot/
-  controls.py              # Catálogo de dominios de control (mapeo ISO 27002 ↔ CIS v8)
-  state.py                 # Estado de la evaluación (estados por control, cola de preguntas)
-  prompts.py               # System prompts
-  schemas.py               # JSON Schemas de salida estructurada
-  engine.py                # Llamadas a la API de Gemini (análisis, seguimiento, reporte)
-  ui.py                    # Diseño: tokens CSS (OKLCH) y piezas HTML (anillo, matriz, tarjeta, reporte)
-.streamlit/config.toml     # Tema base de Streamlit (colores hex derivados de los tokens, fuente Geist)
-tests/test_state.py        # Pruebas de la lógica sin llamar a la API
-.env.example               # Variables de entorno (GEMINI_API_KEY, GEMINI_MODEL)
+  controls.py              # Catálogo CIS IG1 desde data/cis_v8_1_2.json; nombres en español del equipo
+  documentos.py            # Documento (páginas de texto), leer_pdf(), verificar_cita()
+  state.py                 # Resultado, Version, Cambio, Proyecto; validar_resultado(), indicadores(), validar_reporte()
+  prompts.py               # Prompt maestro (identidad, alcance, R1–R12, escala) + tarea por etapa; DIMENSIONES
+  schemas.py               # JSON Schemas por etapa (minItems/maxItems para 56 por lote, 5 riesgos, 5 iniciativas)
+  engine.py                # explain, context_sheet, evaluate, report, analyze_initiatives, updated_report, ask
+  almacen.py               # guardar/cargar/listar proyectos en evaluaciones/ (EVALUACIONES_DIR para pruebas)
+  exportar.py              # Excel (todas las hojas), CSV, reporte HTML, prompt maestro .md
+  ui.py                    # Tokens CSS (OKLCH) y piezas HTML
+  data/cis_v8_1_2.json     # NO versionado (licencia CC BY-NC-ND): scripts/importar_cis.py
+scripts/importar_cis.py    # Excel oficial CIS v8.1.x → JSON (reconstruye ids como 3.10 que Excel guarda como 3.1)
+tests/                     # conftest (catálogo falso: 18 IG1), test_state (reglas/penalizaciones), test_motor (flujo), importador, reintentos
 ```
 
-## Flujo de la conversación
-1. **Contexto** → el usuario describe su empresa. `engine.analyze()` devuelve (salida estructurada JSON): mensaje, estado inicial por control y una lista de preguntas cerradas para los controles `desconocido`.
-2. **Preguntas cerradas** → la UI las muestra una por una con botones **Sí / No**. La respuesta se aplica de forma determinista en Python (`Sí → cubierto`, `No → no_cubierto`) **sin llamar a la API** (ahorra costo).
-3. **Texto libre** en cualquier momento → `engine.follow_up()` reenvía el estado actual a Gemini, que puede reclasificar controles o añadir preguntas.
-4. **Reporte** → cuando no quedan preguntas (o el usuario lo pide), `engine.report()` genera resumen ejecutivo, quick wins y recomendaciones. La tabla de cobertura se calcula en Python a partir del estado (fuente de verdad).
+## Reglas que el CÓDIGO hace cumplir (no depender solo del prompt)
+- **Nunca omitir salvaguardas:** `Proyecto.completar_faltantes()`; el esquema exige una evaluación por id del lote.
+- **No inventar evidencia (R3, R6):** `validar_resultado()` exige cita verificable (`verificar_cita`, umbral 0.8 de palabras) para Implementado/Parcial/No implementado/No aplicable; si no, → No verificado y aviso en `Proyecto.avisos` (bitácora visible).
+- **R8:** "No implementado" sin cita → No verificado. "No sé" en Sí/No → No verificado.
+- **Indicadores:** solo `state.indicadores()`; el modelo recibe los números y no los recalcula. `None` → "No determinable".
+- **Coherencia informe ↔ matriz:** `validar_reporte()` quita de riesgos/iniciativas las salvaguardas que no son brecha y fija los "controles con mayores brechas" a la lista calculada (`brechas_por_control`).
+- **R10–R12:** v1 inmutable una vez `cerrada`; `crear_v2()` copia v1 y aplica solo `Cambio.decision == "aprobado"`; no se puede aprobar sin cita verificada en el PDF 2.
+- Reproducibilidad (R9): temperatura 0 y `SEMILLA` fija.
 
 ## Convenciones
-- Código y comentarios en español; identificadores en español sin acentos (`estado`, `control_id`).
-- Estados de control válidos: `cubierto`, `parcial`, `no_cubierto`, `desconocido`.
-- El **estado en Python es la fuente de verdad**; Gemini propone cambios y Python los valida (ids y estados permitidos) antes de aplicarlos.
-- Salidas de Gemini siempre por **salida estructurada** (`response_mime_type="application/json"` + `response_json_schema`); nunca parsear texto libre. Gemini no garantiza todas las restricciones del esquema, así que se debe validar en Python (usar `.get()` con valores por defecto).
-- Modelo configurable con `GEMINI_MODEL` en `.env`. No cambiar el modelo por defecto sin que el equipo lo decida.
-- Nunca escribir la API key en el código ni subir `.env` (está en `.gitignore`).
-- No inventar números de control: usar solo los del catálogo en `chatbot/controls.py`.
+- Código y comentarios en español; identificadores sin acentos.
+- El estado en Python es la fuente de verdad; Gemini propone y Python valida.
+- Salida estructurada siempre (`response_mime_type="application/json"` + `response_json_schema`); validar en Python con `.get()`.
+- Nunca escribir la API key en el código ni subir `.env`.
+- **Licencia CIS (CC BY-NC-ND 4.0):** nunca versionar ni traducir/modificar los textos de CIS; se usan en inglés tal cual. El prompt maestro exportado NO incluye el catálogo. Mostrar `controls.atribucion()`.
+- Las pruebas usan un catálogo falso (`CIS_CATALOGO`); no dependen del Excel ni del JSON real.
+- Gemini gratuito: latencia muy variable. `REINTENTOS` (SDK) cubre 429/5xx/timeouts y conexión; `TIMEOUT_S`=30 y `TIMEOUT_LARGO_S`=120 (PDF/salidas largas) por intento. El SDK ya reintenta timeouts: no añadir un bucle propio.
+- Tareas lentas en la UI: `pedir(tipo)` → rerun con controles deshabilitados → se ejecutan al final del script con la tarjeta de progreso en `lugar_progreso`.
 
 ## Diseño (UI)
-- Arquetipo "craft oscuro": neutros fríos, bordes de 1px, un solo acento verde azulado; los estados (cubierto/parcial/no cubierto/por confirmar) comparten L y C en OKLCH. Todos los colores salen de los tokens de `ui.CSS`; no poner hex sueltos.
-- Momento firma: la matriz de postura y el anillo de cobertura de la barra lateral (las celdas que cambian laten y el anillo se llena desde el valor anterior). El resto de la UI se mantiene sobrio; sin emojis, con íconos `:material/...:`.
-- `st.html` sanitiza su contenido: **elimina los `<svg>`** (usar CSS: `conic-gradient`, `mask` con data URI) y **descarta un `<style>` completo si contiene el carácter `<`**, incluso dentro de un comentario (escribir `\3c` en CSS).
-- Todo texto de Gemini o del usuario va por `ui.esc()` antes de insertarse en HTML.
-- Respetar `prefers-reduced-motion` (ya está en el CSS) y revisar en 375px y en escritorio.
+- Arquetipo "craft oscuro"; colores de los 5 estados en tokens `--st-implementado`, `--st-parcial`, `--st-no_implementado`, `--st-no_verificado`, `--st-no_aplicable`. No hex sueltos.
+- `st.html` sanitiza: **elimina `<svg>`** y **descarta un `<style>` completo si contiene `<`** (incluso en comentarios; usar `\3c`).
+- Todo texto de Gemini o del usuario pasa por `ui.esc()`.
+- Respetar `prefers-reduced-motion`; revisar en 375px y escritorio.
 
 ## Comandos
 ```bash
 python3.14 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+python scripts/importar_cis.py "ruta/CIS_Controls_Version_8.1.2___March_2025.xlsx"   # genera el catálogo local
 cp .env.example .env            # y poner GEMINI_API_KEY (gratis en aistudio.google.com/apikey)
 streamlit run app.py
-python -m pytest -q             # pruebas sin API
+python -m pytest -q             # 24 pruebas sin API
 ```
 
 ## Forma de trabajo con Claude Code (obligatorio)
-- **Notificar al usuario después de terminar cada cambio**: al acabar cada archivo o cambio relevante, decir en el chat qué se cambió y por qué, en una o dos líneas. Además, `.claude/settings.json` lanza una notificación de macOS tras cada edición.
+- **Notificar al usuario después de terminar cada cambio**: al acabar cada archivo o cambio relevante, decir en el chat qué se cambió y por qué, en una o dos líneas.
 - **Notificar y preguntar en cada decisión**: ante cualquier decisión de diseño no trivial (librería, estructura, modelo, cambio de flujo, borrar archivos), preguntar al usuario antes de actuar, o, si es un default obvio, avisar explícitamente qué se decidió. Los hooks notifican cuando Claude espera una respuesta o un permiso.
 - Responder en español.

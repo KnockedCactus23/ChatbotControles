@@ -2,12 +2,13 @@
 
 ## Qué es
 Agente de IA para la actividad **M3.6** (diseño de un agente para la evaluación integral de CIS Controls v8.1 — IG1). Actúa como consultor de ciberseguridad:
-1. **Etapa 1:** identidad, alcance, reglas R1–R12 y escala en un **prompt maestro** (`prompts.prompt_maestro()`, descargable). Prueba preliminar: `engine.explain()`.
+1. **Etapa 1:** identidad, alcance, reglas R1–R12 y escala en un **prompt maestro** (`prompts.prompt_maestro()`). Se entrega como archivo (`scripts/exportar_prompt.py` → `docs/prompt_maestro_centinela_ig1.md`), **no** como botón de la app: la actividad lo pide como entregable, no como función. Prueba preliminar: `engine.explain()`.
 2. **Etapa 2:** lee el **PDF 1** (contexto) y genera la **ficha de contexto** en 10 dimensiones con página y cita por hallazgo. El equipo la valida; los ajustes se registran (`Proyecto.ajustes`).
 3. **Etapa 3:** evalúa las **56 salvaguardas IG1** (3 lotes por control) → matriz con aplicabilidad, 5 estados, justificación, evidencia, cita y observaciones; indicadores con las fórmulas oficiales.
 4. **Etapas 3.5–4:** resumen ejecutivo (postura, controles con mayores brechas, información faltante, riesgos, resultados preliminares), **5 riesgos**, **5 iniciativas** (quick win / proyecto) y dashboard. Cierra la **v1**.
 5. **Etapa 5:** lee el **PDF 2**, propone cambios con cita; el auditor aprueba, rechaza o deja pendiente; se crea la **v2** solo con los aprobados y su reporte comparativo.
-6. Preguntas Sí/No **opcionales** (decisión del equipo: se conservan): se registran como *declaración del responsable*, no como evidencia documental; "No sé" deja No verificado.
+6. Preguntas Sí/No **opcionales** (decisión del equipo: se conservan; máx. `state.MAX_PREGUNTAS` = 15, solo sobre No verificado, ordenadas por `perfil_riesgo.prioridad_controles`): se registran como *declaración del responsable*, no como evidencia documental; "No sé" deja No verificado.
+7. **Chat de consultas** (`engine.ask`, solo lectura, no cambia estados): la entrada solo existe en la ficha de contexto ya generada y en los reportes (`reporte`, `actualizado`) — `CHAT_ACTIVO` en `app.py`. El historial se muestra siempre (ahí salen la prueba preliminar y los errores).
 
 Proyecto académico de equipo. **Decisión del equipo (2026-11-03): usa la API gratuita de Google Gemini** con el SDK oficial `google-genai`. No mezclar otros proveedores ni capas como LangChain. Este archivo se llama CLAUDE.md solo porque es la configuración de Claude Code (asistente de desarrollo).
 
@@ -17,6 +18,7 @@ Proyecto académico de equipo. **Decisión del equipo (2026-11-03): usa la API g
 - Nombre del agente: **Centinela IG1** (`prompts.NOMBRE_AGENTE`).
 - Guardado automático local en `evaluaciones/` (ignorado por git) para conservar v1 y v2 entre semanas.
 - Escala obligatoria: `implementado`=1, `parcial`=0.5, `no_implementado`=0, `no_verificado`=—, `no_aplicable`=—.
+- Sin botón de descarga del prompt maestro en la UI (2026-11-17); el chat solo en contexto con ficha y en reportes (2026-11-17).
 
 ## Stack
 - Python 3.14 (el `python3` del sistema es 3.15 y algunas dependencias aún no tienen wheels).
@@ -35,10 +37,13 @@ chatbot/
   schemas.py               # JSON Schemas por etapa (minItems/maxItems para 56 por lote, 5 riesgos, 5 iniciativas)
   engine.py                # explain, context_sheet, evaluate, report, analyze_initiatives, updated_report, ask
   almacen.py               # guardar/cargar/listar proyectos en evaluaciones/ (EVALUACIONES_DIR para pruebas)
-  exportar.py              # Excel (todas las hojas), CSV, reporte HTML, prompt maestro .md
+  exportar.py              # Excel (todas las hojas), CSV, reporte HTML; prompt_maestro_md() lo usa el script
   ui.py                    # Tokens CSS (OKLCH) y piezas HTML
   data/cis_v8_1_2.json     # NO versionado (licencia CC BY-NC-ND): scripts/importar_cis.py
 scripts/importar_cis.py    # Excel oficial CIS v8.1.x → JSON (reconstruye ids como 3.10 que Excel guarda como 3.1)
+scripts/exportar_prompt.py # Entregable 1 → docs/prompt_maestro_centinela_ig1.md (sin catálogo CIS; sí se versiona)
+docs/                      # Prompt maestro generado; regenerarlo si cambia prompts.py
+PROGRESS.md                # Avance del proyecto y pendientes; actualizarlo al cerrar cada bloque de trabajo
 tests/                     # conftest (catálogo falso: 18 IG1), test_state (reglas/penalizaciones), test_motor (flujo), importador, reintentos
 ```
 
@@ -75,9 +80,10 @@ python scripts/importar_cis.py "ruta/CIS_Controls_Version_8.1.2___March_2025.xls
 cp .env.example .env            # y poner GEMINI_API_KEY (gratis en aistudio.google.com/apikey)
 streamlit run app.py
 python -m pytest -q             # 24 pruebas sin API
+python scripts/exportar_prompt.py   # regenera docs/prompt_maestro_centinela_ig1.md
 ```
 
 ## Forma de trabajo con Claude Code (obligatorio)
 - **Notificar al usuario después de terminar cada cambio**: al acabar cada archivo o cambio relevante, decir en el chat qué se cambió y por qué, en una o dos líneas.
-- **Notificar y preguntar en cada decisión**: ante cualquier decisión de diseño no trivial (librería, estructura, modelo, cambio de flujo, borrar archivos), preguntar al usuario antes de actuar, o, si es un default obvio, avisar explícitamente qué se decidió. Los hooks notifican cuando Claude espera una respuesta o un permiso.
+- **Notificar y preguntar en cada decisión**: ante cualquier decisión de diseño no trivial (librería, estructura, modelo, cambio de flujo, borrar archivos), preguntar al usuario antes de actuar, o, si es un default obvio, avisar explícitamente qué se decidió. Los hooks (en `.claude/settings.json`, local: `.claude/` está en `.gitignore`) notifican cuando Claude espera una respuesta o un permiso.
 - Responder en español.

@@ -23,15 +23,6 @@ st.set_page_config(page_title=NOMBRE_AGENTE, page_icon=":material/shield:", layo
 st.html(ui.CSS)
 
 AVATAR = {"assistant": ":material/shield:", "user": ":material/person:"}
-EJEMPLO = (
-    "Ferretería Andina (empresa ficticia) es una cadena de 8 tiendas con 140 empleados y una tienda en línea. "
-    "Usa Microsoft 365 para correo y documentos, un ERP en un servidor propio en la oficina central y la tienda en "
-    "línea en Shopify. Todos los equipos tienen el antivirus de Windows (Defender), sin consola central. Se hacen "
-    "respaldos del ERP cada noche a un NAS en la misma oficina; nunca se ha probado una restauración. Hay un firewall "
-    "Fortinet, pero la red de las tiendas no está segmentada y el wifi de clientes comparte red con las cajas. No hay "
-    "un responsable de seguridad formal: TI son 3 personas. Se manejan datos personales de clientes y pagos con tarjeta "
-    "mediante una pasarela externa. Nunca se ha hecho una prueba de penetración."
-)
 TITULO_TAREA = {
     "explicar": ("Preparando la explicación", "El agente describe su objetivo, alcance y criterios…"),
     "ficha": ("Interpretando el contexto", "Leo el documento y armo la ficha por dimensiones, verificando cada cita…"),
@@ -107,8 +98,6 @@ with st.sidebar:
             nuevo(almacen.cargar(elegida)); st.rerun()
     if st.button("Nueva evaluación", icon=":material/add:", use_container_width=True, disabled=ocupado):
         nuevo(); st.rerun()
-    st.download_button("Prompt maestro (.md)", exportar.prompt_maestro_md(), file_name="prompt_maestro_centinela_ig1.md",
-                       icon=":material/description:", use_container_width=True)
     if p.avisos:
         with st.expander(f"Bitácora de validaciones · {len(p.avisos)}"):
             st.html(ui.avisos(p.avisos))
@@ -124,7 +113,7 @@ lugar_progreso = st.empty()  # cada etapa lo reubica junto a su botón principal
 
 
 def exportes():
-    st.html(ui.seccion("Entregables", "Matriz (Excel con todas las hojas o CSV), reporte ejecutivo imprimible y prompt maestro."))
+    st.html(ui.seccion("Entregables", "Matriz (Excel con todas las hojas o CSV) y reporte ejecutivo imprimible."))
     col = st.columns(4)
     col[0].download_button("Excel completo", exportar.excel(p), file_name=f"centinela_ig1_{p.id}.xlsx",
                            icon=":material/table_view:", use_container_width=True)
@@ -168,10 +157,7 @@ if etapa == "contexto" and not p.ficha:
     st.html(ui.seccion("PDF 1 · Contexto empresarial", "Carga el documento del caso. Cada conclusión del agente citará su página."))
     archivo = st.file_uploader("PDF 1 — Contexto empresarial", type=["pdf"], disabled=ocupado, label_visibility="collapsed")
     with st.expander("¿No tienes el PDF? Pega el contexto como texto"):
-        texto = st.text_area("Contexto de la empresa", height=180, disabled=ocupado,
-                             value=st.session_state.pop("texto_ejemplo", ""))
-        if st.button("Usar una empresa ficticia de ejemplo", icon=":material/storefront:", disabled=ocupado):
-            st.session_state.texto_ejemplo = EJEMPLO; st.rerun()
+        texto = st.text_area("Contexto de la empresa", height=180, disabled=ocupado)
     lugar_progreso = st.empty()
     if st.button("Analizar contexto", type="primary", icon=":material/plagiarism:", disabled=ocupado or not (archivo or texto.strip())):
         if archivo:
@@ -352,7 +338,11 @@ if mensajes:
     for m in mensajes:
         with st.chat_message(m["role"], avatar=AVATAR[m["role"]]):
             st.markdown(m["content"])
-pregunta_usuario = st.chat_input(f"Pregunta a {NOMBRE_AGENTE} por qué tomó una decisión o qué falta…", disabled=ocupado)
+# El chat solo se ofrece cuando hay algo que explicar: la ficha del PDF 1 ya generada o un reporte.
+# El historial se sigue mostrando en todas las etapas (incluye la prueba preliminar y los errores).
+CHAT_ACTIVO = (etapa == "contexto" and bool(p.ficha)) or etapa in ("reporte", "actualizado")
+pregunta_usuario = st.chat_input(f"Pregunta a {NOMBRE_AGENTE} por qué tomó una decisión o qué falta…",
+                                 disabled=ocupado) if CHAT_ACTIVO else None
 if pregunta_usuario:
     decir(pregunta_usuario, "user")
     pedir("consulta", pregunta=pregunta_usuario)

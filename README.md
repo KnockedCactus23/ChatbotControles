@@ -4,12 +4,12 @@ Agente de IA que actúa como consultor de ciberseguridad (actividad **M3.6**). L
 
 | Etapa | Qué hace el agente |
 |---|---|
-| 1. Diseño | Identidad, alcance, reglas R1–R12 y escala de estados en un **prompt maestro** descargable. Botón de **prueba preliminar** ("¿cómo trabajas?"). |
+| 1. Diseño | Identidad, alcance, reglas R1–R12 y escala de estados en un **prompt maestro** (entregable: [`docs/prompt_maestro_centinela_ig1.md`](docs/prompt_maestro_centinela_ig1.md)). Botón de **prueba preliminar** ("¿cómo trabajas?"). |
 | 2. Contexto (PDF 1) | **Ficha de contexto** en 10 dimensiones, con página, sección y cita de cada hallazgo, más la información faltante y las ambigüedades. El equipo la valida o registra ajustes. |
 | 3. Evaluación | **Matriz de las 56 salvaguardas** con aplicabilidad, uno de los 5 estados, justificación, evidencia, cita y observaciones. Calcula los indicadores de **implementación** y **cobertura** con las fórmulas de la actividad. |
 | 4. Reporte | **Resumen ejecutivo**, **5 riesgos**, **roadmap de 5 iniciativas** (quick win o proyecto) y **dashboard**. |
 | 5. Iniciativas (PDF 2) | Parte de la evaluación inicial y **propone** cambios con evidencia; el equipo los **aprueba, rechaza o deja pendientes**. Genera la **versión v2** sin perder la v1. |
-| Entregables | Excel con todas las hojas (contexto, matrices v1 y v2, indicadores, riesgos, roadmaps, cambios), CSV, reporte ejecutivo en HTML imprimible y prompt maestro. |
+| Entregables | Excel con todas las hojas (contexto, matrices v1 y v2, indicadores, riesgos, roadmaps, cambios), CSV y reporte ejecutivo en HTML imprimible, descargables desde la app. El prompt maestro se genera con `scripts/exportar_prompt.py`. |
 
 **Escala obligatoria:** Implementado (1) · Parcialmente implementado (0.5) · No implementado (0) · No verificado (—) · No aplicable (—).
 
@@ -26,6 +26,48 @@ Agente de IA que actúa como consultor de ciberseguridad (actividad **M3.6**). L
 Las preguntas **Sí/No** se conservan como apoyo opcional. Una respuesta se registra como *declaración del responsable*, no como evidencia documental. "No lo sé" deja la salvaguarda como No verificado.
 
 Está hecho con **Python + Streamlit** y usa la **API gratuita de Google Gemini** (SDK oficial `google-genai`).
+
+---
+
+## Capacidades y qué acepta
+
+### Qué puede hacer
+- **Analiza las 56 salvaguardas del IG1 desde un archivo:** a partir de un PDF de contexto, clasifica cada salvaguarda en uno de los 5 estados con justificación, página, sección y cita textual. Las 56 siempre aparecen, aunque no haya información.
+- **Interpreta el contexto antes de evaluar:** genera una ficha en 10 dimensiones (organización, procesos, infraestructura, activos, identidades, protección, recuperación, monitoreo, gobierno y restricciones). Incluye un perfil de riesgo por sector (hospital, comercio, universidad, etc.) que ordena qué salvaguardas se priorizan.
+- **Verifica sus propias citas** contra el texto del documento. Corrige la página si está mal y descarta lo que no encuentra.
+- **Calcula los indicadores** de implementación y cobertura con las fórmulas oficiales y los muestra en un dashboard.
+- **Redacta el reporte inicial:** resumen ejecutivo, 5 riesgos (activo o proceso, deficiencia, consecuencia, severidad) y un roadmap de 5 iniciativas (quick win o proyecto, beneficio, esfuerzo y prioridad).
+- **Procesa el avance de iniciativas (PDF 2):**
+  - propone cambios de estado con evidencia, que tú apruebas, rechazas o dejas pendientes;
+  - genera una v2 comparada con la v1, que se conserva intacta.
+- **Explica sus decisiones** en un chat. Por ejemplo: "¿por qué 10.1 está implementada?" o "¿qué información falta?".
+- **Pregunta Sí/No** al responsable sobre las salvaguardas no verificadas (hasta 15, ordenadas por riesgo).
+- **Guarda cada evaluación automáticamente** para retomarla otro día, y exporta los entregables.
+
+### Qué acepta
+
+| Entrada | Formato | Dónde |
+|---|---|---|
+| Contexto de la empresa (PDF 1) | PDF con texto seleccionable, o texto pegado | Pantalla inicial |
+| Ajustes a la interpretación | Texto libre; queda registrado como ajuste del agente | Ficha de contexto |
+| Respuestas del responsable | Botones **Sí / No / No lo sé** | Evaluación |
+| Avance de iniciativas (PDF 2) | PDF con texto seleccionable | Reporte inicial |
+| Decisión del auditor por cambio | Aprobar / Rechazar / Pendiente | Validación de cambios |
+| Preguntas al agente | Texto libre en el chat | Ficha de contexto (ya analizada), reporte inicial y reporte actualizado |
+| Evaluación guardada | Selección en la barra lateral | Cualquier momento |
+
+### Qué entrega
+
+| Salida | Formato |
+|---|---|
+| Matriz de las 56 salvaguardas (v1 y v2) | Excel (con contexto, indicadores, riesgos, roadmaps, cambios y ajustes) y CSV |
+| Reporte ejecutivo | HTML imprimible (se puede guardar como PDF desde el navegador) |
+| Prompt maestro | Markdown, generado con `scripts/exportar_prompt.py` |
+
+### Qué no hace
+- No evalúa IG2 ni IG3, ni usa otros marcos como ISO 27002.
+- No lee PDF escaneados sin texto: las citas no se podrían verificar.
+- No cambia estados desde el chat ni a partir de información sin documento.
 
 ---
 
@@ -167,6 +209,14 @@ Las pruebas simulan a Gemini y usan un catálogo CIS de prueba, así que no gast
 
 Deben pasar las 24 pruebas.
 
+### 9. (Opcional) Regenera el prompt maestro
+
+El repositorio ya incluye [`docs/prompt_maestro_centinela_ig1.md`](docs/prompt_maestro_centinela_ig1.md). Si cambias las instrucciones en `chatbot/prompts.py`, regenéralo (necesita el catálogo del paso 4):
+
+```bash
+.venv/bin/python scripts/exportar_prompt.py
+```
+
 ---
 
 ## Cómo usarlo
@@ -181,9 +231,9 @@ Deben pasar las 24 pruebas.
 5. **Genera el reporte inicial.** Esto cierra la versión **v1**, que ya no se modifica.
 6. **Carga el PDF 2** (avance de iniciativas). El agente propone cambios. Como auditor, apruébalos, recházalos o déjalos pendientes; solo los aprobados se aplican.
 7. **Aplica los cambios aprobados.** Se genera la versión **v2** con la comparación de indicadores, los riesgos que cambiaron o permanecen, el estado de las iniciativas y el roadmap actualizado.
-8. **Descarga los entregables:** Excel, CSV, reporte ejecutivo (HTML) y prompt maestro.
+8. **Descarga los entregables:** Excel, CSV y reporte ejecutivo (HTML).
 
-En cualquier momento puedes **preguntarle al agente** en el chat por qué tomó una decisión. Responde citando la página y el texto del documento, pero no cambia estados.
+Puedes **preguntarle al agente** en el chat por qué tomó una decisión. Responde citando la página y el texto del documento, pero no cambia estados. El chat está disponible en la ficha de contexto (después de analizar el PDF 1), en el reporte inicial y en el reporte actualizado.
 
 **Las evaluaciones se guardan solas** en la carpeta `evaluaciones/`, que no se sube a git. Para retomar una la semana siguiente, elígela en **"Evaluaciones guardadas"**, en la barra lateral.
 
@@ -224,7 +274,10 @@ chatbot/
   exportar.py           Excel, CSV, reporte HTML y prompt maestro
   ui.py                 Diseño: CSS y piezas HTML
   data/                 cis_v8_1_2.json generado localmente (no se sube al repositorio)
-scripts/importar_cis.py Convierte el Excel oficial de CIS al JSON
+scripts/
+  importar_cis.py       Convierte el Excel oficial de CIS al JSON
+  exportar_prompt.py    Genera docs/prompt_maestro_centinela_ig1.md (Entregable 1)
+docs/                   Prompt maestro (sin textos de CIS)
 evaluaciones/           Evaluaciones guardadas y sus PDF (no se suben al repositorio)
 tests/                  Pruebas sin API ni Excel (reglas, flujo completo, importador, reintentos)
 ```

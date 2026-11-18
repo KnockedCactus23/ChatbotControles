@@ -41,6 +41,7 @@ Está hecho con **Python + Streamlit** y usa la **API gratuita de Google Gemini*
   - propone cambios de estado con evidencia, que tú apruebas, rechazas o dejas pendientes;
   - genera una v2 comparada con la v1, que se conserva intacta.
 - **Explica sus decisiones** en un chat. Por ejemplo: "¿por qué 10.1 está implementada?" o "¿qué información falta?".
+- **Permite navegar** entre la ficha de contexto, el reporte inicial y el reporte actualizado de un análisis (en solo lectura lo que ya está cerrado).
 - **Guarda cada evaluación automáticamente** para retomarla otro día, y exporta los entregables.
 
 ### Qué acepta
@@ -232,6 +233,11 @@ El repositorio ya incluye [`docs/prompt_maestro_centinela_ig1.md`](docs/prompt_m
 6. **Carga el PDF 2** (avance de iniciativas). El agente propone cambios. Como auditor, apruébalos, recházalos o déjalos pendientes; solo los aprobados se aplican.
 7. **Aplica los cambios aprobados.** Se genera la versión **v2** con la comparación de indicadores, los riesgos que cambiaron o permanecen, el estado de las iniciativas y el roadmap actualizado.
 8. **Descarga los entregables:** Excel, CSV, reporte ejecutivo y ficha de contexto (PDF o HTML).
+
+**Navega entre las secciones del análisis** con la barra bajo el encabezado:
+- Siempre: **Contexto**, **Reporte inicial** y **Reporte actualizado** (cuando ya existen).
+- Mientras están en curso, también la **Evaluación 56** o la **Validación PDF 2**. Al terminar, su contenido queda en los reportes.
+- Las secciones ya cerradas se ven en **solo lectura**: la ficha no se puede regenerar después de evaluar, ni la v1 cambiar después del reporte.
 
 Puedes **preguntarle al agente** en el chat por qué tomó una decisión. Responde citando la página y el texto del documento, pero no cambia estados. El chat está disponible en la ficha de contexto (después de analizar el PDF 1), en el reporte inicial y en el reporte actualizado.
 

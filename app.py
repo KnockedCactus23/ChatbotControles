@@ -46,6 +46,8 @@ def nuevo(proyecto: Proyecto | None = None):
     st.session_state.tarea = None
     st.session_state.impl_previa = 0.0
     st.session_state.estados_previos = {}
+    st.session_state.pop("vista", None)       # al abrir otra evaluación, se muestra su paso actual
+    st.session_state.pop("etapa_vista", None)
 
 
 if "proyecto" not in st.session_state or not hasattr(st.session_state.proyecto, "ficha_validada"):
@@ -152,14 +154,42 @@ def reporte_v1():
     st.html(ui.riesgos(riesgos))
     st.html(ui.seccion("Roadmap de cinco iniciativas"))
     st.html(ui.roadmap(rep.get("iniciativas", []), [r["titulo"] for r in riesgos]))
-    with st.expander("Matriz de las 56 salvaguardas · v1 (evaluación inicial)"):
-        st.html(ui.matriz56(p.v1, p.documentos))
+    st.html(ui.seccion("Matriz de las 56 salvaguardas · v1 (evaluación inicial)",
+                       "Base del reporte: todas las salvaguardas con su estado, justificación y evidencia."))
+    st.html(ui.matriz56(p.v1, p.documentos))
 
 
 etapa = p.etapa
 
+# --------------------------------------------------------------- navegación
+# Siempre: Contexto, Reporte inicial y Reporte actualizado (estos dos cuando existen). La Evaluación 56 y la
+# Validación del PDF 2 solo aparecen mientras son el paso en curso: al terminar, su contenido ya está en los
+# reportes, y reabrirlas permitiría cambiar una v1 cerrada o decisiones ya aplicadas en la v2.
+VISTAS = {"contexto": "Contexto", "evaluacion": "Evaluación 56 · en curso", "reporte": "Reporte inicial",
+          "iniciativas": "Validación PDF 2 · en curso", "actualizado": "Reporte actualizado"}
+opciones = {"contexto": ["contexto"], "evaluacion": ["contexto", "evaluacion"], "reporte": ["contexto", "reporte"],
+            "iniciativas": ["contexto", "reporte", "iniciativas"], "actualizado": ["contexto", "reporte", "actualizado"]}[etapa]
+if st.session_state.get("etapa_vista") != etapa or st.session_state.get("vista") not in opciones:
+    st.session_state.vista = etapa        # al avanzar de etapa se muestra el paso nuevo
+    st.session_state.etapa_vista = etapa
+if len(opciones) > 1:
+    st.segmented_control("Sección del análisis", opciones, format_func=VISTAS.get, key="vista", required=True,
+                         disabled=ocupado, label_visibility="collapsed")
+vista = st.session_state.vista or etapa
+
 # --------------------------------------------------------- Etapa 1-2: contexto
-if etapa == "contexto" and not p.ficha:
+if vista == "contexto" and etapa != "contexto":
+    st.html(ui.titular("Ficha de contexto empresarial",
+                       "Solo lectura: la ficha ya se validó y la evaluación se construyó sobre ella. Cada hallazgo indica si "
+                       "su cita se encontró en el documento."))
+    st.html(ui.ficha(p.ficha, p.documentos["pdf1"].etiqueta))
+    descargas_ficha(st.columns([1, 1, 2]))
+    if p.ajustes:
+        st.html(ui.seccion(f"Ajustes registrados por el equipo · {len(p.ajustes)}"))
+        for a in p.ajustes:
+            st.markdown(f"- **{a['fecha']}** — {a['texto']}")
+
+elif etapa == "contexto" and not p.ficha:
     st.html(ui.titular(f"Soy {NOMBRE_AGENTE}.",
                        "Consultor de ciberseguridad especializado en CIS Controls v8.1. Interpreto el contexto de tu "
                        "organización, evalúo las 56 salvaguardas IG1 con base solo en la evidencia documental y propongo "
@@ -188,7 +218,7 @@ if etapa == "contexto" and not p.ficha:
         guardar()
         pedir("ficha")
 
-elif etapa == "contexto":
+elif vista == "contexto":
     st.html(ui.titular("Ficha de contexto empresarial",
                        "Antes de evaluar, valida la interpretación del agente (R1). Cada hallazgo indica si su cita se "
                        "encontró en el documento."))
@@ -218,7 +248,7 @@ elif etapa == "contexto":
                 st.markdown(f"- **{a['fecha']}** — {a['texto']}")
 
 # ----------------------------------------------------- Etapa 3: evaluación
-elif etapa == "evaluacion":
+elif vista == "evaluacion":
     ind = p.v1.indicadores()
     st.html(ui.titular("Evaluación inicial de las 56 salvaguardas",
                        "Cada estado se apoya en una cita verificada del documento. Lo que no está documentado queda como "
@@ -234,23 +264,24 @@ elif etapa == "evaluacion":
     st.html(ui.matriz56(p.v1, p.documentos))
 
 # ------------------------------------------------- Etapas 3.5-4: reporte v1
-elif etapa == "reporte":
+elif vista == "reporte":
     st.html(ui.titular("Reporte inicial", f"{p.nombre} · línea base v1 del {p.v1.fecha}. Esta versión ya no se modifica."))
     reporte_v1()
     exportes()
-    st.html(ui.seccion("Etapa 5 · Avance de iniciativas (PDF 2)",
-                       "El agente parte de esta evaluación (no de cero) y propone cambios que tú validas como auditor."))
-    archivo2 = st.file_uploader("PDF 2 — Avance de iniciativas", type=["pdf"], disabled=ocupado, label_visibility="collapsed")
-    lugar_progreso = st.empty()
-    if st.button("Analizar el avance de iniciativas", type="primary", icon=":material/upload_file:",
-                 disabled=ocupado or not archivo2):
-        datos = archivo2.getvalue()
-        p.documentos["pdf2"] = Documento("pdf2", archivo2.name, "pdf", leer_pdf(datos), almacen.guardar_pdf(p, "pdf2", datos))
-        guardar()
-        pedir("pdf2")
+    if etapa == "reporte":  # la carga del PDF 2 solo mientras es el paso en curso
+        st.html(ui.seccion("Etapa 5 · Avance de iniciativas (PDF 2)",
+                           "El agente parte de esta evaluación (no de cero) y propone cambios que tú validas como auditor."))
+        archivo2 = st.file_uploader("PDF 2 — Avance de iniciativas", type=["pdf"], disabled=ocupado, label_visibility="collapsed")
+        lugar_progreso = st.empty()
+        if st.button("Analizar el avance de iniciativas", type="primary", icon=":material/upload_file:",
+                     disabled=ocupado or not archivo2):
+            datos = archivo2.getvalue()
+            p.documentos["pdf2"] = Documento("pdf2", archivo2.name, "pdf", leer_pdf(datos), almacen.guardar_pdf(p, "pdf2", datos))
+            guardar()
+            pedir("pdf2")
 
 # ------------------------------------------------ Etapa 5: validar cambios
-elif etapa == "iniciativas":
+elif vista == "iniciativas":
     st.html(ui.titular("Validación de cambios propuestos",
                        "Actúa como auditor: aprueba los cambios con sustento, rechaza los que no lo tengan y deja pendientes "
                        "los que requieran información. Solo los aprobados actualizan las métricas (R11, R12)."))
@@ -285,11 +316,9 @@ elif etapa == "iniciativas":
                      icon=":material/published_with_changes:", disabled=ocupado):
             p.crear_v2(); guardar()
             pedir("v2")
-    with st.expander("Reporte inicial (v1) — referencia"):
-        reporte_v1()
 
 # --------------------------------------------- Etapa 5.6: reporte actualizado
-elif etapa == "actualizado":
+elif vista == "actualizado":
     rep = p.v2.reporte
     riesgos_v1 = p.v1.reporte.get("riesgos", [])
     aprobados = [c.id for c in p.cambios if c.decision == "aprobado"]
@@ -317,8 +346,6 @@ elif etapa == "actualizado":
     with t1:
         st.html(ui.matriz56(p.v2, p.documentos, set(aprobados)))
     exportes()
-    with st.expander("Reporte inicial (v1) completo"):
-        reporte_v1()
 
 # ------------------------------------------------------- consultas al agente
 mensajes = [m for m in p.chat if m["tipo"] == "texto"]
@@ -329,7 +356,7 @@ if mensajes:
             st.markdown(m["content"])
 # El chat solo se ofrece cuando hay algo que explicar: la ficha del PDF 1 ya generada o un reporte.
 # El historial se sigue mostrando en todas las etapas (incluye la prueba preliminar y los errores).
-CHAT_ACTIVO = (etapa == "contexto" and bool(p.ficha)) or etapa in ("reporte", "actualizado")
+CHAT_ACTIVO = (vista == "contexto" and bool(p.ficha)) or vista in ("reporte", "actualizado")
 pregunta_usuario = st.chat_input(f"Pregunta a {NOMBRE_AGENTE} por qué tomó una decisión o qué falta…",
                                  disabled=ocupado) if CHAT_ACTIVO else None
 if pregunta_usuario:

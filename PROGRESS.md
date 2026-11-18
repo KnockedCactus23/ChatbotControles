@@ -59,6 +59,11 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 - Exportación: Excel (Contexto, Matriz v1/v2, Indicadores, Riesgos, Roadmaps, Cambios PDF 2, Ajustes), CSV y reporte HTML.
 - Reporte ejecutivo descargable directamente en **PDF** (`chatbot/reporte_pdf.py`, con `fpdf2`). La sección v2 resume los riesgos y las iniciativas originales para no repetir la v1. La evaluación de prueba completa (v1 + v2) ocupa 5 páginas.
 - El dashboard (app y PDF) ya no muestra las fórmulas de los indicadores; se siguen calculando con las fórmulas oficiales en `state.indicadores()`.
+- **Navegación entre secciones de un análisis:**
+  - siempre Contexto, Reporte inicial y Reporte actualizado;
+  - la Evaluación 56 y la Validación PDF 2 solo mientras son el paso en curso;
+  - lo ya cerrado es de solo lectura.
+  - La matriz v1 ahora se ve abierta en el reporte inicial. Se quitaron las copias plegables del reporte inicial dentro de la validación del PDF 2 y del reporte actualizado, porque ya se llega a él desde la barra.
 - **Ficha de contexto exportable en PDF y HTML** (`ficha_pdf`, `ficha_html`). Incluye las 10 dimensiones con página, cita y verificación de cada hallazgo, la información faltante, las ambigüedades, el perfil de riesgo y los ajustes del equipo (Etapa 2.5). Se descarga desde la propia ficha y desde los entregables de los reportes.
 - Bitácora de validaciones visible en la barra lateral.
 

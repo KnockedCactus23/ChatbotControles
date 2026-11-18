@@ -36,7 +36,7 @@ from .state import (ETIQUETA, SITUACION_RIESGO, Proyecto, brechas_por_control, c
 MODELO_POR_DEFECTO = "claude-sonnet-5-5"
 # Modelos que se pueden elegir en la barra lateral (se guarda con cada evaluación; uno solo por evaluación).
 MODELOS = {"claude-sonnet-5-5": "Claude Sonnet 5.5 · recomendado",
-           "claude-haiku-5-5": "Claude Haiku 5.5 · para depurar (centavos)",
+           "claude-haiku-5-5": "Claude Haiku 5.5 · para depurar",
            "claude-opus-5-5": "Claude Opus 5.5 · máxima capacidad (2× el costo)"}
 # Esfuerzo de razonamiento: el valor por defecto de cada modelo, fijo en todas las llamadas (cambiarlo entre
 # llamadas invalidaría la caché). Haiku 5.5 en "high" gastó los 24K tokens de la ficha solo en razonar y no

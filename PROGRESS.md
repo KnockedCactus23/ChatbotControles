@@ -33,7 +33,7 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 - `CLAUDE.md`, `.claude/settings.json` con notificaciones, `.env.example` y pruebas sin API.
 
 ### Diseño y robustez
-- Rediseño visual "craft oscuro" (tokens OKLCH, anillo de implementación con CSS, tarjeta de progreso y checkmark al terminar).
+- Rediseño visual "craft oscuro", después reemplazado por "Dictamen técnico" (tokens OKLCH, anillo de implementación con CSS, tarjeta de progreso y checkmark al terminar).
 - Se eliminó de la interfaz el nombre del modelo en uso.
 - Corregido: la última pregunta Sí/No seguía clicable mientras se procesaba. Ahora las tareas lentas se ejecutan al final del script con los controles deshabilitados.
 - **Errores 503 y timeouts de Gemini:** reintentos del SDK (4 intentos sobre 408/429/5xx, timeouts y conexión) y tiempo límite de 30 s, o 120 s en llamadas con PDF o salidas largas. Los errores se muestran en español.
@@ -89,6 +89,11 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
   - Prompt maestro: tabla de decisión Parcial / No implementado, pertinencia de citas, BYOD, "por determinar", criterios de severidad y esfuerzo, iniciativas dentro de IG1, R12 concreto y la guía sectorial solo para ponderar.
   - Prueba real con Gemini sobre NexoPay: las 17 salvaguardas relacionadas recibieron decisión (antes, 8 cambios se omitían), 7.3 actualizó su evidencia y el riesgo 1 quedó mitigado. Ninguna iniciativa quedó "completada" con salvaguardas sin implementar.
   - **No aplicadas:** B3 (la actividad exige exactamente 5 riesgos y 5 iniciativas; ahora el sistema avisa cuando el formato obliga a incluir uno sin brecha) y D2 (corregir la v1 rompería su inmutabilidad, que es requisito; las correcciones respaldadas por el PDF 2 entran como actualización de evidencia en la v2).
+- **Nueva identidad visual "Dictamen técnico" con modos Día y Noche** (2026-11-18):
+  - Diseñada como sistema de diseño (tokens, tipografía, 7 componentes y portada). El cuaderno para revisión está en `docs/identidad_visual_centinela.pdf`.
+  - Aplicada a la app: temas de Streamlit en `config.toml`, tokens con alias en `ui.py`, marcas de estado por forma y Newsreader en títulos y cifras.
+  - Selector Día/Noche en la barra lateral, que recarga y vuelve a la misma evaluación y sección por la URL.
+  - Contraste verificado en ambos modos; la etiqueta de estado y las celdas de control llevan el texto en tinta, nunca en color de estado.
 - **Desplazamiento corregido:** la página ya no baja sola al cambiar de sección o al abrir una matriz. La causa era el chat fijo abajo de Streamlit, que activa "pegarse al final"; ahora el chat va en su sección y cada sección nueva empieza arriba. Comprobado en el navegador.
 - **Ficha de contexto exportable en PDF y HTML** (`ficha_pdf`, `ficha_html`). Incluye las 10 dimensiones con página, cita y verificación de cada hallazgo, la información faltante, las ambigüedades, el perfil de riesgo y los ajustes del equipo (Etapa 2.5). Se descarga desde la propia ficha y desde los entregables de los reportes.
 - Bitácora de validaciones visible en la barra lateral.

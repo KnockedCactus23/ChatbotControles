@@ -246,6 +246,8 @@ El repositorio ya incluye [`docs/prompt_maestro_centinela_ig1.md`](docs/prompt_m
 
 Puedes **preguntarle al agente** en el chat por qué tomó una decisión. Responde citando la página y el texto del documento, pero no cambia estados. El chat está disponible en la ficha de contexto (después de analizar el PDF 1), en el reporte inicial y en el reporte actualizado.
 
+**Modo Día o Noche:** cámbialo con el selector de la parte superior de la barra lateral. La página se recarga y vuelve a la evaluación y la sección donde estabas. Sin elección, sigue el tema del sistema operativo.
+
 **Las evaluaciones se guardan solas** en la carpeta `evaluaciones/`, que no se sube a git. Para retomar una la semana siguiente, elígela en **"Evaluaciones guardadas"**, en la barra lateral.
 
 > **Para la demo:** la bitácora de validaciones de la barra lateral muestra cada vez que el sistema corrigió al modelo. Por ejemplo: "propuso No implementado sin cita; queda No verificado". Es evidencia de una limitación del modelo y de cómo se controla.

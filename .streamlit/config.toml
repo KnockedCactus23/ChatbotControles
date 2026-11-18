@@ -1,24 +1,53 @@
-# Tema "craft oscuro". Los valores hex salen de los tokens OKLCH de chatbot/ui.py.
+# Identidad "Dictamen técnico" (sistema de diseño Centinela IG1): tema Día y tema Noche.
+# Los hex salen de los tokens OKLCH de chatbot/ui.py. El tema se cambia con el selector Día/Noche de la barra lateral;
+# sin elección, sigue el del sistema operativo.
 [theme]
-base = "dark"
-primaryColor = "#41d2b3"
-backgroundColor = "#0a0c0f"
-secondaryBackgroundColor = "#111316"
-textColor = "#f0f2f4"
-borderColor = "#24272a"
-showWidgetBorder = true
-baseRadius = "10px"
-buttonRadius = "8px"
+baseRadius = "6px"
+buttonRadius = "6px"
 baseFontSize = 15
-font = "Geist:https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap"
-codeFont = "Geist Mono:https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap"
-headingFontWeights = [560, 540, 520, 500, 500, 500]
-linkColor = "#41d2b3"
+font = "Public Sans:https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap"
+headingFont = "Newsreader:https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap"
+codeFont = "IBM Plex Mono:https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"
+headingFontWeights = [500, 500, 500, 600, 600, 600]
+showWidgetBorder = true
 
-[theme.sidebar]
-backgroundColor = "#0d0f12"
-secondaryBackgroundColor = "#141619"
-borderColor = "#1e2124"
+[theme.light]
+primaryColor = "#00657f"          # accent
+backgroundColor = "#f7fafc"       # paper
+secondaryBackgroundColor = "#eff3f6"  # sunken
+textColor = "#121e2b"             # ink
+borderColor = "#c0c9ce"           # rule-strong
+linkColor = "#00657f"
+redColor = "#bd3933"              # st-no_implementado
+orangeColor = "#c68206"           # st-parcial
+greenColor = "#267f47"            # st-implementado
+blueColor = "#00657f"
+violetColor = "#786895"           # st-no_aplicable
+grayColor = "#7a8187"             # st-no_verificado
+
+[theme.light.sidebar]
+backgroundColor = "#ffffff"       # surface
+secondaryBackgroundColor = "#eff3f6"
+borderColor = "#dbe1e4"           # rule
+
+[theme.dark]
+primaryColor = "#54bbd2"          # accent (texto oscuro encima: on-accent)
+backgroundColor = "#0a0f13"       # paper
+secondaryBackgroundColor = "#12181d"  # surface
+textColor = "#eaeff3"             # ink
+borderColor = "#343c42"           # rule-strong
+linkColor = "#54bbd2"
+redColor = "#f27166"
+orangeColor = "#efb146"
+greenColor = "#56bd78"
+blueColor = "#54bbd2"
+violetColor = "#ac9ad0"
+grayColor = "#7a8187"
+
+[theme.dark.sidebar]
+backgroundColor = "#12181d"       # surface
+secondaryBackgroundColor = "#0a0f13"
+borderColor = "#232a2f"           # rule
 
 [client]
 toolbarMode = "minimal"

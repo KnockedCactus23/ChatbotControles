@@ -8,6 +8,8 @@ página ya se dibujó con los controles deshabilitados; así no quedan botones v
 Todo se guarda automáticamente en ``evaluaciones/`` para conservar v1 y v2 entre sesiones.
 """
 
+import re
+
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -22,6 +24,7 @@ from chatbot.state import Proyecto, ahora, estado_control
 load_dotenv()
 st.set_page_config(page_title=NOMBRE_AGENTE, page_icon=":material/shield:", layout="wide")
 st.html(ui.CSS)
+st.html(ui.tema_script(), unsafe_allow_javascript=True)  # data-theme según el tema aplicado (Día/Noche)
 
 AVATAR = {"assistant": ":material/shield:", "user": ":material/person:"}
 TITULO_TAREA = {
@@ -53,6 +56,17 @@ def nuevo(proyecto: Proyecto | None = None):
 
 if "proyecto" not in st.session_state or not hasattr(st.session_state.proyecto, "ficha_validada"):
     nuevo()
+    # Sesión nueva: si la URL trae una evaluación (p. ej. tras cambiar de tema, que recarga la página), se reabre
+    # en la misma sección.
+    try:
+        pid = st.query_params.get("evaluacion", "")
+        if re.fullmatch(r"[0-9a-f]{10}", pid):  # solo ids de evaluación: nada de rutas en la URL
+            nuevo(almacen.cargar(pid))
+            if st.query_params.get("vista"):
+                st.session_state.vista = st.query_params["vista"]
+                st.session_state.etapa_vista = st.session_state.proyecto.etapa
+    except (FileNotFoundError, KeyError, ValueError):
+        st.query_params.clear()
 if "motor" not in st.session_state:
     try:
         st.session_state.motor = Motor()
@@ -82,6 +96,7 @@ def decir(texto: str, rol: str = "assistant"):
 
 # ------------------------------------------------------------------ barra lateral
 with st.sidebar:
+    st.html(ui.selector_tema(deshabilitado=ocupado), unsafe_allow_javascript=True)
     ind = p.vigente.indicadores() if p.vigente else None
     st.html(ui.postura(ind, st.session_state.impl_previa))
     st.session_state.impl_previa = (ind or {}).get("implementacion") or 0.0
@@ -98,7 +113,7 @@ with st.sidebar:
     actual = p.modelo or st.session_state.get("modelo_elegido", MODELO_POR_DEFECTO)
     elegido = st.selectbox("Modelo de Claude", list(MODELOS), format_func=lambda m: MODELOS.get(m, m),
                            index=list(MODELOS).index(actual) if actual in MODELOS else 0, disabled=ocupado or fijo,
-                           help="Sonnet 5.5 para las corridas que se entregan; Haiku 5.5 para probar por centavos.")
+                           help="Sonnet 5.5 para más precisión; Haiku 5.5 para pruebas.")
     if fijo:
         st.caption("Fijo en esta evaluación (un solo modelo de principio a fin). Para usar otro, crea una nueva evaluación.")
     else:
@@ -197,6 +212,12 @@ vista = st.session_state.vista or etapa
 if st.session_state.get("vista_mostrada") not in (None, vista):
     st.html(ui.subir_al_inicio(), unsafe_allow_javascript=True)  # sección nueva: empezar desde arriba
 st.session_state.vista_mostrada = vista
+# La URL guarda la evaluación y la sección abiertas: al recargar (cambio de tema) se vuelve al mismo lugar.
+if p.documentos:
+    if st.query_params.get("evaluacion") != p.id or st.query_params.get("vista") != vista:
+        st.query_params.update({"evaluacion": p.id, "vista": vista})
+elif st.query_params:
+    st.query_params.clear()
 
 # --------------------------------------------------------- Etapa 1-2: contexto
 if vista == "contexto" and etapa != "contexto":

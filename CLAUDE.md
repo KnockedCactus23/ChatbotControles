@@ -101,7 +101,15 @@ tests/                     # conftest (catálogo falso: 18 IG1), test_state (reg
 - Tareas lentas en la UI: `pedir(tipo)` → rerun con controles deshabilitados → se ejecutan al final del script con la tarjeta de progreso en `lugar_progreso`.
 
 ## Diseño (UI)
-- Arquetipo "craft oscuro"; colores de los 5 estados en tokens `--st-implementado`, `--st-parcial`, `--st-no_implementado`, `--st-no_verificado`, `--st-no_aplicable`. No hex sueltos.
+- **Identidad "Dictamen técnico", modos Día y Noche** (2026-11-18). La fuente es el sistema de diseño Centinela IG1 (artifact) y el cuaderno `docs/identidad_visual_centinela.pdf`.
+  - Tokens en `ui.CSS`: Día en `:root`, Noche en `:root[data-theme="dark"]` (y en `prefers-color-scheme` para la primera pintura). Los nombres antiguos (`--bg`, `--text-1`, `--st-cubierto`…) son alias de los nuevos (`--paper`, `--ink`, `--st-implementado`…). No hex sueltos.
+  - Tipografía: Newsreader (títulos y cifras), Public Sans (interfaz), IBM Plex Mono (IDs y folios).
+  - **El estado es forma:** `_marca(estado)` dibuja lleno, a medias, tachado, punteado o guion. Los colores `st-*` solo pintan marcas y fondos (`tint-*`, `color-mix`); el texto va en `ink`. Nunca texto en color de estado.
+- **Temas de Streamlit:** `[theme.light]` y `[theme.dark]` en `.streamlit/config.toml`, con los hex de los tokens. `ui.tema_script()` lee el fondo que Streamlit aplicó y pone `data-theme` en la raíz; no usar `st.context.theme` (puede estar desfasado al cambiar de tema).
+- **Selector Día/Noche** (`ui.selector_tema()` en la barra lateral). Escribe `"Light"`/`"Dark"` en `localStorage["stActiveTheme-<ruta>-v2"]`, que es donde Streamlit lee el tema, y recarga la página.
+  - Para volver al mismo lugar, `app.py` mantiene `?evaluacion=<id>&vista=<sección>` en la URL y los restaura al iniciar sesión. Solo acepta ids hexadecimales de 10 caracteres.
+  - El selector se deshabilita mientras corre una tarea.
+- Tras cambiar `ui.py`, reiniciar el servidor de Streamlit: conserva en memoria la versión anterior del módulo.
 - `st.html` sanitiza: **elimina `<svg>`** y **descarta un `<style>` completo si contiene `<`** (incluso en comentarios; usar `\3c`).
 - Todo texto de Claude o del usuario pasa por `ui.esc()`.
 - **`st.chat_input` nunca en la raíz**, siempre dentro de `st.container(key="chat")`. En la raíz, Streamlit lo fija abajo y activa "pegarse al final" (`stAppScrollToBottomContainer`), que arrastra la página hasta abajo al cambiar de sección o abrir un plegable.

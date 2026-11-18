@@ -29,34 +29,68 @@ def esc(texto) -> str:
 # --------------------------------------------------------------------------- CSS
 CSS = """
 <style>
+/* Identidad "Dictamen técnico" (sistema de diseño Centinela IG1): tokens Día en :root y Noche en
+   [data-theme="dark"]. ui.tema_script() pone data-theme según el tema que Streamlit aplicó; antes de que corra,
+   prefers-color-scheme da la primera pintura correcta. Los nombres antiguos (--bg, --text-1…) son alias. */
 :root {
-  --hue-base: 255; --hue-accent: 175;
-  --bg: oklch(0.155 0.006 var(--hue-base));
-  --surface-1: oklch(0.185 0.007 var(--hue-base));
-  --surface-2: oklch(0.215 0.008 var(--hue-base));
-  --surface-3: oklch(0.245 0.009 var(--hue-base));
-  --text-1: oklch(0.96 0.004 var(--hue-base));
-  --text-2: oklch(0.74 0.008 var(--hue-base));
-  --text-3: oklch(0.60 0.010 var(--hue-base));
-  --border: oklch(1 0 0 / 0.08);
-  --border-strong: oklch(1 0 0 / 0.15);
-  --accent: oklch(0.78 0.13 var(--hue-accent));
-  --accent-subtle: color-mix(in oklch, var(--accent) 14%, transparent);
-  --accent-glow: color-mix(in oklch, var(--accent) 40%, transparent);
-  --on-accent: oklch(0.18 0.03 var(--hue-accent));
-  /* Estados: misma L y C, solo cambia el tono */
-  --st-cubierto: oklch(0.74 0.15 155);
-  --st-parcial: oklch(0.80 0.14 80);
-  --st-no_cubierto: oklch(0.68 0.18 25);
-  --st-desconocido: oklch(0.52 0.012 var(--hue-base));
-  --highlight: inset 0 1px 0 oklch(1 0 0 / 0.05);
-  --elev-1: 0 0 0 1px var(--border), var(--highlight);
-  --elev-2: 0 0 0 1px var(--border), var(--highlight), 0 2px 4px oklch(0 0 0 / .2), 0 8px 24px oklch(0 0 0 / .25);
-  --r-sm: 6px; --r-md: 10px; --r-lg: 16px; --r-full: 9999px;
-  --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --paper: oklch(0.984 0.004 230); --surface: oklch(1 0 0); --sunken: oklch(0.962 0.006 230);
+  --ink: oklch(0.23 0.03 250); --ink-2: oklch(0.38 0.025 250); --ink-3: oklch(0.50 0.018 250);
+  --rule: oklch(0.905 0.008 235); --rule-strong: oklch(0.83 0.012 235); --line-control: oklch(0.62 0.014 240);
+  --accent: oklch(0.47 0.09 222); --accent-strong: oklch(0.40 0.085 222); --accent-tint: oklch(0.955 0.022 222);
+  --on-accent: oklch(0.99 0.003 222);
+  --st-implementado: oklch(0.53 0.12 152); --st-parcial: oklch(0.66 0.14 72); --st-no_implementado: oklch(0.54 0.17 27);
+  --st-no_verificado: oklch(0.60 0.012 245); --st-no_aplicable: oklch(0.55 0.07 300); --st-sin_ig1: oklch(0.83 0.012 235);
+  --tint-implementado: oklch(0.955 0.03 152); --tint-parcial: oklch(0.965 0.04 85); --tint-no_implementado: oklch(0.955 0.03 27);
+  --tint-no_aplicable: oklch(0.958 0.018 300);
+  --shadow-1: 0 0 0 1px #c0c9ce, 0 1px 2px #121e2b0d;
+  --shadow-2: 0 0 0 1px #c0c9ce, 0 2px 4px #121e2b0a, 0 10px 24px #121e2b12;
+  --highlight: 0 0 #0000;
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-text: "Public Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r-sm: 3px; --r-md: 6px; --r-lg: 10px; --r-full: 9999px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --spring-bouncy: linear(0, 0.1, 0.323, 0.577, 0.803, 0.97, 1.073, 1.119, 1.124, 1.105, 1.074, 1.042, 1.016, 0.998, 0.988, 0.984, 0.985, 0.988, 0.992, 0.996, 0.999, 1.001, 1.002, 1.002, 1);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: oklch(0.165 0.012 245); --surface: oklch(0.205 0.014 245); --sunken: oklch(0.135 0.01 245);
+  --ink: oklch(0.95 0.008 240); --ink-2: oklch(0.81 0.012 240); --ink-3: oklch(0.67 0.014 240);
+  --rule: oklch(0.28 0.014 245); --rule-strong: oklch(0.35 0.016 245); --line-control: oklch(0.55 0.016 240);
+  --accent: oklch(0.74 0.1 215); --accent-strong: oklch(0.83 0.085 215); --accent-tint: oklch(0.285 0.045 220);
+  --on-accent: oklch(0.18 0.03 230);
+  --st-implementado: oklch(0.72 0.14 152); --st-parcial: oklch(0.8 0.14 78); --st-no_implementado: oklch(0.7 0.16 27);
+  --st-no_verificado: oklch(0.6 0.012 245); --st-no_aplicable: oklch(0.72 0.08 300); --st-sin_ig1: oklch(0.35 0.016 245);
+  --tint-implementado: oklch(0.285 0.045 152); --tint-parcial: oklch(0.3 0.045 78); --tint-no_implementado: oklch(0.285 0.05 27);
+  --tint-no_aplicable: oklch(0.285 0.035 300);
+  --shadow-1: inset 0 1px 0 #ffffff0f, 0 0 0 1px #343c42, 0 1px 2px #00000066;
+  --shadow-2: inset 0 1px 0 #ffffff0f, 0 0 0 1px #343c42, 0 2px 4px #00000059, 0 12px 28px #00000080;
+  --highlight: inset 0 1px 0 #ffffff0f;
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --paper: oklch(0.165 0.012 245); --surface: oklch(0.205 0.014 245); --sunken: oklch(0.135 0.01 245);
+  --ink: oklch(0.95 0.008 240); --ink-2: oklch(0.81 0.012 240); --ink-3: oklch(0.67 0.014 240);
+  --rule: oklch(0.28 0.014 245); --rule-strong: oklch(0.35 0.016 245); --line-control: oklch(0.55 0.016 240);
+  --accent: oklch(0.74 0.1 215); --accent-strong: oklch(0.83 0.085 215); --accent-tint: oklch(0.285 0.045 220);
+  --on-accent: oklch(0.18 0.03 230);
+  --st-implementado: oklch(0.72 0.14 152); --st-parcial: oklch(0.8 0.14 78); --st-no_implementado: oklch(0.7 0.16 27);
+  --st-no_verificado: oklch(0.6 0.012 245); --st-no_aplicable: oklch(0.72 0.08 300); --st-sin_ig1: oklch(0.35 0.016 245);
+  --tint-implementado: oklch(0.285 0.045 152); --tint-parcial: oklch(0.3 0.045 78); --tint-no_implementado: oklch(0.285 0.05 27);
+  --tint-no_aplicable: oklch(0.285 0.035 300);
+  --shadow-1: inset 0 1px 0 #ffffff0f, 0 0 0 1px #343c42, 0 1px 2px #00000066;
+  --shadow-2: inset 0 1px 0 #ffffff0f, 0 0 0 1px #343c42, 0 2px 4px #00000059, 0 12px 28px #00000080;
+  --highlight: inset 0 1px 0 #ffffff0f;
+  color-scheme: dark;
+}
+/* Alias de los nombres anteriores: el resto de la hoja los sigue usando. */
+:root, :root[data-theme] {
+  --bg: var(--paper); --surface-1: var(--surface); --surface-2: var(--sunken); --surface-3: var(--surface);
+  --text-1: var(--ink); --text-2: var(--ink-2); --text-3: var(--ink-3);
+  --border: var(--rule); --border-strong: var(--rule-strong);
+  --accent-subtle: var(--accent-tint); --accent-glow: color-mix(in oklch, var(--accent) 35%, transparent);
+  --st-cubierto: var(--st-implementado); --st-no_cubierto: var(--st-no_implementado); --st-desconocido: var(--st-no_verificado);
+  --elev-1: var(--shadow-1); --elev-2: var(--shadow-2);
 }
 
 /* ---------- Base de Streamlit ---------- */
@@ -109,9 +143,8 @@ p { text-wrap: pretty; }
 
 /* ---------- Piezas propias ---------- */
 .marca { display: flex; align-items: center; gap: 10px; color: var(--text-1); font-weight: 550; letter-spacing: -0.01em; font-size: .95rem; }
-.marca::before { content: ""; width: 20px; height: 20px; flex: none; background: var(--accent);
-  -webkit-mask: var(--icono-escudo) center / contain no-repeat; mask: var(--icono-escudo) center / contain no-repeat; }
-:root { --icono-escudo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linejoin='round' stroke-linecap='round'%3E%3Cpath d='M12 2.75 4.5 5.6v5.9c0 4.7 3.2 8.6 7.5 9.75 4.3-1.15 7.5-5.05 7.5-9.75V5.6L12 2.75Z'/%3E%3Cpath d='m8.75 12 2.25 2.25 4.25-4.5'/%3E%3C/svg%3E"); }
+.marca { font-family: var(--font-display); font-weight: 500; font-size: 1.2rem; letter-spacing: -0.015em;
+  font-variation-settings: 'opsz' 24; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--r-full);
   font: 500 .72rem/1 var(--mono); color: var(--text-2); background: var(--surface-1); box-shadow: 0 0 0 1px var(--border); white-space: nowrap; }
 .mono { font-family: var(--mono); font-size: .8em; letter-spacing: 0; }
@@ -119,15 +152,15 @@ p { text-wrap: pretty; }
 
 /* Encabezado + pasos */
 .encabezado { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 40px; }
-.pasos { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.pasos { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
 .pasos li { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: var(--r-full);
   font-size: .8rem; color: var(--text-3); box-shadow: 0 0 0 1px var(--border); }
 .pasos li.hecho { color: var(--text-2); }
 .pasos li.actual { color: var(--text-1); background: var(--surface-1); box-shadow: 0 0 0 1px var(--border-strong), var(--highlight); }
 .pasos li.actual .punto { --c: var(--accent); box-shadow: 0 0 0 3px var(--accent-subtle); }
 .pasos li.hecho .punto { --c: var(--text-3); }
-.titular { font-size: clamp(1.75rem, 2.4vw + 1rem, 2.5rem); line-height: 1.1; letter-spacing: -0.032em; font-weight: 550;
-  color: var(--text-1); margin: 0 0 12px; }
+.titular { font-family: var(--font-display); font-size: clamp(2rem, 2.2vw + 1.2rem, 2.75rem); line-height: 1.09;
+  letter-spacing: -0.02em; font-weight: 500; font-variation-settings: 'opsz' 48; color: var(--text-1); margin: 0 0 12px; }
 .lead { font-size: 1.06rem; line-height: 1.6; color: var(--text-2); max-width: 60ch; margin: 0 0 32px; }
 
 /* Guía inicial */
@@ -162,7 +195,7 @@ p { text-wrap: pretty; }
   background: radial-gradient(closest-side, transparent 78%, var(--accent-subtle) 92%, transparent); opacity: calc(var(--hasta) / 100); }
 @keyframes llenar { from { --pct: var(--desde); } to { --pct: var(--hasta); } }
 .anillo .cifra { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
-.anillo .cifra b { font-size: 1.6rem; font-weight: 550; letter-spacing: -0.04em; color: var(--text-1); font-variant-numeric: tabular-nums; line-height: 1; }
+.anillo .cifra b { font-family: var(--font-display); font-size: 1.75rem; font-weight: 500; letter-spacing: -0.02em; color: var(--text-1); font-variant-numeric: tabular-nums; line-height: 1; }
 .anillo .cifra b small { font-size: .55em; color: var(--text-3); font-weight: 500; margin-left: 1px; }
 .anillo .cifra span { font-size: .66rem; color: var(--text-3); margin-top: 4px; }
 .conteos { display: grid; gap: 7px; flex: 1; margin: 0; padding: 0; list-style: none; }
@@ -172,8 +205,8 @@ p { text-wrap: pretty; }
 /* Momento firma: matriz de postura */
 .matriz { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-bottom: 8px; }
 .celda { position: relative; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center;
-  font: 500 .66rem/1 var(--mono); color: var(--c); background: color-mix(in oklch, var(--c) 13%, var(--bg));
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--c) 30%, transparent); cursor: default;
+  font: 500 .66rem/1 var(--mono); color: var(--ink); background: color-mix(in oklch, var(--c) 16%, var(--bg));
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--c) 55%, transparent); cursor: default;
   transition: background-color 150ms var(--ease-out); }
 .celda.desconocido { color: var(--text-3); background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--border); }
 @media (hover: hover) { .celda:hover { background: color-mix(in oklch, var(--c) 24%, var(--bg)); transition-duration: 0ms; } }
@@ -206,7 +239,7 @@ p { text-wrap: pretty; }
 .verif-fin-texto { margin: 0; color: var(--text-2); font-size: .86rem; }
 .barra.carga { position: relative; margin-bottom: 18px; }
 .barra.carga::after { content: ""; position: absolute; inset: 0; width: 30%;
-  background: linear-gradient(90deg, transparent, oklch(1 0 0 / .7), transparent); animation: barrido 1500ms var(--ease-in-out) infinite; }
+  background: linear-gradient(90deg, transparent, var(--accent-glow), transparent); animation: barrido 1500ms var(--ease-in-out) infinite; }
 @keyframes barrido { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 
 /* Reporte */
@@ -251,7 +284,7 @@ table.controles td.just { color: var(--text-3); font-size: .8rem; max-width: 36c
 .rec:last-child { border-bottom: 0; }
 .rec b { display: block; color: var(--text-1); font-weight: 520; font-size: .9rem; letter-spacing: -0.01em; margin: 8px 0 4px; }
 .rec p { margin: 0 0 8px; color: var(--text-2); font-size: .84rem; line-height: 1.6; }
-.prioridad { --c: var(--st-desconocido); color: var(--c); background: color-mix(in oklch, var(--c) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--c) 30%, transparent); }
+.prioridad { --c: var(--st-desconocido); color: var(--ink); background: color-mix(in oklch, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--c) 55%, transparent); }
 .prioridad.alta { --c: var(--st-no_cubierto); } .prioridad.media { --c: var(--st-parcial); }
 .vacio { color: var(--text-3); font-size: .85rem; }
 
@@ -273,8 +306,8 @@ table.controles td.just { color: var(--text-3); font-size: .8rem; max-width: 36c
 .amenazas b { color: var(--text-1); font-weight: 520; font-size: .88rem; }
 .amenazas .razon { grid-column: 2; color: var(--text-3); font-size: .8rem; line-height: 1.5; }
 .amenazas .chips { grid-column: 2; margin-top: 4px; }
-.impacto { --c: var(--st-desconocido); color: var(--c); background: color-mix(in oklch, var(--c) 12%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--c) 30%, transparent); }
+.impacto { --c: var(--st-desconocido); color: var(--ink); background: color-mix(in oklch, var(--c) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--c) 55%, transparent); }
 .impacto.critico { --c: var(--st-no_cubierto); } .impacto.alto { --c: var(--st-parcial); }
 
 /* Evaluación en curso */
@@ -291,14 +324,7 @@ table.controles td.just { color: var(--text-3); font-size: .8rem; max-width: 36c
 .atribucion { color: var(--text-3); font-size: .72rem; line-height: 1.5; margin-top: 48px; max-width: 80ch; }
 
 
-/* ---------- Actividad M3.6: 5 estados oficiales ---------- */
-:root {
-  --st-implementado: var(--st-cubierto);
-  --st-no_implementado: var(--st-no_cubierto);
-  --st-no_verificado: var(--st-desconocido);
-  --st-no_aplicable: oklch(0.70 0.08 285);
-  --st-sin_ig1: oklch(0.38 0.008 var(--hue-base));
-}
+/* ---------- Actividad M3.6: 5 estados oficiales (tokens arriba) ---------- */
 .celda.sin_ig1 { color: var(--text-3); background: transparent; box-shadow: inset 0 0 0 1px var(--border); opacity: .55; }
 .celda.no_verificado { color: var(--text-3); background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--border); }
 
@@ -306,8 +332,8 @@ table.controles td.just { color: var(--text-3); font-size: .8rem; max-width: 36c
 .tablero { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--border);
   border-radius: var(--r-lg); overflow: hidden; box-shadow: 0 0 0 1px var(--border); margin: 8px 0 12px; }
 .tablero > div { background: var(--surface-1); padding: 18px 20px; }
-.tablero b { display: block; font-size: 1.9rem; font-weight: 550; letter-spacing: -0.04em; color: var(--text-1);
-  font-variant-numeric: tabular-nums; line-height: 1.05; }
+.tablero b { display: block; font-family: var(--font-display); font-size: 2.4rem; font-weight: 500; letter-spacing: -0.02em;
+  color: var(--text-1); font-variant-numeric: tabular-nums lining-nums; font-variation-settings: 'opsz' 40; line-height: 1.05; }
 .tablero b.nd { font-size: 1.05rem; letter-spacing: -0.01em; padding-top: 10px; }
 .tablero span { display: block; font-size: .8rem; color: var(--text-2); margin-top: 6px; }
 .tablero small { display: block; font-size: .72rem; color: var(--text-3); margin-top: 4px; line-height: 1.4; }
@@ -357,7 +383,7 @@ table.tabla td { padding: 11px 12px; border-bottom: 1px solid var(--border); ver
 table.tabla td b { color: var(--text-1); font-weight: 520; }
 table.tabla tr:last-child td { border-bottom: 0; }
 .sev { --c: var(--st-desconocido); } .sev.alta { --c: var(--st-no_cubierto); } .sev.media { --c: var(--st-parcial); } .sev.baja { --c: var(--st-cubierto); }
-.sev, .tipo { color: var(--c); background: color-mix(in oklch, var(--c) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--c) 30%, transparent); }
+.sev, .tipo { color: var(--ink); background: color-mix(in oklch, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--c) 55%, transparent); }
 .tipo { --c: var(--accent); } .tipo.proyecto { --c: var(--st-no_aplicable); }
 .resumen-ej { display: grid; gap: 22px; max-width: 78ch; }
 .resumen-ej h4 { margin: 0 0 6px; font: 500 .74rem/1.2 var(--mono); color: var(--text-3); }
@@ -371,13 +397,42 @@ table.tabla tr:last-child td { border-bottom: 0; }
 .ini p { margin: 0 0 8px; font-size: .8rem; color: var(--text-2); line-height: 1.55; }
 .ini p b { color: var(--text-3); font-weight: 500; font: 500 .7rem/1 var(--mono); display: block; margin-bottom: 2px; }
 .flecha { color: var(--text-3); margin: 0 6px; }
-.seccion-titulo { font-size: 1.15rem; letter-spacing: -0.018em; font-weight: 540; color: var(--text-1); margin: 48px 0 6px; }
+.seccion-titulo { font-family: var(--font-display); font-size: 1.6rem; line-height: 1.25; letter-spacing: -0.012em;
+  font-weight: 500; font-variation-settings: 'opsz' 28; color: var(--text-1); margin: 48px 0 6px; }
 .seccion-sub { color: var(--text-3); font-size: .84rem; margin: 0 0 16px; max-width: 75ch; line-height: 1.55; }
 .aviso { font-size: .76rem; color: var(--text-3); line-height: 1.5; margin: 0 0 4px; }
 .vacio { color: var(--text-3); font-size: .85rem; }
 
 @keyframes entrar { from { opacity: 0; transform: translateY(6px); } }
 
+/* ---------- Identidad Dictamen técnico: marcas de estado, etiquetas y controles ---------- */
+.marca-estado { inline-size: 11px; block-size: 11px; flex: none; border-radius: var(--r-sm); box-sizing: border-box; display: inline-block; }
+.m-implementado { background: var(--st-implementado); }
+.m-parcial { border: 1.5px solid var(--st-parcial); background: linear-gradient(to right, var(--st-parcial) 50%, transparent 50%); }
+.m-no_implementado { border: 1.5px solid var(--st-no_implementado);
+  background: linear-gradient(135deg, transparent 42%, var(--st-no_implementado) 42% 58%, transparent 58%); }
+.m-no_verificado { border: 1.5px dashed var(--st-no_verificado); background: var(--sunken); }
+.m-no_aplicable { border-radius: 1px; background: linear-gradient(var(--st-no_aplicable), var(--st-no_aplicable)) center / 100% 2.5px no-repeat; }
+.estado-chip { gap: 7px; padding: 2px 9px 2px 7px; border-radius: var(--r-sm); font-weight: 600; font-size: .74rem; letter-spacing: .01em; color: var(--ink); }
+.estado-chip.e-implementado { background: var(--tint-implementado); }
+.estado-chip.e-parcial { background: var(--tint-parcial); }
+.estado-chip.e-no_implementado { background: var(--tint-no_implementado); }
+.estado-chip.e-no_verificado { background: var(--sunken); }
+.estado-chip.e-no_aplicable { background: var(--tint-no_aplicable); }
+.conteos li .marca-estado, .conteo-estados .marca-estado { margin-right: 1px; }
+/* Bordes de campos con 3:1 (el filete no alcanza) y texto sobre el acento */
+[data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] > div, [data-testid="stFileUploaderDropzone"] { border-color: var(--line-control) !important; }
+[data-testid="stBaseButton-primary"], [data-testid="stBaseButton-primary"] p { color: var(--on-accent) !important; }
+[data-testid="stBaseButton-secondary"] { border-color: var(--line-control); }
+/* Selector Día/Noche */
+.tema-selector { display: inline-flex; gap: 2px; padding: 3px; background: var(--sunken); border-radius: var(--r-md);
+  box-shadow: inset 0 0 0 1px var(--rule); margin: 4px 0 14px; }
+.tema-selector button { border: 0; background: transparent; cursor: pointer; font: 500 .8rem/1.2 var(--font-text); color: var(--ink-3);
+  padding: 5px 14px; border-radius: 4px; transition: background-color 80ms, color 80ms; }
+.tema-selector button:hover { color: var(--ink); }
+.tema-selector button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-1); }
+.tema-selector button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tema-selector button:disabled { cursor: not-allowed; opacity: .6; }
 @media (max-width: 720px) {
   .guia, .wins, .plazos { grid-template-columns: 1fr; }
   .win.destacado { grid-column: auto; }
@@ -402,8 +457,13 @@ def _chips(ids) -> str:
     return "".join(f'<span class="chip">{esc(i)}</span>' for i in ids)
 
 
+def _marca(e: str) -> str:
+    """Marca de estado: cada estado con su forma (lleno, a medias, tachado, punteado, guion), no solo su color."""
+    return f'<span class="marca-estado m-{e}" aria-hidden="true"></span>'
+
+
 def _estado(e: str) -> str:
-    return f'<span class="estado-chip"><span class="punto" style="{_c(e)}"></span>{ETIQUETA[e]}</span>'
+    return f'<span class="estado-chip e-{e}">{_marca(e)}{ETIQUETA[e]}</span>'
 
 
 ORDEN_ESTADOS = ESTADOS
@@ -439,7 +499,7 @@ def postura(ind: dict | None, desde: float) -> str:
     impl = ind["implementacion"]
     hasta = impl or 0.0
     cifra = f"{impl:.0f}<small>%</small>" if impl is not None else "—"
-    conteos = "".join(f'<li><span class="punto" style="{_c(e)}"></span>{ETIQUETA_CORTA[e]}<b>{ind[e]}</b></li>' for e in ESTADOS)
+    conteos = "".join(f'<li>{_marca(e)}{ETIQUETA_CORTA[e]}<b>{ind[e]}</b></li>' for e in ESTADOS)
     return (f'<div class="marca">{NOMBRE_AGENTE}</div>'
             f'<div class="postura"><div class="anillo" role="img" aria-label="Implementación IG1 {esc(formato_pct(impl))}" '
             f'style="--desde:{desde:.1f};--hasta:{hasta:.1f}"><span class="halo" aria-hidden="true"></span>'
@@ -508,7 +568,7 @@ def tablero(ind: dict, riesgos: int | None = None, iniciativas: int | None = Non
 
     cob_d = _delta(previo["cobertura"], ind["cobertura"]) if previo else ""
     imp_d = _delta(previo["implementacion"], ind["implementacion"]) if previo else ""
-    conteos = "".join(f'<span><span class="punto" style="{_c(e)}"></span>{ETIQUETA[e]} <b>{ind[e]}</b></span>' for e in ESTADOS)
+    conteos = "".join(f'<span>{_marca(e)}{ETIQUETA[e]} <b>{ind[e]}</b></span>' for e in ESTADOS)
     return (f'<div class="tablero">'
             f'<div>{cifra(ind["cobertura"])}<span>Cobertura IG1</span><small>Salvaguardas evaluadas con información suficiente</small>{cob_d}</div>'
             f'<div>{cifra(ind["implementacion"])}<span>Implementación IG1</span><small>Sobre {ind["evaluables"]} salvaguardas evaluables</small>{imp_d}</div>'
@@ -658,6 +718,35 @@ def comparacion(i1: dict, i2: dict, modificados: list[str]) -> str:
     return (f'<div class="tabla-envoltura"><table class="tabla" style="min-width:420px"><thead><tr><th>Indicador</th>'
             f'<th>v1 · Inicial</th><th>v2 · Actualizada</th></tr></thead><tbody>{filas}</tbody></table></div>'
             f'<p class="seccion-sub" style="margin-top:10px">Salvaguardas modificadas: {esc(", ".join(modificados) or "ninguna")}</p>')
+
+
+def tema_script() -> str:
+    """Sincroniza las piezas propias con el tema que Streamlit aplicó (Día o Noche): lee el fondo real de la app y
+    pone data-theme en la raíz. Se revisa cada 400 ms porque Streamlit no avisa cuando cambia el tema."""
+    return ('<script>(() => { if (window.__ctTema) return; window.__ctTema = true;'
+            'const leer = () => { const el = document.querySelector(".stApp") || document.body;'
+            ' const m = getComputedStyle(el).backgroundColor.match(/[\\d.]+/g); if (!m) return;'
+            ' const [r, g, b] = m.map(Number); const oscuro = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.45;'
+            ' const t = oscuro ? "dark" : "light"; if (document.documentElement.dataset.theme !== t) {'
+            '  document.documentElement.dataset.theme = t; document.dispatchEvent(new Event("ct-tema")); } };'
+            'leer(); setInterval(leer, 400); })();</script>')
+
+
+def selector_tema(deshabilitado: bool = False) -> str:
+    """Selector Día/Noche. Guarda la elección donde Streamlit la lee (localStorage) y recarga la página; app.py
+    conserva la evaluación y la sección abiertas en la URL, así que se vuelve al mismo lugar."""
+    dis = " disabled" if deshabilitado else ""
+    return (f'<div class="tema-selector" role="group" aria-label="Tema de la interfaz">'
+            f'<button type="button" data-tema="Light" aria-pressed="false"{dis}>Día</button>'
+            f'<button type="button" data-tema="Dark" aria-pressed="false"{dis}>Noche</button></div>'
+            '<script>(() => { document.querySelectorAll(".tema-selector:not([data-listo])").forEach(g => { g.dataset.listo = "1";'
+            'const marcar = () => { const t = document.documentElement.dataset.theme === "dark" ? "Dark" : "Light";'
+            ' g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tema === t))); };'
+            'marcar(); document.addEventListener("ct-tema", marcar);'
+            'g.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {'
+            ' if (b.disabled || b.getAttribute("aria-pressed") === "true") return;'
+            ' try { localStorage.setItem("stActiveTheme-" + location.pathname + "-v2", JSON.stringify(b.dataset.tema)); } catch (e) { return; }'
+            ' location.reload(); })); }); })();</script>')
 
 
 def subir_al_inicio() -> str:

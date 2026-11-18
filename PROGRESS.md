@@ -81,6 +81,7 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
     - Haiku en esfuerzo "high" agotaba el límite razonando; ahora usa su valor por defecto, "medium".
     - La caché no se leía entre lotes porque el esquema cambiaba por lote; ahora es el mismo.
   - Prueba real con Haiku 5.5 sobre NexoPay (ficha + 56 salvaguardas): 39 de 39 citas de la ficha verificadas, cobertura 69.6 %, implementación 48.7 %, US$0.031 en total. Los lotes 2 y 3 leyeron 32K tokens de la caché.
+  - El modelo se elige en un desplegable de la barra lateral (ya no en `.env`). Se guarda con la evaluación y queda fijo desde la ficha.
   - Pendiente: corrida completa con Sonnet 5.5 (≈ US$1–1.60).
 - **Correcciones del análisis del prompt (F1–F10, A–D).** Se aplicaron todas salvo B3 y D2 (ver abajo).
   - Etapa 5: una decisión por salvaguarda relacionada, con segunda pasada si falta alguna; actualización de evidencia; pendientes por salvaguarda; alertas de contradicciones y fechas.
@@ -103,7 +104,7 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 
 ## Verificación
 
-- **35 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
+- **36 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
 - **Prueba real con Gemini** y dos PDF ficticios, de punta a punta:
   - ficha con 20 de 20 citas verificadas;
   - evaluación v1 con implementación 31.6 % y cobertura 33.9 %, idéntica en dos corridas;

@@ -176,10 +176,9 @@ Abre `.env` y pega tu key, sin comillas ni espacios:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...tu_key...
-CLAUDE_MODEL=claude-sonnet-5-5
 ```
 
-Para depurar o probar cambios gastando centavos, usa `CLAUDE_MODEL=claude-haiku-5-5`. Para las corridas que vas a entregar, usa `claude-sonnet-5-5` en todas las etapas.
+El modelo no va en `.env`: se elige en la app (ver "Modelo de Claude" en Configuración).
 
 > `.env` está en `.gitignore` y **nunca debe subirse al repositorio**. Cada integrante usa su propia key.
 
@@ -211,7 +210,7 @@ Las pruebas simulan a Claude y usan un catálogo CIS de prueba, así que no gast
 .venv\Scripts\python -m pytest -q
 ```
 
-Deben pasar las 35 pruebas.
+Deben pasar las 36 pruebas.
 
 ### 9. (Opcional) Regenera el prompt maestro
 
@@ -257,12 +256,21 @@ Puedes **preguntarle al agente** en el chat por qué tomó una decisión. Respon
 
 ## Configuración
 
-Variables en `.env`:
+Variable en `.env`:
 
-| Variable | Obligatoria | Valor por defecto | Descripción |
-|---|---|---|---|
-| `ANTHROPIC_API_KEY` | Sí | — | Tu API key de Claude (platform.claude.com). |
-| `CLAUDE_MODEL` | No | `claude-sonnet-5-5` | Modelo de Claude. `claude-haiku-5-5` para depurar por centavos. Usa uno solo durante toda una evaluación. |
+| Variable | Obligatoria | Descripción |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Sí | Tu API key de Claude (platform.claude.com). |
+
+**Modelo de Claude:** se elige en el desplegable de la barra lateral.
+
+| Modelo | Para qué |
+|---|---|
+| **Claude Sonnet 5.5** (por defecto) | Las corridas que se entregan o se muestran. |
+| **Claude Haiku 5.5** | Probar o depurar gastando centavos. |
+| **Claude Opus 5.5** | Máxima capacidad, al doble de costo que Sonnet. Úsalo solo si Sonnet falla en alguna etapa. |
+
+El modelo se guarda con cada evaluación y queda **fijo desde que se genera la ficha**, para que toda la evaluación use uno solo. Para cambiarlo, crea una nueva evaluación.
 
 **Consumo y costo.** Una evaluación completa hace unas 8 llamadas:
 - la ficha;
@@ -325,7 +333,7 @@ tests/                  Pruebas sin API ni Excel (reglas, flujo completo, import
 | `Se alcanzó el límite de uso por minuto` | Espera un momento. Los límites de tu cuenta están en platform.claude.com. |
 | `Claude declinó esta solicitud por sus filtros de seguridad` | Pasa rara vez con contenido de ciberseguridad. Vuelve a intentarlo; si persiste, revisa el documento. |
 | `La respuesta de Claude se cortó por el límite de longitud` | Vuelve a intentarlo. Si se repite, sube el valor de esa etapa en `MAX_TOKENS` (`chatbot/engine.py`). |
-| `El modelo '...' no existe` | Revisa el valor de `CLAUDE_MODEL` en `.env`. |
+| `El modelo '...' no existe` | Elige otro modelo en la barra lateral (en una evaluación nueva). |
 | `command not found: python3.14` | Usa la versión de Python que tengas (3.12 o superior) o instálala (ver Requisitos previos). |
 | Falla `pip install` con errores de compilación | Probablemente usas Python 3.15. Crea el entorno con 3.12–3.14. |
 | `AttributeError: module 'chatbot...' has no attribute ...` tras actualizar el código | Streamlit conservó en memoria la versión anterior de un módulo. Detén el servidor con `Ctrl + C` y vuelve a ejecutarlo. |

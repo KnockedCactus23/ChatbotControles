@@ -211,6 +211,7 @@ class Proyecto:
     sin_cambio: list[dict] = field(default_factory=list)    # salvaguardas relacionadas que quedan igual, con motivo (F1)
     alertas: list[str] = field(default_factory=list)        # contradicciones y fechas del PDF 2 (C1, C2)
     consumo: list[dict] = field(default_factory=list)       # tokens y costo estimado de cada llamada a Claude
+    modelo: str = ""                                        # modelo de Claude de esta evaluación (uno solo)
     chat: list[dict] = field(default_factory=list)
     avisos: list[str] = field(default_factory=list)        # bitácora de validaciones automáticas
 
@@ -333,7 +334,7 @@ class Proyecto:
             "ficha": self.ficha, "ficha_validada": self.ficha_validada, "ajustes": self.ajustes,
             "v1": self.v1.a_dict() if self.v1 else None, "v2": self.v2.a_dict() if self.v2 else None,
             "iniciativas": self.iniciativas, "cambios": [asdict(c) for c in self.cambios],
-            "sin_cambio": self.sin_cambio, "alertas": self.alertas, "consumo": self.consumo, "chat": self.chat,
+            "sin_cambio": self.sin_cambio, "alertas": self.alertas, "consumo": self.consumo, "modelo": self.modelo, "chat": self.chat,
             "avisos": self.avisos,
         }
 
@@ -345,7 +346,7 @@ class Proyecto:
             ficha=normalizar_ficha(d.get("ficha")), ficha_validada=d.get("ficha_validada", False), ajustes=d.get("ajustes", []),
             v1=Version.de_dict(d["v1"]) if d.get("v1") else None, v2=Version.de_dict(d["v2"]) if d.get("v2") else None,
             iniciativas=d.get("iniciativas", []), cambios=[Cambio(**c) for c in d.get("cambios", [])],
-            sin_cambio=d.get("sin_cambio", []), alertas=d.get("alertas", []), consumo=d.get("consumo", []),
+            sin_cambio=d.get("sin_cambio", []), alertas=d.get("alertas", []), consumo=d.get("consumo", []), modelo=d.get("modelo", ""),
             chat=[m for m in d.get("chat", []) if m.get("tipo") != "respuesta"], avisos=d.get("avisos", []))
         p._descartar_declaraciones()
         return p

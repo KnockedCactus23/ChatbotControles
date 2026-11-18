@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from chatbot import almacen, exportar, ui
 from chatbot.controls import CatalogoNoEncontrado, atribucion, catalogo
 from chatbot.documentos import Documento, leer_pdf
-from chatbot.engine import ErrorChatbot, Motor
+from chatbot.engine import MODELO_POR_DEFECTO, MODELOS, ErrorChatbot, Motor
 from chatbot.prompts import NOMBRE_AGENTE
 from chatbot.reporte_pdf import ficha_pdf, reporte_pdf
 from chatbot.state import Proyecto, ahora, estado_control
@@ -91,6 +91,18 @@ with st.sidebar:
         cambiados = {cid for cid, e in estados.items() if previos and previos.get(cid) != e}
         st.html(ui.matriz_controles(estados, cambiados))
         st.session_state.estados_previos = estados
+
+    # Modelo de Claude: se elige aquí y se guarda con la evaluación. Queda fijo desde que existe la ficha,
+    # para que toda la evaluación use un solo modelo (consistencia); para cambiarlo, nueva evaluación.
+    fijo = bool(p.modelo and p.ficha)
+    actual = p.modelo or st.session_state.get("modelo_elegido", MODELO_POR_DEFECTO)
+    elegido = st.selectbox("Modelo de Claude", list(MODELOS), format_func=lambda m: MODELOS.get(m, m),
+                           index=list(MODELOS).index(actual) if actual in MODELOS else 0, disabled=ocupado or fijo,
+                           help="Sonnet 5.5 para las corridas que se entregan; Haiku 5.5 para probar por centavos.")
+    if fijo:
+        st.caption("Fijo en esta evaluación (un solo modelo de principio a fin). Para usar otro, crea una nueva evaluación.")
+    else:
+        st.session_state.modelo_elegido = elegido
 
     guardadas = almacen.listar()
     if guardadas:
@@ -400,6 +412,9 @@ st.html(ui.atribucion_html(atribucion()))
 # ------------------------------------------- tareas lentas (al final del script)
 if tarea:
     titulo, texto = TITULO_TAREA[tarea["tipo"]]
+    if not p.modelo:  # la primera llamada fija el modelo de esta evaluación
+        p.modelo = st.session_state.get("modelo_elegido", MODELO_POR_DEFECTO)
+    motor.modelo = p.modelo
     with lugar_progreso.container():
         tarjeta = st.empty()
         tarjeta.html(ui.tarjeta_progreso(titulo, texto))

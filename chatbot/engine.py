@@ -33,7 +33,11 @@ from .documentos import Documento, verificar_cita
 from .state import (ETIQUETA, SITUACION_RIESGO, Proyecto, brechas_por_control, citas_repetidas, estado_iniciativas,
                     formato_pct, lotes_por_control, normalizar_ficha, situacion_riesgos, validar_reporte)
 
-MODELO_POR_DEFECTO = "claude-sonnet-5-5"   # Haiku 5.5 (CLAUDE_MODEL=claude-haiku-5-5) para depurar por centavos
+MODELO_POR_DEFECTO = "claude-sonnet-5-5"
+# Modelos que se pueden elegir en la barra lateral (se guarda con cada evaluación; uno solo por evaluación).
+MODELOS = {"claude-sonnet-5-5": "Claude Sonnet 5.5 · recomendado",
+           "claude-haiku-5-5": "Claude Haiku 5.5 · para depurar (centavos)",
+           "claude-opus-5-5": "Claude Opus 5.5 · máxima capacidad (2× el costo)"}
 # Esfuerzo de razonamiento: el valor por defecto de cada modelo, fijo en todas las llamadas (cambiarlo entre
 # llamadas invalidaría la caché). Haiku 5.5 en "high" gastó los 24K tokens de la ficha solo en razonar y no
 # respondió; en "medium" (su valor por defecto) la generó completa con ~10K.
@@ -139,7 +143,7 @@ def _cache(bloque: dict) -> dict:
 
 class Motor:
     def __init__(self, modelo: str | None = None, base_url: str | None = None):
-        self.modelo = modelo or os.getenv("CLAUDE_MODEL", MODELO_POR_DEFECTO)
+        self.modelo = modelo or MODELO_POR_DEFECTO  # app.py lo fija con el modelo de la evaluación antes de cada tarea
         if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
             raise ErrorChatbot("Falta ANTHROPIC_API_KEY en el archivo .env")
         # base_url solo en pruebas, para apuntar a un servidor simulado.
@@ -182,7 +186,7 @@ class Motor:
             raise ErrorChatbot("Tu API key no tiene permiso para usar este modelo.") from e
         except anthropic.NotFoundError as e:
             raise ErrorChatbot(f"El modelo '{self.modelo}' no existe o no está disponible. "
-                               "Cambia CLAUDE_MODEL en .env.") from e
+                               "Elige otro modelo en la barra lateral.") from e
         except anthropic.RateLimitError as e:
             raise ErrorChatbot("Se alcanzó el límite de uso por minuto de tu cuenta de Claude. "
                                "Espera un momento y reintenta.") from e

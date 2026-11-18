@@ -163,8 +163,10 @@ def test_guardar_y_cargar_conserva_ambas_versiones(doc, tmp_path, monkeypatch):
                           "cita": "Se implementó MFA para el 100% de los usuarios de correo", "pagina": 1}], p.documentos["pdf2"])
     p.decidir("6.1", "aprobado")
     p.crear_v2()
+    p.modelo = "claude-haiku-5-5"
     almacen.guardar(p)
     q = almacen.cargar(p.id)
+    assert q.modelo == "claude-haiku-5-5"  # el modelo de la evaluación se conserva
     assert q.v1.indicadores() == p.v1.indicadores() and q.v2.indicadores() == p.v2.indicadores()
     assert q.v1.cerrada and q.cambios[0].decision == "aprobado" and q.etapa == "iniciativas"
     assert [g["id"] for g in almacen.listar()] == [p.id]

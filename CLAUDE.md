@@ -29,7 +29,9 @@ Proyecto académico de equipo. **Decisión del equipo (2026-11-17): usa la API d
 ## Stack
 - Python 3.14 (el `python3` del sistema es 3.15 y algunas dependencias aún no tienen wheels).
 - `anthropic`, `streamlit`, `python-dotenv`, `openpyxl` (importador y Excel), `pypdf` (texto del PDF para verificar citas), `fpdf2` (reporte ejecutivo en PDF; fuentes estándar con cp1252, sin fuentes del sistema).
-- Modelo por defecto `claude-sonnet-5-5` (`CLAUDE_MODEL` en `.env`); `claude-haiku-5-5` solo para depurar. Un solo modelo en toda una evaluación (consistencia).
+- **Modelo elegido en la UI** (desplegable de la barra lateral, `engine.MODELOS`: Sonnet 5.5 por defecto, Haiku 5.5 para depurar, Opus 5.5); ya no va en `.env` (2026-11-18).
+  - Se guarda en `Proyecto.modelo` en la primera llamada y queda fijo desde que existe la ficha: un solo modelo por evaluación (consistencia).
+  - `app.py` asigna `motor.modelo = p.modelo` antes de cada tarea.
 - Sonnet 5.5: `temperature`/`top_p` dan 400 (sin semilla); el razonamiento es adaptativo (no se manda `thinking`) y el esfuerzo es fijo (`engine.ESFUERZO`); cambiarlo entre llamadas invalida la caché. Forced `tool_choice` da 400: se usa `output_config.format` (JSON Schema).
 - `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) en Sonnet/Opus 5.5: si el clasificador de seguridad declina (p. ej. "cyber"), el servidor reintenta en otro modelo. Haiku 5.5 no lo admite (`CON_FALLBACK`).
 - Usar casos ficticios o los del profesor.
@@ -113,7 +115,7 @@ pip install -r requirements.txt
 python scripts/importar_cis.py "ruta/CIS_Controls_Version_8.1.2___March_2025.xlsx"   # genera el catálogo local
 cp .env.example .env            # y poner ANTHROPIC_API_KEY (platform.claude.com → API keys)
 streamlit run app.py
-python -m pytest -q             # 35 pruebas sin API
+python -m pytest -q             # 36 pruebas sin API
 python scripts/exportar_prompt.py   # regenera docs/prompt_maestro_centinela_ig1.md
 ```
 

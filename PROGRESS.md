@@ -20,7 +20,7 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 |---|---|---|
 | 1. Agente funcional + prompt maestro + configuración | ✅ | `streamlit run app.py`; prompt en `docs/` (`scripts/exportar_prompt.py`) |
 | 2. Matriz CIS IG1 (v1 y v2, Excel/CSV) | ✅ | Botones "Excel completo" y "Matriz v1/v2 (CSV)" |
-| 3. Reporte ejecutivo (máx. 5 páginas) | ✅ generado / ⏳ maquetar | "Reporte ejecutivo (HTML)" → imprimir como PDF; el equipo verifica que no pase de 5 páginas |
+| 3. Reporte ejecutivo (máx. 5 páginas) | ✅ | Botón "Reporte ejecutivo (PDF)": A4, con v1 y v2. Con la evaluación de prueba ocupa 5 páginas; también se puede descargar en HTML |
 | 4. Demostración de 8 minutos | ⏳ equipo | Ejemplos sugeridos abajo |
 
 ---
@@ -45,7 +45,7 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 - **Decisión:** evaluar **solo IG1** (56 salvaguardas en 15 controles; los controles 13, 16 y 18 no tienen salvaguardas IG1).
 
 ### 2026-11-17 — Rediseño según la actividad M3.6 ("Agente V1")
-- **Decisiones:** nombre **Centinela IG1**, **eliminar ISO 27002 por completo**, conservar las preguntas Sí/No como apoyo opcional y guardar automáticamente en `evaluaciones/`.
+- **Decisiones:** nombre **Centinela IG1**, **eliminar ISO 27002 por completo**, conservar por el momento las preguntas Sí/No como apoyo opcional (después se quitaron, ver abajo) y guardar automáticamente en `evaluaciones/`.
 - Escala de 5 estados con valores (1, 0.5, 0, —, —) y aplicabilidad (Aplica / No aplica / Por determinar).
 - Flujo por etapas: contexto → ficha → evaluación → reporte v1 → PDF 2 → v2.
 - **Protecciones contra las penalizaciones aplicadas por el código**, cada una con su prueba:
@@ -57,19 +57,21 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
   - la v1 es inmutable al cerrarse y la v2 aplica solo los cambios aprobados con cita verificada;
   - temperatura 0 y semilla fija.
 - Exportación: Excel (Contexto, Matriz v1/v2, Indicadores, Riesgos, Roadmaps, Cambios PDF 2, Ajustes), CSV y reporte HTML.
+- Reporte ejecutivo descargable directamente en **PDF** (`chatbot/reporte_pdf.py`, con `fpdf2`). La sección v2 resume los riesgos y las iniciativas originales para no repetir la v1. La evaluación de prueba completa (v1 + v2) ocupa 5 páginas.
 - Bitácora de validaciones visible en la barra lateral.
 
 ### 2026-11-17 — Ajustes posteriores
 - Se quitó el botón "Prompt maestro (.md)" de la app. La actividad lo pide como entregable, no como función. Ahora se genera con `scripts/exportar_prompt.py` en `docs/`.
 - El chat con Centinela solo está disponible en la ficha de contexto (después de analizar el PDF 1), en el reporte inicial y en el reporte actualizado. No aparece antes de subir algo ni durante la evaluación o la validación de cambios.
 - Se quitó el botón "Usar una empresa ficticia de ejemplo": el contexto se carga como PDF o como texto pegado.
+- **Se eliminaron las preguntas Sí/No / No lo sé al cliente** para apegarse a la actividad. El agente ya no las genera (prompt y esquema), la app no las muestra y no cuentan en la matriz. Las respuestas de evaluaciones guardadas antes del cambio se descartan al abrirlas y la salvaguarda queda No verificado, con registro en la bitácora.
 - README con capacidades, entradas aceptadas y salidas. Este archivo, PROGRESS.md.
 
 ---
 
 ## Verificación
 
-- **24 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
+- **23 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
 - **Prueba real con Gemini** y dos PDF ficticios, de punta a punta:
   - ficha con 20 de 20 citas verificadas;
   - evaluación v1 con implementación 31.6 % y cobertura 33.9 %, idéntica en dos corridas;
@@ -82,15 +84,14 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 
 ## Pendientes
 
-- [ ] **Commit y push** (lo hace el equipo): `app.py`, `README.md`, `CLAUDE.md`, `PROGRESS.md`, `docs/`, `scripts/exportar_prompt.py`.
+- [ ] **Commit y push** (lo hace el equipo): `app.py`, `chatbot/`, `tests/`, `requirements.txt`, `README.md`, `CLAUDE.md`, `PROGRESS.md`, `docs/`, `scripts/exportar_prompt.py`.
 - [ ] Probar con los **PDF reales del profesor** (solo se probó con casos ficticios).
-- [ ] Imprimir el reporte HTML como PDF y confirmar que cabe en **5 páginas**.
+- [ ] Revisar el PDF con el caso real del profesor: los textos del modelo varían y podría pasar de **5 páginas**.
 - [ ] Preparar la **demo de 8 minutos**: una decisión correcta (cita verificada) y un error o limitación (7.1/7.2 o 1.1 arriba).
 - [ ] Responder las **preguntas de reflexión** de la actividad (dificultad principal, corrección humana, impacto de las iniciativas, etc.).
-- [ ] **Parte 2 de la actividad**, cuando llegue. Las preguntas Sí/No ya están listas como base.
+- [ ] **Parte 2 de la actividad**, cuando llegue.
 
 ## Limitaciones conocidas
 
 - Plan gratuito de Gemini: latencia variable y saturación (503). Si pasa, usar `GEMINI_MODEL=gemini-3.1-flash-lite`.
 - PDF escaneados sin texto: las citas no se pueden verificar y todo queda No verificado.
-- Las respuestas Sí/No son declaraciones del responsable, no evidencia documental.

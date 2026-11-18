@@ -68,7 +68,6 @@ def evaluacion(ids_lote: list[str]) -> dict:
             "cita": _TEXTO,
             "observaciones": _TEXTO,
         }), exactos=len(ids_lote)),
-        "preguntas": _lista(_obj({"id": _enum(ids_lote), "pregunta": _TEXTO})),
     })
 
 

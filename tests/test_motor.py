@@ -7,10 +7,12 @@ from types import SimpleNamespace
 
 import openpyxl
 import pytest
+from pypdf import PdfReader
 
 from chatbot import controls, exportar
 from chatbot.documentos import Documento
 from chatbot.engine import ErrorChatbot, Motor
+from chatbot.reporte_pdf import reporte_pdf
 from chatbot.state import Proyecto
 from tests.conftest import PAGINAS
 
@@ -42,7 +44,7 @@ def _evaluacion(ids):
         else:
             evals.append({"id": sid, "aplicabilidad": "por_determinar", "estado": "no_verificado", "justificacion": "",
                           "pagina": 0, "seccion": "", "cita": "", "observaciones": ""})
-    return {"evaluaciones": evals, "preguntas": [{"id": "1.1", "pregunta": "¿Tienen inventario de equipos?"}]}
+    return {"evaluaciones": evals}
 
 
 def _reporte():
@@ -108,7 +110,7 @@ def test_flujo_completo(motor_simulado):
     assert p.v1.matriz["10.1"].estado == "implementado"
     assert p.v1.matriz["11.1"].estado == "no_verificado"             # cita inventada → descartada
     assert p.v1.matriz["17.1"].estado == "no_verificado"             # omitida → visible como pendiente
-    assert p.pregunta_actual().id == "1.1"
+    assert "preguntas" not in llamadas[-1]["config"].response_json_schema["properties"]  # sin preguntas Sí/No
     cfg = llamadas[-1]["config"]
     assert cfg.temperature == 0 and cfg.seed is not None              # reproducible (R9)
     assert "R8." in cfg.system_instruction and "Criterio de prueba 10.1" in cfg.system_instruction
@@ -137,6 +139,12 @@ def test_flujo_completo(motor_simulado):
     html = exportar.reporte_html(p)
     assert "Cambios derivados del PDF 2" in html and "Roadmap de cinco iniciativas" in html
     assert "R12." in exportar.prompt_maestro_md()
+
+    # Reporte ejecutivo en PDF: válido, con v1 y v2, y dentro del límite de 5 páginas de la actividad.
+    pdf = PdfReader(io.BytesIO(reporte_pdf(p)))
+    texto = " ".join(pg.extract_text() for pg in pdf.pages)
+    assert len(pdf.pages) <= 5
+    assert "Cinco riesgos principales" in texto and "Cambios derivados del PDF 2" in texto and "Roadmap actualizado" in texto
 
 
 def test_sin_api_key(monkeypatch):

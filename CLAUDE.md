@@ -7,7 +7,7 @@ Agente de IA para la actividad **M3.6** (diseño de un agente para la evaluació
 3. **Etapa 3:** evalúa las **56 salvaguardas IG1** (3 lotes por control) → matriz con aplicabilidad, 5 estados, justificación, evidencia, cita y observaciones; indicadores con las fórmulas oficiales.
 4. **Etapas 3.5–4:** resumen ejecutivo (postura, controles con mayores brechas, información faltante, riesgos, resultados preliminares), **5 riesgos**, **5 iniciativas** (quick win / proyecto) y dashboard. Cierra la **v1**.
 5. **Etapa 5:** lee el **PDF 2**, propone cambios con cita; el auditor aprueba, rechaza o deja pendiente; se crea la **v2** solo con los aprobados y su reporte comparativo.
-6. Preguntas Sí/No **opcionales** (decisión del equipo: se conservan; máx. `state.MAX_PREGUNTAS` = 15, solo sobre No verificado, ordenadas por `perfil_riesgo.prioridad_controles`): se registran como *declaración del responsable*, no como evidencia documental; "No sé" deja No verificado.
+6. **Sin preguntas Sí/No al cliente** (decisión del equipo, 2026-11-17: apegarse a la actividad). Solo cuenta la evidencia documental. Al cargar evaluaciones antiguas, `Proyecto._descartar_declaraciones()` devuelve a No verificado las respuestas Sí/No (`fuente == "declaracion"`). No reintroducir preguntas sin preguntar al equipo.
 7. **Chat de consultas** (`engine.ask`, solo lectura, no cambia estados): la entrada solo existe en la ficha de contexto ya generada y en los reportes (`reporte`, `actualizado`) — `CHAT_ACTIVO` en `app.py`. El historial se muestra siempre (ahí salen la prueba preliminar y los errores).
 
 Proyecto académico de equipo. **Decisión del equipo (2026-11-03): usa la API gratuita de Google Gemini** con el SDK oficial `google-genai`. No mezclar otros proveedores ni capas como LangChain. Este archivo se llama CLAUDE.md solo porque es la configuración de Claude Code (asistente de desarrollo).
@@ -22,7 +22,7 @@ Proyecto académico de equipo. **Decisión del equipo (2026-11-03): usa la API g
 
 ## Stack
 - Python 3.14 (el `python3` del sistema es 3.15 y algunas dependencias aún no tienen wheels).
-- `google-genai`, `streamlit`, `python-dotenv`, `openpyxl` (importador y Excel), `pypdf` (texto del PDF para verificar citas).
+- `google-genai`, `streamlit`, `python-dotenv`, `openpyxl` (importador y Excel), `pypdf` (texto del PDF para verificar citas), `fpdf2` (reporte ejecutivo en PDF; fuentes estándar con cp1252, sin fuentes del sistema).
 - Modelo por defecto `gemini-3.5-flash-lite` (`GEMINI_MODEL` en `.env`; el equipo usa `gemini-3.1-flash-lite` cuando el otro está saturado). No usar `gemini-2.5-flash` (obsoleto desde 2026-12-01).
 - Plan gratuito: límites por minuto/día y **Google puede usar el contenido**: usar casos ficticios o los del profesor.
 
@@ -38,6 +38,7 @@ chatbot/
   engine.py                # explain, context_sheet, evaluate, report, analyze_initiatives, updated_report, ask
   almacen.py               # guardar/cargar/listar proyectos en evaluaciones/ (EVALUACIONES_DIR para pruebas)
   exportar.py              # Excel (todas las hojas), CSV, reporte HTML; prompt_maestro_md() lo usa el script
+  reporte_pdf.py           # Reporte ejecutivo en PDF (Entregable 3). Con v1+v2 debe caber en 5 páginas (lo verifica test_motor)
   ui.py                    # Tokens CSS (OKLCH) y piezas HTML
   data/cis_v8_1_2.json     # NO versionado (licencia CC BY-NC-ND): scripts/importar_cis.py
 scripts/importar_cis.py    # Excel oficial CIS v8.1.x → JSON (reconstruye ids como 3.10 que Excel guarda como 3.1)
@@ -50,7 +51,7 @@ tests/                     # conftest (catálogo falso: 18 IG1), test_state (reg
 ## Reglas que el CÓDIGO hace cumplir (no depender solo del prompt)
 - **Nunca omitir salvaguardas:** `Proyecto.completar_faltantes()`; el esquema exige una evaluación por id del lote.
 - **No inventar evidencia (R3, R6):** `validar_resultado()` exige cita verificable (`verificar_cita`, umbral 0.8 de palabras) para Implementado/Parcial/No implementado/No aplicable; si no, → No verificado y aviso en `Proyecto.avisos` (bitácora visible).
-- **R8:** "No implementado" sin cita → No verificado. "No sé" en Sí/No → No verificado.
+- **R8:** "No implementado" sin cita → No verificado.
 - **Indicadores:** solo `state.indicadores()`; el modelo recibe los números y no los recalcula. `None` → "No determinable".
 - **Coherencia informe ↔ matriz:** `validar_reporte()` quita de riesgos/iniciativas las salvaguardas que no son brecha y fija los "controles con mayores brechas" a la lista calculada (`brechas_por_control`).
 - **R10–R12:** v1 inmutable una vez `cerrada`; `crear_v2()` copia v1 y aplica solo `Cambio.decision == "aprobado"`; no se puede aprobar sin cita verificada en el PDF 2.
@@ -79,7 +80,7 @@ pip install -r requirements.txt
 python scripts/importar_cis.py "ruta/CIS_Controls_Version_8.1.2___March_2025.xlsx"   # genera el catálogo local
 cp .env.example .env            # y poner GEMINI_API_KEY (gratis en aistudio.google.com/apikey)
 streamlit run app.py
-python -m pytest -q             # 24 pruebas sin API
+python -m pytest -q             # 23 pruebas sin API
 python scripts/exportar_prompt.py   # regenera docs/prompt_maestro_centinela_ig1.md
 ```
 

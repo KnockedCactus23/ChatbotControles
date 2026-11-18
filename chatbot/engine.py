@@ -165,7 +165,6 @@ class Motor:
         doc = proyecto.documentos["pdf1"]
         proyecto.iniciar_v1()
         lotes = lotes_por_control()
-        preguntas = []
         for i, lote in enumerate(lotes, 1):
             if progreso:
                 progreso(i, len(lotes), lote)
@@ -174,13 +173,7 @@ class Motor:
                 f"Evalúa estas {len(lote)} salvaguardas IG1 (todas, sin omitir ninguna): {', '.join(lote)}")}]
             datos = self._llamar(prompts.sistema_evaluacion(), partes, schemas.evaluacion(lote), TIMEOUT_LARGO_S)
             proyecto.aplicar_lote(datos.get("evaluaciones", []), doc)
-            preguntas += datos.get("preguntas", [])
         proyecto.completar_faltantes(catalogo().ids_ig1())
-        # Preguntas en orden de prioridad del perfil de riesgo (el modelo las ordena dentro de cada lote).
-        prioridad = {c: n for n, c in enumerate((proyecto.ficha or {}).get("perfil_riesgo", {}).get("prioridad_controles", []))}
-        salv = catalogo().salvaguardas
-        preguntas.sort(key=lambda p: prioridad.get(salv[p["id"]].control_id, 99) if p.get("id") in salv else 99)
-        proyecto.encolar_preguntas(preguntas)
 
     # --------------------------------------------------------- Etapas 3.5 y 4
     def _contexto_reporte(self, proyecto: Proyecto, version) -> tuple[str, list[str]]:

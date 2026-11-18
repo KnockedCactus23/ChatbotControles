@@ -16,6 +16,7 @@ from chatbot.controls import CatalogoNoEncontrado, atribucion, catalogo
 from chatbot.documentos import Documento, leer_pdf
 from chatbot.engine import ErrorChatbot, Motor
 from chatbot.prompts import NOMBRE_AGENTE
+from chatbot.reporte_pdf import reporte_pdf
 from chatbot.state import Proyecto, ahora, estado_control
 
 load_dotenv()
@@ -113,8 +114,8 @@ lugar_progreso = st.empty()  # cada etapa lo reubica junto a su botón principal
 
 
 def exportes():
-    st.html(ui.seccion("Entregables", "Matriz (Excel con todas las hojas o CSV) y reporte ejecutivo imprimible."))
-    col = st.columns(4)
+    st.html(ui.seccion("Entregables", "Matriz (Excel con todas las hojas o CSV) y reporte ejecutivo en PDF o HTML."))
+    col = st.columns(5)
     col[0].download_button("Excel completo", exportar.excel(p), file_name=f"centinela_ig1_{p.id}.xlsx",
                            icon=":material/table_view:", use_container_width=True)
     if p.v1:
@@ -123,7 +124,9 @@ def exportes():
     if p.v2:
         col[2].download_button("Matriz v2 (CSV)", exportar.csv_matriz(p, p.v2), file_name=f"matriz_v2_{p.id}.csv",
                                icon=":material/csv:", use_container_width=True)
-    col[3].download_button("Reporte ejecutivo (HTML)", exportar.reporte_html(p), file_name=f"reporte_{p.id}.html",
+    col[3].download_button("Reporte ejecutivo (PDF)", reporte_pdf(p), file_name=f"reporte_{p.id}.pdf",
+                           mime="application/pdf", icon=":material/picture_as_pdf:", use_container_width=True)
+    col[4].download_button("Reporte ejecutivo (HTML)", exportar.reporte_html(p), file_name=f"reporte_{p.id}.html",
                            icon=":material/article:", use_container_width=True)
 
 
@@ -209,32 +212,6 @@ elif etapa == "evaluacion":
                        "Cada estado se apoya en una cita verificada del documento. Lo que no está documentado queda como "
                        "«No verificado» (nunca como incumplimiento)."))
     st.html(ui.tablero(ind))
-    pregunta = p.pregunta_actual()
-    if p.chat and any(m["tipo"] == "respuesta" for m in p.chat):
-        for m in p.chat:
-            if m["tipo"] == "respuesta":
-                st.html(ui.fila_respuesta(m["id"], m["respuesta"]))
-    if pregunta:
-        st.html(ui.seccion("Verificación con el responsable (opcional)",
-                           "Preguntas sobre salvaguardas No verificado, ordenadas por riesgo. Una respuesta se registra como "
-                           "declaración del responsable, no como evidencia documental; «No sé» la deja como No verificado."))
-        with st.container(key="verificacion"):
-            respondidas = len(p.preguntas_hechas) - len(p.preguntas_pendientes)
-            st.html(ui.cabecera_pregunta(pregunta, respondidas, len(p.preguntas_hechas)))
-            cols = st.columns([1, 1, 1, 2])
-            clave = pregunta.id.replace(".", "_")
-            respuesta = None
-            if cols[0].button("Sí, lo tenemos", key=f"si_{clave}", type="primary", icon=":material/check:",
-                              use_container_width=True, disabled=ocupado):
-                respuesta = "si"
-            if cols[1].button("No lo tenemos", key=f"no_{clave}", icon=":material/close:", use_container_width=True,
-                              disabled=ocupado):
-                respuesta = "no"
-            if cols[2].button("No lo sé", key=f"ns_{clave}", icon=":material/help:", use_container_width=True,
-                              disabled=ocupado):
-                respuesta = "no_se"
-        if respuesta:
-            p.responder(respuesta); guardar(); st.rerun()
     st.html(ui.seccion("Cerrar la evaluación inicial",
                        "Genera el resumen ejecutivo, los cinco riesgos y el roadmap. La versión v1 queda fija como línea base."))
     lugar_progreso = st.empty()
@@ -377,7 +354,6 @@ if tarea:
         decir(f"No pude completar «{titulo.lower()}»: {e}")
         if tarea["tipo"] == "evaluar":
             p.v1 = None  # la evaluación incompleta no se conserva; se puede reintentar desde la ficha
-            p.preguntas_pendientes.clear(); p.preguntas_hechas.clear()
     finally:
         st.session_state.tarea = None
         guardar()

@@ -24,7 +24,6 @@ VALOR = {"implementado": 1.0, "parcial": 0.5, "no_implementado": 0.0}  # No veri
 EVALUABLES = tuple(VALOR)
 APLICABILIDAD = ("aplica", "no_aplica", "por_determinar")
 ETIQUETA_APLICABILIDAD = {"aplica": "Aplica", "no_aplica": "No aplica", "por_determinar": "Por determinar"}
-MAX_PREGUNTAS = 15
 
 SIN_INFORMACION = "Información no documentada; pendiente de verificación."
 
@@ -40,15 +39,13 @@ class Resultado:
     estado: str = "no_verificado"
     aplicabilidad: str = "por_determinar"
     justificacion: str = ""
-    fuente: str = ""          # "pdf1" | "pdf2" | "declaracion" | "" (sin evidencia)
+    fuente: str = ""          # "pdf1" | "pdf2" | "" (sin evidencia)
     pagina: int | None = None
     seccion: str = ""
     cita: str = ""
     observaciones: str = SIN_INFORMACION
 
     def evidencia(self, documentos: dict | None = None) -> str:
-        if self.fuente == "declaracion":
-            return "Declaración del responsable (pregunta Sí/No); sin evidencia documental"
         if self.fuente in ("pdf1", "pdf2"):
             doc = (documentos or {}).get(self.fuente)
             nombre = doc.etiqueta if doc else self.fuente.upper()
@@ -191,12 +188,6 @@ class Cambio:
     decision: str = "pendiente"  # pendiente | aprobado | rechazado
 
 
-@dataclass
-class Pregunta:
-    id: str
-    pregunta: str
-
-
 # ---------------------------------------------------------------------- proyecto
 @dataclass
 class Proyecto:
@@ -211,8 +202,6 @@ class Proyecto:
     v2: Version | None = None
     iniciativas: list[dict] = field(default_factory=list)  # análisis del PDF 2
     cambios: list[Cambio] = field(default_factory=list)
-    preguntas_pendientes: list[Pregunta] = field(default_factory=list)
-    preguntas_hechas: list[str] = field(default_factory=list)
     chat: list[dict] = field(default_factory=list)
     avisos: list[str] = field(default_factory=list)        # bitácora de validaciones automáticas
 
@@ -259,41 +248,9 @@ class Proyecto:
                 r.observaciones = SIN_INFORMACION
                 self.avisos.append(f"{sid}: el modelo no la evaluó; se registró como No verificado.")
 
-    def encolar_preguntas(self, preguntas: list[dict]) -> None:
-        """Preguntas Sí/No solo para salvaguardas No verificado, en el orden del modelo, máximo 15."""
-        for p in preguntas:
-            sid = p.get("id")
-            r = self.v1.matriz.get(sid) if self.v1 else None
-            if (r is None or r.estado != "no_verificado" or sid in self.preguntas_hechas
-                    or len(self.preguntas_hechas) >= MAX_PREGUNTAS or not p.get("pregunta")):
-                continue
-            self.preguntas_pendientes.append(Pregunta(sid, p["pregunta"]))
-            self.preguntas_hechas.append(sid)
-
-    def pregunta_actual(self) -> Pregunta | None:
-        return self.preguntas_pendientes[0] if self.preguntas_pendientes else None
-
-    def responder(self, respuesta: str) -> Pregunta:
-        """respuesta: "si" | "no" | "no_se". "No sé" mantiene No verificado (R8)."""
-        p = self.preguntas_pendientes.pop(0)
-        r = self.v1.matriz[p.id]
-        if respuesta == "si":
-            self.v1.matriz[p.id] = Resultado(
-                p.id, "implementado", "aplica", f"El responsable declaró que sí. Pregunta: «{p.pregunta}»", "declaracion",
-                observaciones="Declaración sin evidencia documental: conviene respaldarla con un documento.")
-        elif respuesta == "no":
-            self.v1.matriz[p.id] = Resultado(
-                p.id, "no_implementado", "aplica", f"El responsable confirmó que no. Pregunta: «{p.pregunta}»", "declaracion",
-                observaciones="Incumplimiento confirmado por el responsable (no por falta de información).")
-        else:
-            r.observaciones = f"El responsable no supo responder: «{p.pregunta}». {SIN_INFORMACION}"
-        self.chat.append({"tipo": "respuesta", "id": p.id, "respuesta": respuesta})
-        return p
-
     def cerrar_v1(self, reporte: dict) -> None:
         self.v1.reporte = reporte
         self.v1.cerrada = True
-        self.preguntas_pendientes.clear()
 
     # --------------------------------------------------------------- PDF 2
     def registrar_cambios(self, propuestas: list[dict], doc: Documento) -> None:
@@ -344,19 +301,31 @@ class Proyecto:
             "ficha": self.ficha, "ficha_validada": self.ficha_validada, "ajustes": self.ajustes,
             "v1": self.v1.a_dict() if self.v1 else None, "v2": self.v2.a_dict() if self.v2 else None,
             "iniciativas": self.iniciativas, "cambios": [asdict(c) for c in self.cambios],
-            "preguntas_pendientes": [asdict(p) for p in self.preguntas_pendientes],
-            "preguntas_hechas": self.preguntas_hechas, "chat": self.chat, "avisos": self.avisos,
+            "chat": self.chat, "avisos": self.avisos,
         }
 
     @classmethod
     def de_dict(cls, d: dict) -> "Proyecto":
-        return cls(
+        p = cls(
             d["id"], d["nombre"], d["creado"], {k: Documento.de_dict(v) for k, v in d.get("documentos", {}).items()},
             d.get("ficha"), d.get("ficha_validada", False), d.get("ajustes", []),
             Version.de_dict(d["v1"]) if d.get("v1") else None, Version.de_dict(d["v2"]) if d.get("v2") else None,
             d.get("iniciativas", []), [Cambio(**c) for c in d.get("cambios", [])],
-            [Pregunta(**p) for p in d.get("preguntas_pendientes", [])], d.get("preguntas_hechas", []),
-            d.get("chat", []), d.get("avisos", []))
+            [m for m in d.get("chat", []) if m.get("tipo") != "respuesta"], d.get("avisos", []))
+        p._descartar_declaraciones()
+        return p
+
+    def _descartar_declaraciones(self) -> None:
+        """Evaluaciones guardadas antes de quitar las preguntas Sí/No: esas respuestas no son evidencia
+        documental, así que la salvaguarda vuelve a No verificado."""
+        for version in (self.v1, self.v2):
+            if not version:
+                continue
+            for sid, r in version.matriz.items():
+                if r.fuente == "declaracion":
+                    version.matriz[sid] = Resultado(sid, justificacion=(
+                        "Se descartó una respuesta Sí/No del responsable: solo cuenta la evidencia documental."))
+                    self.avisos.append(f"{sid} ({version.nombre}): se descartó una respuesta Sí/No; queda No verificado.")
 
 
 def validar_reporte(rep: dict, matriz: dict[str, Resultado], ids_brechas: list[str], clave_roadmap: str = "iniciativas") -> list[str]:

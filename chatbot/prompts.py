@@ -136,8 +136,7 @@ Para cada una:
 - aplicabilidad y estado según la escala; el CRITERIO es la descripción oficial de la salvaguarda: "Implementado" solo si el documento muestra lo que exige esa descripción.
 - justificacion: por qué, comparando lo que dice el documento con lo que exige la descripción.
 - pagina (número de página del PDF, 1 = primera; 0 si no hay evidencia), seccion y cita textual exacta copiada del documento (vacía si es No verificado).
-- observaciones: brecha, limitación o información pendiente (qué faltaría para confirmarla).
-Además, en "preguntas" propone preguntas de Sí/No SOLO para salvaguardas No verificado cuya respuesta cambiaría el diagnóstico, ordenadas por importancia según el perfil de riesgo. Cada pregunta: en español claro, adaptada a la organización y fiel a lo que exige la descripción oficial."""
+- observaciones: brecha, limitación o información pendiente (qué faltaría para confirmarla)."""
 
 
 @lru_cache(maxsize=1)
@@ -155,7 +154,7 @@ Devuelve:
    - controles_mayores_brechas: explica por qué cada control de la lista dada es una brecha relevante para esta organización (usa sus ids tal cual).
    - informacion_faltante: qué información falta para obtener mayor certeza (relacionada con las salvaguardas No verificado).
    - principales_riesgos: síntesis de los riesgos más importantes.
-   - resultados_preliminares: qué resultados son preliminares y por qué (No verificados, declaraciones sin documento, conclusiones sujetas a validación del auditor).
+   - resultados_preliminares: qué resultados son preliminares y por qué (No verificados, información faltante, conclusiones sujetas a validación del auditor).
 2. riesgos: EXACTAMENTE 5, del más al menos importante para este negocio. Cada uno con descripción, activo o proceso afectado, deficiencia asociada, consecuencia probable, severidad (alta/media/baja), justificación y las salvaguardas relacionadas. Relaciona cada riesgo SOLO con salvaguardas No implementado, Parcialmente implementado o No verificado; nunca con una Implementada.
 3. iniciativas: EXACTAMENTE 5, priorizadas (prioridad 1 = primero). Cada una con el riesgo que reduce (número del riesgo, 1 a 5), salvaguardas relacionadas (no implementadas, parciales o no verificadas), beneficio esperado, esfuerzo (bajo/medio/alto) y tipo: "quick_win" (menor esfuerzo y beneficio relativamente inmediato) o "proyecto" (mayor esfuerzo, coordinación o recursos).
 Adapta todo al tamaño, sector y recursos de la organización.

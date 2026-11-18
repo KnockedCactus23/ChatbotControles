@@ -93,26 +93,6 @@ def test_implementacion_no_determinable_sin_evaluables():
     assert i["implementacion"] is None and i["cobertura"] == 0.0
 
 
-# ------------------------------------------------- preguntas Sí/No
-def test_respuestas_si_no_y_no_se(doc):
-    p = _proyecto(doc)
-    p.encolar_preguntas([{"id": "1.1", "pregunta": "¿Inventario?"}, {"id": "2.1", "pregunta": "¿Software?"},
-                         {"id": "3.1", "pregunta": "¿Datos?"}])
-    p.responder("si")
-    p.responder("no")
-    p.responder("no_se")
-    assert p.v1.matriz["1.1"].estado == "implementado" and p.v1.matriz["1.1"].fuente == "declaracion"
-    assert p.v1.matriz["2.1"].estado == "no_implementado"
-    assert p.v1.matriz["3.1"].estado == "no_verificado"  # "No sé" no se convierte en incumplimiento
-
-
-def test_solo_se_pregunta_lo_no_verificado(doc):
-    p = _proyecto(doc)
-    p.v1.matriz["1.1"].estado = "implementado"
-    p.encolar_preguntas([{"id": "1.1", "pregunta": "¿?"}, {"id": "2.1", "pregunta": "¿?"}, {"id": "2.1", "pregunta": "¿otra?"}])
-    assert [q.id for q in p.preguntas_pendientes] == ["2.1"]
-
-
 # ---------------------------------------------- línea base y PDF 2 (R10-R12)
 def _con_v1_cerrada(doc) -> Proyecto:
     p = _proyecto(doc)
@@ -187,3 +167,15 @@ def test_guardar_y_cargar_conserva_ambas_versiones(doc, tmp_path, monkeypatch):
     assert q.v1.indicadores() == p.v1.indicadores() and q.v2.indicadores() == p.v2.indicadores()
     assert q.v1.cerrada and q.cambios[0].decision == "aprobado" and q.etapa == "iniciativas"
     assert [g["id"] for g in almacen.listar()] == [p.id]
+
+
+def test_respuestas_si_no_guardadas_se_descartan_al_cargar(doc):
+    """Evaluaciones antiguas: una respuesta Sí/No no es evidencia documental y no cuenta."""
+    p = _proyecto(doc)
+    p.v1.matriz["1.1"] = Resultado("1.1", "implementado", "aplica", "El responsable declaró que sí.", "declaracion")
+    datos = p.a_dict()
+    datos["chat"] = [{"tipo": "respuesta", "id": "1.1", "respuesta": "si"}]
+    datos["preguntas_pendientes"], datos["preguntas_hechas"] = [{"id": "2.1", "pregunta": "¿?"}], ["1.1", "2.1"]
+    q = Proyecto.de_dict(datos)
+    assert q.v1.matriz["1.1"].estado == "no_verificado" and q.v1.matriz["1.1"].fuente == ""
+    assert q.chat == [] and q.avisos

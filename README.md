@@ -9,7 +9,7 @@ Agente de IA que actúa como consultor de ciberseguridad (actividad **M3.6**). L
 | 3. Evaluación | **Matriz de las 56 salvaguardas** con aplicabilidad, uno de los 5 estados, justificación, evidencia, cita y observaciones. Calcula los indicadores de **implementación** y **cobertura** con las fórmulas de la actividad. |
 | 4. Reporte | **Resumen ejecutivo**, **5 riesgos**, **roadmap de 5 iniciativas** (quick win o proyecto) y **dashboard**. |
 | 5. Iniciativas (PDF 2) | Parte de la evaluación inicial y **propone** cambios con evidencia; el equipo los **aprueba, rechaza o deja pendientes**. Genera la **versión v2** sin perder la v1. |
-| Entregables | Excel con todas las hojas (contexto, matrices v1 y v2, indicadores, riesgos, roadmaps, cambios), CSV y reporte ejecutivo en HTML imprimible, descargables desde la app. El prompt maestro se genera con `scripts/exportar_prompt.py`. |
+| Entregables | Excel con todas las hojas (contexto, matrices v1 y v2, indicadores, riesgos, roadmaps, cambios), CSV y reporte ejecutivo en **PDF** (máximo 5 páginas) o HTML, descargables desde la app. El prompt maestro se genera con `scripts/exportar_prompt.py`. |
 
 **Escala obligatoria:** Implementado (1) · Parcialmente implementado (0.5) · No implementado (0) · No verificado (—) · No aplicable (—).
 
@@ -23,7 +23,7 @@ Agente de IA que actúa como consultor de ciberseguridad (actividad **M3.6**). L
 - **El agente puede explicar el origen de sus conclusiones:** cada fila tiene página y cita, y puedes preguntarle en el chat por qué decidió algo.
 - **Reproducibilidad:** temperatura 0 y semilla fija, así que el mismo documento da la misma evaluación.
 
-Las preguntas **Sí/No** se conservan como apoyo opcional. Una respuesta se registra como *declaración del responsable*, no como evidencia documental. "No lo sé" deja la salvaguarda como No verificado.
+El agente **no hace preguntas Sí/No al cliente**: se apega a la actividad y solo usa la evidencia documental de los PDF. Lo que no está documentado queda como No verificado.
 
 Está hecho con **Python + Streamlit** y usa la **API gratuita de Google Gemini** (SDK oficial `google-genai`).
 
@@ -41,7 +41,6 @@ Está hecho con **Python + Streamlit** y usa la **API gratuita de Google Gemini*
   - propone cambios de estado con evidencia, que tú apruebas, rechazas o dejas pendientes;
   - genera una v2 comparada con la v1, que se conserva intacta.
 - **Explica sus decisiones** en un chat. Por ejemplo: "¿por qué 10.1 está implementada?" o "¿qué información falta?".
-- **Pregunta Sí/No** al responsable sobre las salvaguardas no verificadas (hasta 15, ordenadas por riesgo).
 - **Guarda cada evaluación automáticamente** para retomarla otro día, y exporta los entregables.
 
 ### Qué acepta
@@ -50,7 +49,6 @@ Está hecho con **Python + Streamlit** y usa la **API gratuita de Google Gemini*
 |---|---|---|
 | Contexto de la empresa (PDF 1) | PDF con texto seleccionable, o texto pegado | Pantalla inicial |
 | Ajustes a la interpretación | Texto libre; queda registrado como ajuste del agente | Ficha de contexto |
-| Respuestas del responsable | Botones **Sí / No / No lo sé** | Evaluación |
 | Avance de iniciativas (PDF 2) | PDF con texto seleccionable | Reporte inicial |
 | Decisión del auditor por cambio | Aprobar / Rechazar / Pendiente | Validación de cambios |
 | Preguntas al agente | Texto libre en el chat | Ficha de contexto (ya analizada), reporte inicial y reporte actualizado |
@@ -61,13 +59,14 @@ Está hecho con **Python + Streamlit** y usa la **API gratuita de Google Gemini*
 | Salida | Formato |
 |---|---|
 | Matriz de las 56 salvaguardas (v1 y v2) | Excel (con contexto, indicadores, riesgos, roadmaps, cambios y ajustes) y CSV |
-| Reporte ejecutivo | HTML imprimible (se puede guardar como PDF desde el navegador) |
+| Reporte ejecutivo | **PDF** listo para entregar (A4, v1 y v2, pensado para no pasar de 5 páginas) o HTML con el diseño de la app |
 | Prompt maestro | Markdown, generado con `scripts/exportar_prompt.py` |
 
 ### Qué no hace
 - No evalúa IG2 ni IG3, ni usa otros marcos como ISO 27002.
 - No lee PDF escaneados sin texto: las citas no se podrían verificar.
-- No cambia estados desde el chat ni a partir de información sin documento.
+- No hace preguntas Sí/No al cliente ni toma en cuenta información sin documento.
+- No cambia estados desde el chat.
 
 ---
 
@@ -207,7 +206,7 @@ Las pruebas simulan a Gemini y usan un catálogo CIS de prueba, así que no gast
 .venv\Scripts\python -m pytest -q
 ```
 
-Deben pasar las 24 pruebas.
+Deben pasar las 23 pruebas.
 
 ### 9. (Opcional) Regenera el prompt maestro
 
@@ -227,11 +226,11 @@ El repositorio ya incluye [`docs/prompt_maestro_centinela_ig1.md`](docs/prompt_m
    - Revisa cada hallazgo: ✓ significa que la cita se encontró en el documento; ✗ que no se encontró.
    - Si algo está mal interpretado, escribe el ajuste y regenera la ficha. Los ajustes quedan registrados para tu entrega (Etapa 2.5).
    - Cuando esté bien, pulsa **Validar la ficha y evaluar las 56 salvaguardas**.
-4. **Revisa la matriz de las 56:** tiene el dashboard y la fórmula de cada indicador. Opcionalmente responde las preguntas Sí/No.
+4. **Revisa la matriz de las 56:** tiene el dashboard y la fórmula de cada indicador.
 5. **Genera el reporte inicial.** Esto cierra la versión **v1**, que ya no se modifica.
 6. **Carga el PDF 2** (avance de iniciativas). El agente propone cambios. Como auditor, apruébalos, recházalos o déjalos pendientes; solo los aprobados se aplican.
 7. **Aplica los cambios aprobados.** Se genera la versión **v2** con la comparación de indicadores, los riesgos que cambiaron o permanecen, el estado de las iniciativas y el roadmap actualizado.
-8. **Descarga los entregables:** Excel, CSV y reporte ejecutivo (HTML).
+8. **Descarga los entregables:** Excel, CSV y reporte ejecutivo (PDF o HTML).
 
 Puedes **preguntarle al agente** en el chat por qué tomó una decisión. Responde citando la página y el texto del documento, pero no cambia estados. El chat está disponible en la ficha de contexto (después de analizar el PDF 1), en el reporte inicial y en el reporte actualizado.
 
@@ -254,7 +253,7 @@ Variables en `.env`:
 
 Sobre el plan gratuito:
 - Tiene **límites por minuto y por día**. Los de tu proyecto aparecen en [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit).
-- Una evaluación completa usa unas 7 llamadas: ficha, 3 lotes de la evaluación, reporte v1, análisis del PDF 2 y reporte v2. Cada pregunta en el chat suma una más. Las respuestas Sí/No se procesan localmente.
+- Una evaluación completa usa unas 7 llamadas: ficha, 3 lotes de la evaluación, reporte v1, análisis del PDF 2 y reporte v2. Cada pregunta en el chat suma una más.
 - Su latencia varía mucho. La app corta cada intento a los 30 s (120 s en las llamadas con PDF o salidas largas) y reintenta sola los errores temporales (saturación, límite por minuto, timeouts) hasta 4 veces.
 
 ---
@@ -272,6 +271,7 @@ chatbot/
   engine.py             Llamadas a Gemini por etapa, con reintentos, timeout y semilla fija
   almacen.py            Guardado automático en evaluaciones/
   exportar.py           Excel, CSV, reporte HTML y prompt maestro
+  reporte_pdf.py        Reporte ejecutivo en PDF (fpdf2)
   ui.py                 Diseño: CSS y piezas HTML
   data/                 cis_v8_1_2.json generado localmente (no se sube al repositorio)
 scripts/

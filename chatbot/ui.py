@@ -137,24 +137,15 @@ p { text-wrap: pretty; }
 .guia span { color: var(--text-3); font-size: .82rem; line-height: 1.5; }
 .nota { color: var(--text-3); font-size: .8rem; margin: 8px 0 24px; }
 
-/* Fila compacta de respuesta Sí/No en el chat */
+/* Fila compacta (cambios propuestos del PDF 2) */
 .respuesta { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin: 2px 0 2px 48px; border-radius: var(--r-md);
   color: var(--text-2); font-size: .86rem; box-shadow: 0 0 0 1px var(--border); }
 .respuesta .nombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .respuesta .valor { font-weight: 550; color: var(--c); }
 
-/* Tarjeta de verificación */
-.st-key-verificacion { background: var(--surface-1); box-shadow: var(--elev-2); border-radius: var(--r-lg);
-  padding: 22px 24px 18px; margin: 16px 0 8px; animation: entrar 350ms var(--ease-out-expo) both; }
-.verif-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
-.verif-control { display: flex; align-items: center; gap: 10px; color: var(--text-2); font-size: .85rem; min-width: 0; }
-.verif-cuenta { font: 500 .78rem/1 var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .barra { height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 18px; }
 .barra i { display: block; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(var(--p));
   transition: transform 500ms var(--ease-out); }
-.verif-pregunta { font-size: 1.16rem; line-height: 1.45; letter-spacing: -0.012em; color: var(--text-1); margin: 0 0 14px; max-width: 60ch; }
-.verif-refs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
-.verif-ayuda { color: var(--text-3); font-size: .78rem; margin-top: 4px; }
 
 /* Barra lateral: anillo + conteos */
 .postura { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; margin: 18px 0 20px; }
@@ -291,9 +282,7 @@ table.controles td.just { color: var(--text-3); font-size: .8rem; max-width: 36c
   animation: pulso 1400ms var(--ease-out) infinite; }
 @keyframes pulso { from { box-shadow: 0 0 0 0 var(--accent-glow); } to { box-shadow: 0 0 0 12px transparent; } }
 
-/* Criterio CIS en la pregunta y detalle de salvaguardas */
-.criterio { margin: 12px 0 0; color: var(--text-3); font-size: .78rem; line-height: 1.5; }
-.criterio .mono { color: var(--text-2); }
+/* Detalle de salvaguardas */
 .postura-perfil { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 18px; }
 .salv-lista { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
 .salv-lista li { font-size: .76rem; color: var(--text-3); line-height: 1.45; }
@@ -640,27 +629,6 @@ def comparacion(i1: dict, i2: dict, modificados: list[str]) -> str:
     return (f'<div class="tabla-envoltura"><table class="tabla" style="min-width:420px"><thead><tr><th>Indicador</th>'
             f'<th>v1 · Inicial</th><th>v2 · Actualizada</th></tr></thead><tbody>{filas}</tbody></table></div>'
             f'<p class="seccion-sub" style="margin-top:10px">Salvaguardas modificadas: {esc(", ".join(modificados) or "ninguna")}</p>')
-
-
-# ------------------------------------------------------ verificación Sí/No
-def fila_respuesta(sid: str, respuesta: str) -> str:
-    estado = {"si": "implementado", "no": "no_implementado"}.get(respuesta, "no_verificado")
-    texto = {"si": "Sí", "no": "No", "no_se": "No sé"}[respuesta]
-    return (f'<div class="respuesta" style="{_c(estado)}"><span class="punto"></span><span class="mono">CIS {sid}</span>'
-            f'<span class="nombre">{esc(salvaguarda(sid).titulo if salvaguarda(sid) else sid)}</span>'
-            f'<span class="valor">{texto}</span></div>')
-
-
-def cabecera_pregunta(pregunta, respondidas: int, total: int) -> str:
-    s = salvaguarda(pregunta.id)
-    c = control(s.control_id)
-    p = respondidas / total if total else 0
-    return (f'<div class="verif-top"><div class="verif-control"><span class="mono">CIS {s.id}</span>{esc(c.nombre)}</div>'
-            f'<span class="verif-cuenta">{respondidas + 1} / {total}</span></div>'
-            f'<div class="barra" aria-hidden="true"><i style="--p:{p:.3f}"></i></div>'
-            f'<p class="verif-pregunta">{esc(pregunta.pregunta)}</p><div class="verif-refs"><span class="chip">{esc(s.funcion)}</span>'
-            f'<span class="chip">{esc(s.clase_activo)}</span></div>'
-            f'<p class="criterio">Criterio <span class="mono">CIS {s.id}</span> · {esc(s.titulo)}</p>')
 
 
 def tarjeta_progreso(titulo: str, texto: str) -> str:

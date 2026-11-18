@@ -13,7 +13,7 @@ from html import escape as _escape
 
 from .controls import catalogo, control, salvaguarda
 from .prompts import DIMENSIONES, NOMBRE_AGENTE
-from .state import ESTADOS, ETIQUETA, ETIQUETA_APLICABILIDAD, formato_pct
+from .state import ESTADOS, ETIQUETA, ETIQUETA_APLICABILIDAD, SITUACION_RIESGO, formato_pct
 
 ETIQUETA_CORTA = {"implementado": "Implementado", "parcial": "Parcial", "no_implementado": "No implementado",
                   "no_verificado": "No verificado", "no_aplicable": "No aplicable"}
@@ -483,7 +483,7 @@ def ficha(f: dict, doc_etiqueta: str = "PDF 1") -> str:
         f'<b>{esc(a.get("amenaza"))}</b><span class="razon">{esc(a.get("por_que_en_este_negocio"))}</span>'
         f'<span class="chips">{_chips(a.get("controles", []))}</span></li>' for a in p.get("amenazas", []))
     return (f'<section class="ficha" aria-label="Ficha de contexto">'
-            f'<p class="ficha-resumen">{esc(f.get("resumen_ejecutivo"))}</p>'
+            f'<p class="ficha-resumen">{esc(f.get("resumen_contexto") or f.get("resumen_ejecutivo"))}</p>'
             f'<div class="dims">{dims}</div>'
             f'<div class="listas"><div><h4>Información faltante</h4><ul>{faltante}</ul></div>'
             f'<div><h4>Contradicciones o ambigüedades</h4><ul>{ambig}</ul></div></div>'
@@ -557,8 +557,11 @@ def riesgos(lista: list[dict], situacion: list[dict] | None = None) -> str:
         sit = ""
         if situacion and i <= len(situacion):
             s = situacion[i - 1]
-            sit = (f'<td><span class="chip sev {"baja" if s.get("situacion") == "reducido" else "alta"}">'
-                   f'{"Reducido" if s.get("situacion") == "reducido" else "Permanece"}</span><br>{esc(s.get("explicacion"))}</td>')
+            clave = s.get("situacion") if s.get("situacion") in SITUACION_RIESGO else "permanece"
+            residual = s.get("severidad_residual")
+            sit = (f'<td><span class="chip sev {"baja" if clave != "permanece" else "alta"}">{SITUACION_RIESGO[clave]}</span>'
+                   + (f' <span class="chip sev {esc(residual)}">Residual: {esc(residual.capitalize())}</span>' if residual else "")
+                   + f'<br>{esc(s.get("explicacion"))}</td>')
         filas += (f'<tr><td><b>{i}. {esc(r.get("titulo"))}</b><br>{esc(r.get("descripcion"))}</td>'
                   f'<td>{esc(r.get("activo_proceso"))}</td><td>{esc(r.get("deficiencia"))}</td><td>{esc(r.get("consecuencia"))}</td>'
                   f'<td><span class="chip sev {esc(r.get("severidad"))}">{esc((r.get("severidad") or "").capitalize())}</span>'
@@ -593,7 +596,8 @@ def iniciativas_pdf2(lista: list[dict]) -> str:
     tarjetas = ""
     for ini in lista:
         ev = "".join(
-            f'<li>«{esc(e.get("cita"))}» <span class="ev {"ok" if e.get("verificada") else "mal"}">'
+            f'<li>{("<span class=mono>" + esc(e.get("salvaguarda")) + "</span> ") if e.get("salvaguarda") else ""}'
+            f'«{esc(e.get("cita"))}» <span class="ev {"ok" if e.get("verificada") else "mal"}">'
             f'{"✓ PDF 2 · p. " + str(e.get("pagina")) if e.get("verificada") else "✗ cita no encontrada"}</span></li>'
             for e in ini.get("evidencia", []))
         tarjetas += (f'<article class="ini"><h4>{esc(ini.get("nombre"))}</h4>'
@@ -601,17 +605,44 @@ def iniciativas_pdf2(lista: list[dict]) -> str:
                      f'<p><b>Mejora</b>{"Completa" if ini.get("alcance") == "completa" else "Parcial"}</p>'
                      f'<p><b>Salvaguardas relacionadas</b></p><div class="chips">{_chips(ini.get("salvaguardas", []))}</div>'
                      f'<p style="margin-top:10px"><b>Evidencia</b></p><ul class="salv-lista">{ev}</ul>'
-                     f'<p style="margin-top:10px"><b>Pendiente</b>{esc(ini.get("pendientes"))}</p>'
+                     f'<p style="margin-top:10px"><b>Pendiente</b>{_pendientes(ini.get("pendientes"))}</p>'
                      f'<p><b>Riesgos que podría reducir</b>{esc("; ".join(ini.get("riesgos_que_reduce", [])))}</p></article>')
     return f'<div class="inis">{tarjetas}</div>'
+
+
+def _pendientes(pend) -> str:
+    """Pendientes del PDF 2: cada uno indica a qué salvaguardas afecta (F2). Acepta el formato antiguo (texto)."""
+    if not pend:
+        return "Ninguno"
+    if isinstance(pend, str):
+        return esc(pend)
+    return "<br>".join(f'{esc(x.get("detalle"))} → {esc(", ".join(x.get("salvaguardas", [])) or "ninguna salvaguarda IG1")}'
+                       for x in pend)
+
+
+MOTIVO_SIN_CAMBIO = {"sin_evidencia": "Sin evidencia", "evidencia_parcial": "Evidencia parcial",
+                     "pendiente_declarado": "Pendiente declarado", "sin_mejora": "Sin mejora",
+                     "sin_decision": "El agente no decidió"}
+
+
+def sin_cambio(lista: list[dict]) -> str:
+    filas = "".join(f'<tr><td class="mono">{esc(x.get("id"))}</td>'
+                    f'<td>{esc(salvaguarda(x["id"]).titulo if salvaguarda(x.get("id")) else "")}</td>'
+                    f'<td><b>{MOTIVO_SIN_CAMBIO.get(x.get("motivo"), esc(x.get("motivo")))}</b></td>'
+                    f'<td>{esc(x.get("detalle"))}</td><td>{esc(x.get("iniciativa"))}</td></tr>' for x in lista)
+    return (f'<div class="tabla-envoltura"><table class="tabla"><thead><tr><th>ID</th><th>Salvaguarda</th><th>Motivo</th>'
+            f'<th>Detalle</th><th>Iniciativa</th></tr></thead><tbody>{filas}</tbody></table></div>')
 
 
 def cambio_fila(c) -> str:
     cita = (f'«{esc(c.cita)}» <span class="ev ok">✓ PDF 2 · p. {c.pagina}</span>' if c.cita_verificada
             else '<span class="ev mal">✗ sin evidencia verificable: no se puede aprobar</span>')
+    if getattr(c, "tipo", "estado") == "evidencia":   # F9: mismo estado, evidencia nueva
+        cambio = f'<span>{_estado(c.estado_inicial)} · actualización de evidencia</span>'
+    else:
+        cambio = f'<span>{_estado(c.estado_inicial)}<span class="flecha">→</span>{_estado(c.estado_propuesto)}</span>'
     return (f'<div class="respuesta" style="margin-left:0;{_c(c.estado_propuesto)}"><span class="mono">{c.id}</span>'
-            f'<span class="nombre">{esc(salvaguarda(c.id).titulo if salvaguarda(c.id) else c.id)}</span>'
-            f'<span>{_estado(c.estado_inicial)}<span class="flecha">→</span>{_estado(c.estado_propuesto)}</span></div>'
+            f'<span class="nombre">{esc(salvaguarda(c.id).titulo if salvaguarda(c.id) else c.id)}</span>{cambio}</div>'
             f'<p class="aviso" style="margin:6px 0 2px 14px">{esc(c.justificacion)} · Iniciativa: {esc(c.iniciativa)}</p>'
             f'<p class="aviso" style="margin:0 0 4px 14px">{cita}</p>')
 

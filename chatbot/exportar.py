@@ -90,10 +90,17 @@ def excel(p: Proyecto, cual: str) -> bytes:
               [[i, r["titulo"], r["descripcion"], r["activo_proceso"], r["deficiencia"], r["consecuencia"], r["severidad"],
                 r["justificacion"], ", ".join(r["salvaguardas"])] for i, r in enumerate(riesgos_v1, 1)])
     if cual == "v2" and rep.get("riesgos"):
-        _hoja(libro, "Riesgos v2", ["#", "Riesgo", "Severidad inicial", "Salvaguardas", "Situación", "Explicación"],
+        _hoja(libro, "Riesgos v1 situación", ["#", "Riesgo original", "Severidad inicial", "Salvaguardas", "Situación",
+                                              "Severidad residual", "Mejoraron", "Siguen con brecha", "Explicación"],
               [[i, r.get("titulo", ""), (riesgos_v1[i - 1].get("severidad", "") if i <= len(riesgos_v1) else ""),
                 ", ".join(riesgos_v1[i - 1].get("salvaguardas", [])) if i <= len(riesgos_v1) else "",
-                r.get("situacion", ""), r.get("explicacion", "")] for i, r in enumerate(rep["riesgos"], 1)])
+                r.get("situacion", ""), r.get("severidad_residual", ""), ", ".join(r.get("mejoradas", [])),
+                ", ".join(r.get("pendientes", [])), r.get("explicacion", "")] for i, r in enumerate(rep["riesgos"], 1)])
+    if cual == "v2" and rep.get("riesgos_v2"):
+        _hoja(libro, "Riesgos v2", ["#", "Riesgo", "Descripción", "Activo o proceso", "Deficiencia", "Consecuencia",
+                                    "Severidad", "Justificación", "Salvaguardas"],
+              [[i, r["titulo"], r["descripcion"], r["activo_proceso"], r["deficiencia"], r["consecuencia"], r["severidad"],
+                r["justificacion"], ", ".join(r["salvaguardas"])] for i, r in enumerate(rep["riesgos_v2"], 1)])
     if cual == "v2" and rep.get("iniciativas_estado"):
         _hoja(libro, "Iniciativas v1 estado", ["#", "Iniciativa", "Estado", "Explicación"],
               [[i, e.get("titulo", ""), e.get("estado", ""), e.get("explicacion", "")]
@@ -106,10 +113,14 @@ def excel(p: Proyecto, cual: str) -> bytes:
                 x["beneficio"], x["esfuerzo"], "Quick win" if x["tipo"] == "quick_win" else "Inversión o proyecto"]
                for x in roadmap])
     if cual == "v2" and p.cambios:
-        _hoja(libro, "Cambios PDF 2", ["ID CIS", "Estado inicial", "Estado propuesto", "Justificación", "Iniciativa", "Página",
-                                       "Cita", "Cita verificada", "Decisión del auditor"],
-              [[c.id, ETIQUETA[c.estado_inicial], ETIQUETA[c.estado_propuesto], c.justificacion, c.iniciativa, c.pagina or "",
+        _hoja(libro, "Cambios PDF 2", ["ID CIS", "Tipo", "Estado inicial", "Estado propuesto", "Justificación", "Iniciativa",
+                                       "Página", "Cita", "Cita verificada", "Decisión del auditor"],
+              [[c.id, "Evidencia" if c.tipo == "evidencia" else "Estado", ETIQUETA[c.estado_inicial],
+                ETIQUETA[c.estado_propuesto], c.justificacion, c.iniciativa, c.pagina or "",
                 c.cita, "Sí" if c.cita_verificada else "No", c.decision] for c in p.cambios])
+    if cual == "v2" and p.sin_cambio:
+        _hoja(libro, "Sin cambio PDF 2", ["ID CIS", "Motivo", "Detalle", "Iniciativa"],
+              [[x.get("id"), x.get("motivo"), x.get("detalle"), x.get("iniciativa")] for x in p.sin_cambio])
     if p.ajustes:
         _hoja(libro, "Ajustes al agente", ["Fecha", "Ajuste"], [[a["fecha"], a["texto"]] for a in p.ajustes])
     salida = io.BytesIO()
@@ -126,9 +137,11 @@ def reporte_html(p: Proyecto, cual: str) -> str:
               f"<p class='lead'>{ui.esc(prompts.NOMBRE_AGENTE)} · CIS Controls v8.1 IG1 · 56 salvaguardas · "
               f"{ui.esc(v.nombre)} del {ui.esc(v.fecha)}</p>"]
     if p.ficha:
-        partes += [ui.seccion("Contexto de la empresa"), f"<p class='ficha-resumen'>{ui.esc(p.ficha.get('resumen_ejecutivo'))}</p>"]
+        partes += [ui.seccion("Contexto de la empresa"), f"<p class='ficha-resumen'>{ui.esc(p.ficha.get('resumen_contexto') or p.ficha.get('resumen_ejecutivo'))}</p>"]
     riesgos_v1 = (p.v1.reporte or {}).get("riesgos", [])
     titulos = [r["titulo"] for r in riesgos_v1]
+    riesgos_v2 = rep.get("riesgos_v2") or []
+    titulos_v2 = [r["titulo"] for r in riesgos_v2] or titulos  # evaluaciones anteriores: sin riesgos_v2
     roadmap = rep.get("iniciativas") or rep.get("roadmap") or []
     if cual == "v1":
         partes += [ui.seccion(f"Dashboard · {v.nombre}"), ui.tablero(v.indicadores(), len(riesgos_v1), len(roadmap)),
@@ -138,14 +151,16 @@ def reporte_html(p: Proyecto, cual: str) -> str:
     else:
         aprobados = [c.id for c in p.cambios if c.decision == "aprobado"]
         partes += [ui.seccion(f"Dashboard · {v.nombre} frente a v1"),
-                   ui.tablero(v.indicadores(), len(rep.get("riesgos", [])), len(roadmap), p.v1.indicadores()),
+                   ui.tablero(v.indicadores(), len(riesgos_v2 or rep.get("riesgos", [])), len(roadmap), p.v1.indicadores()),
                    ui.seccion("Cambios derivados del PDF 2"), f"<p class='ficha-resumen'>{ui.esc(rep.get('resumen_cambios'))}</p>",
                    ui.comparacion(p.v1.indicadores(), v.indicadores(), aprobados),
                    ui.seccion("Resumen ejecutivo actualizado"), ui.resumen_ejecutivo(rep.get("resumen_ejecutivo", {})),
-                   ui.seccion("Riesgos que cambiaron y riesgos que permanecen"), ui.riesgos(riesgos_v1, rep.get("riesgos")),
+                   ui.seccion("Riesgos originales: mitigados, reducidos o que permanecen"), ui.riesgos(riesgos_v1, rep.get("riesgos")),
                    ui.seccion("Iniciativas del roadmap original: completadas o en progreso"),
-                   ui.roadmap(p.v1.reporte.get("iniciativas", []), titulos, rep.get("iniciativas_estado")),
-                   ui.seccion("Roadmap actualizado"), ui.roadmap(roadmap, titulos)]
+                   ui.roadmap(p.v1.reporte.get("iniciativas", []), titulos, rep.get("iniciativas_estado"))]
+        if riesgos_v2:
+            partes += [ui.seccion("Cinco riesgos vigentes (v2)"), ui.riesgos(riesgos_v2)]
+        partes += [ui.seccion("Roadmap actualizado"), ui.roadmap(roadmap, titulos_v2)]
     return _pagina_html(f"{nombre} {p.nombre}", partes)
 
 

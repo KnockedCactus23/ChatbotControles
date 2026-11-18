@@ -14,7 +14,7 @@ from fpdf.fonts import FontFace
 from . import prompts
 from .controls import atribucion, control
 from .prompts import DIMENSIONES
-from .state import ESTADOS, ETIQUETA, Proyecto, Version, formato_pct
+from .state import ESTADOS, ETIQUETA, SITUACION_RIESGO, Proyecto, Version, formato_pct
 
 # Paleta de impresión (RGB). Coherente con los tokens de estado de la app, pero sobre fondo blanco.
 TINTA = (24, 28, 34)
@@ -252,10 +252,12 @@ def _riesgos_tras_mejoras(pdf: _Reporte, lista: list[dict], situacion: list[dict
     filas = []
     for i, r in enumerate(lista):
         s = situacion[i] if i < len(situacion) else {}
-        filas.append([_b(f"{i + 1}. {r.get('titulo', '')}"), _md((r.get("severidad") or "").capitalize()),
-                      _md(", ".join(r.get("salvaguardas", []))),
-                      _b("Reducido" if s.get("situacion") == "reducido" else "Permanece"), _md(s.get("explicacion"))])
-    pdf.tabla(["Riesgo (v1)", "Severidad", "IDs CIS", "Situación", "Explicación"], filas, [52, 16, 20, 18, 74])
+        clave = s.get("situacion") if s.get("situacion") in SITUACION_RIESGO else "permanece"
+        residual = (s.get("severidad_residual") or "").capitalize()
+        filas.append([_b(f"{i + 1}. {r.get('titulo', '')}"),
+                      _md((r.get("severidad") or "").capitalize() + (f" \u2192 {residual}" if residual else "")),
+                      _md(", ".join(r.get("salvaguardas", []))), _b(SITUACION_RIESGO[clave]), _md(s.get("explicacion"))])
+    pdf.tabla(["Riesgo (v1)", "Severidad (residual)", "IDs CIS", "Situación", "Explicación"], filas, [48, 22, 20, 18, 72])
 
 
 def _estado_iniciativas(pdf: _Reporte, lista: list[dict], estados: list[dict]):
@@ -292,7 +294,9 @@ def _version(pdf: _Reporte, p: Proyecto, v: Version):
         if p.cambios:
             pdf.subtitulo("Decisiones del auditor")
             pdf.tabla(["ID", "Cambio", "Justificación", "Evidencia", "Decisión"],
-                      [[_b(c.id), _md(f"{ETIQUETA.get(c.estado_inicial, c.estado_inicial)} \u2192 "
+                      [[_b(c.id), _md(f"{ETIQUETA.get(c.estado_inicial, c.estado_inicial)}: evidencia actualizada"
+                                     if c.tipo == "evidencia" else
+                                     f"{ETIQUETA.get(c.estado_inicial, c.estado_inicial)} \u2192 "
                                      f"{ETIQUETA.get(c.estado_propuesto, c.estado_propuesto)}"),
                         _md(c.justificacion), _md(f"PDF 2 · p. {c.pagina}" if c.cita_verificada else "Cita no verificada"),
                         _b(c.decision.capitalize())] for c in p.cambios],
@@ -300,12 +304,17 @@ def _version(pdf: _Reporte, p: Proyecto, v: Version):
     pdf.titulo_seccion("Resumen ejecutivo" + (" actualizado" if es_v2 else ""))
     _resumen(pdf, rep.get("resumen_ejecutivo", {}), es_v2)
     if es_v2:
-        pdf.titulo_seccion("Riesgos que cambiaron y riesgos que permanecen")
+        pdf.titulo_seccion("Riesgos originales: mitigados, reducidos o que permanecen",
+                           "Calculado por el sistema con el estado v2 de las salvaguardas de cada riesgo.")
         _riesgos_tras_mejoras(pdf, riesgos_v1, rep.get("riesgos") or [])
         pdf.titulo_seccion("Iniciativas del roadmap original: completadas o en progreso")
         _estado_iniciativas(pdf, p.v1.reporte.get("iniciativas", []), rep.get("iniciativas_estado") or [])
+        riesgos_v2 = rep.get("riesgos_v2") or []
+        if riesgos_v2:
+            pdf.titulo_seccion("Cinco riesgos vigentes (v2)", "El roadmap actualizado apunta a estos riesgos.")
+            _riesgos(pdf, riesgos_v2)
         pdf.titulo_seccion("Roadmap actualizado")
-        _roadmap(pdf, rep.get("roadmap", []), titulos)
+        _roadmap(pdf, rep.get("roadmap", []), [r.get("titulo", "") for r in riesgos_v2] or titulos)
     else:
         pdf.titulo_seccion("Cinco riesgos principales",
                            "Cada riesgo se relaciona solo con salvaguardas que son brecha en la matriz.")
@@ -327,7 +336,7 @@ def reporte_pdf(p: Proyecto, cual: str) -> bytes:
     pdf = _inicio(p, nombre, f"{v.nombre} del {v.fecha}. Fuentes: {fuentes}.")
     if p.ficha:
         pdf.titulo_seccion("Contexto de la empresa")
-        pdf.parrafo(p.ficha.get("resumen_ejecutivo"))
+        pdf.parrafo(p.ficha.get("resumen_contexto") or p.ficha.get("resumen_ejecutivo"))
     _version(pdf, p, v)
     return bytes(pdf.output())
 
@@ -363,7 +372,7 @@ def ficha_pdf(p: Proyecto) -> bytes:
                   f"Fuente: {etiqueta + ' · ' + doc.nombre if doc else '—'}. Ficha {estado}. Generada: {p.creado}.")
 
     pdf.titulo_seccion("Resumen del contexto")
-    pdf.parrafo(f.get("resumen_ejecutivo"))
+    pdf.parrafo(f.get("resumen_contexto") or f.get("resumen_ejecutivo"))
 
     pdf.titulo_seccion("Dimensiones del contexto",
                        "Cada hallazgo indica la página del documento y si su cita se encontró en el texto (verificación automática).")

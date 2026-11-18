@@ -23,7 +23,8 @@ from google.genai import errors, types
 from . import prompts, schemas
 from .controls import catalogo
 from .documentos import Documento, verificar_cita
-from .state import (ETIQUETA, Proyecto, brechas_por_control, formato_pct, lotes_por_control, nombre_salvaguarda,
+from .state import (ETIQUETA, SITUACION_RIESGO, Proyecto, brechas_por_control, citas_repetidas, estado_iniciativas,
+                    formato_pct, lotes_por_control, nombre_salvaguarda, normalizar_ficha, situacion_riesgos,
                     validar_reporte)
 
 MODELO_POR_DEFECTO = "gemini-3.5-flash-lite"
@@ -144,7 +145,7 @@ class Motor:
         if ajuste:
             partes.append({"text": f"Ajuste solicitado por el equipo auditor sobre la ficha anterior: {ajuste}\n"
                                    f"Ficha anterior: {_json(proyecto.ficha)}"})
-        ficha = self._llamar(prompts.sistema_ficha(), partes, schemas.ficha(), TIMEOUT_LARGO_S)
+        ficha = normalizar_ficha(self._llamar(prompts.sistema_ficha(), partes, schemas.ficha(), TIMEOUT_LARGO_S))
         # Verificación de citas (R3, R6): cada hallazgo queda marcado como verificado o no.
         for dim in ficha.get("dimensiones", {}).values():
             for h in dim.get("hallazgos", []):
@@ -174,6 +175,7 @@ class Motor:
             datos = self._llamar(prompts.sistema_evaluacion(), partes, schemas.evaluacion(lote), TIMEOUT_LARGO_S)
             proyecto.aplicar_lote(datos.get("evaluaciones", []), doc)
         proyecto.completar_faltantes(catalogo().ids_ig1())
+        proyecto.avisos.extend(citas_repetidas(proyecto.v1.matriz))
 
     # --------------------------------------------------------- Etapas 3.5 y 4
     def _contexto_reporte(self, proyecto: Proyecto, version) -> tuple[str, list[str]]:
@@ -204,30 +206,80 @@ class Motor:
             f"Matriz inicial v1 de las 56 salvaguardas:\n{_json(matriz_compacta(proyecto, proyecto.v1))}\n\n"
             f"Diagnóstico inicial, riesgos y roadmap original:\n{_json(proyecto.v1.reporte)}")}]
         datos = self._llamar(prompts.sistema_iniciativas(), partes, schemas.iniciativas_pdf2(), TIMEOUT_LARGO_S)
+        relacionadas = []
         for ini in datos.get("iniciativas", []):
+            relacionadas += ini.get("salvaguardas", [])
             for ev in ini.get("evidencia", []):
                 pagina = verificar_cita(doc, ev.get("cita", ""), ev.get("pagina"))
                 ev["verificada"] = pagina is not None
                 if pagina:
                     ev["pagina"] = pagina
+        decisiones = datos.get("decisiones", [])
+        # F1: toda salvaguarda relacionada necesita una decisión. Si el modelo omitió alguna, se le piden
+        # exactamente esas (el esquema obliga a una por id), igual que la evaluación obliga a las 56.
+        decididas = {d.get("id") for d in decisiones}
+        faltan = [s for s in dict.fromkeys(relacionadas) if s not in decididas]
+        if faltan:
+            proyecto.avisos.append(f"Etapa 5: el modelo no decidió sobre {', '.join(faltan)}; se le pidió una segunda pasada.")
+            pedido = partes[:-1] + [{"text": (
+                partes[-1]["text"] + f"\n\nAnálisis de iniciativas ya hecho:\n{_json(datos.get('iniciativas', []))}\n\n"
+                f"Emite UNA decisión para CADA una de estas salvaguardas relacionadas, que quedaron sin decisión: "
+                f"{', '.join(faltan)}. Revisa el nuevo documento para cada una por separado.")}]
+            extra = self._llamar(prompts.sistema_iniciativas(), pedido, schemas.decisiones_faltantes(faltan), TIMEOUT_LARGO_S)
+            decisiones += extra.get("decisiones", [])
         proyecto.iniciativas = datos.get("iniciativas", [])
-        proyecto.registrar_cambios(datos.get("cambios", []), doc)
+        proyecto.alertas = [a for a in datos.get("alertas", []) if a.strip()]
+        proyecto.registrar_cambios(decisiones, doc, relacionadas)
         return proyecto.iniciativas
 
     def updated_report(self, proyecto: Proyecto) -> dict:
-        texto, ids = self._contexto_reporte(proyecto, proyecto.v2)
-        i1 = proyecto.v1.indicadores()
-        decisiones = [{"id": c.id, "de": ETIQUETA[c.estado_inicial], "a": ETIQUETA[c.estado_propuesto],
-                       "decision": c.decision, "justificacion": c.justificacion} for c in proyecto.cambios]
+        v1, v2 = proyecto.v1, proyecto.v2
+        texto, ids = self._contexto_reporte(proyecto, v2)
+        i1 = v1.indicadores()
+        riesgos_v1 = v1.reporte.get("riesgos", [])
+        roadmap_v1 = v1.reporte.get("iniciativas", [])
+        # F4-F6: la situación de riesgos e iniciativas la decide el sistema con reglas fijas sobre la matriz v2.
+        sit = situacion_riesgos(riesgos_v1, v1.matriz, v2.matriz)
+        est = estado_iniciativas(roadmap_v1, v1.matriz, v2.matriz)
+        aprobados = [{"id": c.id, "tipo": c.tipo, "de": ETIQUETA[c.estado_inicial], "a": ETIQUETA[c.estado_propuesto],
+                      "justificacion": c.justificacion} for c in proyecto.cambios if c.decision == "aprobado"]
+        no_aprobados = [{"id": c.id, "propuesto": ETIQUETA[c.estado_propuesto], "decision": c.decision}
+                        for c in proyecto.cambios if c.decision != "aprobado"]
+        calculado_r = [{"riesgo": n, "titulo": r.get("titulo"), "salvaguardas": r.get("salvaguardas", []),
+                        "situacion": s["situacion"], "severidad_original": r.get("severidad"),
+                        "severidad_residual": s["severidad_residual"], "mejoraron": s["mejoradas"],
+                        "siguen_con_brecha": s["pendientes"]} for n, (r, s) in enumerate(zip(riesgos_v1, sit), 1)]
+        calculado_i = [{"iniciativa": n, "titulo": x.get("titulo"), "salvaguardas": x.get("salvaguardas", []),
+                        "estado": e["estado"], "mejoraron": e["mejoradas"], "siguen_con_brecha": e["pendientes"]}
+                       for n, (x, e) in enumerate(zip(roadmap_v1, est), 1)]
         texto += (f"\n\nEvaluación inicial v1 — indicadores: implementación {formato_pct(i1['implementacion'])}, "
-                  f"cobertura {formato_pct(i1['cobertura'])}. Reporte v1 (riesgos y roadmap originales):\n{_json(proyecto.v1.reporte)}\n\n"
-                  f"Iniciativas reportadas en el PDF 2:\n{_json(proyecto.iniciativas)}\n\n"
-                  f"Decisiones del auditor sobre los cambios propuestos:\n{_json(decisiones)}")
+                  f"cobertura {formato_pct(i1['cobertura'])}. Reporte v1 (riesgos y roadmap originales):\n{_json(v1.reporte)}\n\n"
+                  f"Cambios APROBADOS (los únicos que modifican la matriz):\n{_json(aprobados)}\n\n"
+                  f"Cambios NO aprobados (no pueden citarse como mitigación):\n{_json(no_aprobados)}\n\n"
+                  f"Lo que reporta el nuevo documento (para 'información faltante'; no es evidencia aprobada):\n"
+                  f"{_json(proyecto.iniciativas)}\n\n"
+                  f"Situación de los riesgos originales CALCULADA por el sistema (no la cambies):\n{_json(calculado_r)}\n\n"
+                  f"Estado de las iniciativas originales CALCULADO por el sistema (no lo cambies):\n{_json(calculado_i)}")
         rep = self._llamar(prompts.sistema_reporte_actualizado(), [{"text": texto}], schemas.reporte_actualizado(),
                            TIMEOUT_LARGO_S)
-        proyecto.avisos.extend(validar_reporte(rep, proyecto.v2.matriz, ids, clave_roadmap="roadmap"))
-        proyecto.v2.reporte = rep
-        proyecto.v2.cerrada = True
+        # Lo calculado manda sobre lo que el modelo haya escrito; el modelo solo aporta las explicaciones.
+        explic = rep.get("riesgos") or []
+        rep["riesgos"] = [{"titulo": r.get("titulo", ""), "salvaguardas": r.get("salvaguardas", []),
+                           "severidad": r.get("severidad", ""), **s,
+                           "explicacion": explic[n].get("explicacion", "") if n < len(explic) else ""}
+                          for n, (r, s) in enumerate(zip(riesgos_v1, sit))]
+        explic = rep.get("iniciativas_estado") or []
+        rep["iniciativas_estado"] = [{"titulo": x.get("titulo", ""), **e,
+                                      "explicacion": explic[n].get("explicacion", "") if n < len(explic) else ""}
+                                     for n, (x, e) in enumerate(zip(roadmap_v1, est))]
+        for n, r in enumerate(rep["riesgos"], 1):
+            if not r["explicacion"].strip():
+                r["explicacion"] = (f"{SITUACION_RIESGO[r['situacion']]} según la matriz v2. Mejoraron: "
+                                    f"{', '.join(r['mejoradas']) or 'ninguna'}; siguen con brecha: {', '.join(r['pendientes']) or 'ninguna'}.")
+                proyecto.avisos.append(f"Riesgo original {n}: sin explicación del modelo; se completó con la matriz.")
+        proyecto.avisos.extend(validar_reporte(rep, v2.matriz, ids, clave_roadmap="roadmap", clave_riesgos="riesgos_v2"))
+        v2.reporte = rep
+        v2.cerrada = True
         return rep
 
     # --------------------------------------------------------------- consultas

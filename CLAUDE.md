@@ -60,7 +60,22 @@ tests/                     # conftest (catálogo falso: 18 IG1), test_state (reg
 - **R8:** "No implementado" sin cita → No verificado.
 - **Indicadores:** solo `state.indicadores()`; el modelo recibe los números y no los recalcula. `None` → "No determinable".
 - **Coherencia informe ↔ matriz:** `validar_reporte()` quita de riesgos/iniciativas las salvaguardas que no son brecha y fija los "controles con mayores brechas" a la lista calculada (`brechas_por_control`).
-- **R10–R12:** v1 inmutable una vez `cerrada`; `crear_v2()` copia v1 y aplica solo `Cambio.decision == "aprobado"`; no se puede aprobar sin cita verificada en el PDF 2.
+- **R10–R12:** v1 inmutable una vez `cerrada`; `crear_v2()` copia v1 y aplica solo `Cambio.decision == "aprobado"`; no se puede aprobar sin cita verificada en el PDF 2 (`Cambio.aprobable`).
+- **Etapa 5, una decisión por salvaguarda relacionada (F1):**
+  - Tipos: `cambio_estado` (mejora o empeoramiento), `actualizar_evidencia` (`Cambio.tipo == "evidencia"`: mismo estado, cita nueva; F9) o `sin_cambio` (va a `Proyecto.sin_cambio` con motivo).
+  - Si el modelo omite alguna, `analyze_initiatives` hace una segunda pasada con `schemas.decisiones_faltantes(ids)`, que exige una por id. Lo que siga faltando queda como `sin_decision` en la bitácora.
+  - Los pendientes llevan sus salvaguardas (F2). Las alertas del documento van a `Proyecto.alertas` (C1, C2).
+- **Etapa 5.6, la situación la calcula el código (F4–F6):**
+  - `situacion_riesgos()`: mitigado, reducido o permanece, con severidad residual. Solo cuentan las salvaguardas propias de cada riesgo.
+  - `estado_iniciativas()`: completada, en progreso o pendiente.
+  - Sobrescriben lo que diga el modelo, que solo redacta explicaciones. El modelo recibe por separado los cambios aprobados y los no aprobados (F3).
+  - `riesgos_v2` (5 vigentes) es la lista a la que apunta el roadmap v2 (F7).
+- **Validaciones del reporte (F10):** `validar_reporte()`
+  - completa con la matriz las explicaciones vacías de brechas;
+  - señala riesgos apoyados solo en No verificado (B1) y riesgos o iniciativas sin ninguna brecha;
+  - registra campos vacíos.
+  - Aparte, `citas_repetidas()` señala una misma cita usada en varias salvaguardas (A2).
+- La ficha usa `resumen_contexto` (D5); `normalizar_ficha()` convierte las guardadas con `resumen_ejecutivo`.
 - Reproducibilidad (R9): temperatura 0 y `SEMILLA` fija.
 
 ## Convenciones
@@ -88,7 +103,7 @@ pip install -r requirements.txt
 python scripts/importar_cis.py "ruta/CIS_Controls_Version_8.1.2___March_2025.xlsx"   # genera el catálogo local
 cp .env.example .env            # y poner GEMINI_API_KEY (gratis en aistudio.google.com/apikey)
 streamlit run app.py
-python -m pytest -q             # 23 pruebas sin API
+python -m pytest -q             # 31 pruebas sin API
 python scripts/exportar_prompt.py   # regenera docs/prompt_maestro_centinela_ig1.md
 ```
 

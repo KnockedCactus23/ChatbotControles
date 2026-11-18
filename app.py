@@ -302,20 +302,29 @@ elif vista == "iniciativas":
     else:
         st.html(ui.seccion("Iniciativas reportadas en el PDF 2"))
         st.html(ui.iniciativas_pdf2(p.iniciativas))
+        if p.alertas:
+            st.html(ui.seccion("Alertas del documento (requieren validación humana)",
+                               "Contradicciones con el PDF 1, fechas incoherentes o evidencia que puede no estar vigente."))
+            st.html(ui.avisos(p.alertas))
         st.html(ui.seccion("Propuesta de actualización",
-                           "Los cambios sin cita verificable en el PDF 2 no se pueden aprobar."))
+                           "Cambios de estado (mejoras o empeoramientos) y actualizaciones de evidencia. "
+                           "Los que no tienen cita verificable en el PDF 2 no se pueden aprobar."))
         if not p.cambios:
-            st.info("El agente no propuso cambios de estado: la evidencia del PDF 2 no fue suficiente.")
+            st.info("El agente no propuso cambios: la evidencia del PDF 2 no fue suficiente.")
         for c in p.cambios:
             st.html(ui.cambio_fila(c))
-            opciones = ["pendiente", "aprobado", "rechazado"] if (c.cita_verificada and c.estado_propuesto != c.estado_inicial) \
-                else ["pendiente", "rechazado"]
+            opciones = ["pendiente", "aprobado", "rechazado"] if c.aprobable else ["pendiente", "rechazado"]
             etiquetas = {"pendiente": "Pendiente", "aprobado": "Aprobar", "rechazado": "Rechazar"}
             decision = st.radio(f"Decisión {c.id}", opciones, index=opciones.index(c.decision) if c.decision in opciones else 0,
                                 format_func=etiquetas.get, horizontal=True, key=f"dec_{c.id.replace('.', '_')}",
                                 disabled=ocupado, label_visibility="collapsed")
             if decision != c.decision:
                 p.decidir(c.id, decision); guardar()
+        if p.sin_cambio:
+            st.html(ui.seccion(f"Salvaguardas relacionadas sin cambio · {len(p.sin_cambio)}",
+                               "Cada salvaguarda relacionada con una iniciativa recibe una decisión; aquí están las que quedan "
+                               "igual y por qué. «El agente no decidió» requiere revisión manual."))
+            st.html(ui.sin_cambio(p.sin_cambio))
         aprobados = sum(c.decision == "aprobado" for c in p.cambios)
         lugar_progreso = st.empty()
         if st.button(f"Aplicar {aprobados} cambio(s) aprobado(s) y actualizar el diagnóstico", type="primary",
@@ -331,18 +340,25 @@ elif vista == "actualizado":
     st.html(ui.titular("Diagnóstico actualizado",
                        f"{p.nombre} · v2 del {p.v2.fecha}. Refleja solo las mejoras documentadas y aprobadas; la v1 se conserva."))
     st.html(ui.seccion("Dashboard ejecutivo · v2 frente a v1"))
-    st.html(ui.tablero(p.v2.indicadores(), len(rep.get("riesgos", [])), len(rep.get("roadmap", [])), p.v1.indicadores()))
+    st.html(ui.tablero(p.v2.indicadores(), len(rep.get("riesgos_v2") or rep.get("riesgos", [])), len(rep.get("roadmap", [])),
+                       p.v1.indicadores()))
     st.html(ui.comparacion(p.v1.indicadores(), p.v2.indicadores(), aprobados))
     st.html(ui.seccion("Cambios derivados del PDF 2"))
     st.html(f"<p class='ficha-resumen'>{ui.esc(rep.get('resumen_cambios'))}</p>")
     for c in p.cambios:
         st.html(ui.cambio_fila(c) + f"<p class='aviso' style='margin:0 0 10px 14px'>Decisión del auditor: <b>{c.decision}</b></p>")
-    st.html(ui.seccion("Riesgos que cambiaron y riesgos que permanecen"))
+    st.html(ui.seccion("Riesgos originales: mitigados, reducidos o que permanecen",
+                       "Calculado por el sistema con el estado v2 de las salvaguardas de cada riesgo."))
     st.html(ui.riesgos(riesgos_v1, rep.get("riesgos")))
-    st.html(ui.seccion("Iniciativas del roadmap original: completadas o en progreso"))
+    st.html(ui.seccion("Iniciativas del roadmap original: completadas o en progreso",
+                       "Completada si todas sus salvaguardas están implementadas en v2; en progreso si alguna mejoró."))
     st.html(ui.roadmap(p.v1.reporte.get("iniciativas", []), [r["titulo"] for r in riesgos_v1], rep.get("iniciativas_estado")))
+    riesgos_v2 = rep.get("riesgos_v2") or riesgos_v1  # evaluaciones anteriores al cambio no tienen riesgos_v2
+    if rep.get("riesgos_v2"):
+        st.html(ui.seccion("Cinco riesgos vigentes (v2)", "Construidos sobre la matriz v2; el roadmap actualizado apunta a estos."))
+        st.html(ui.riesgos(riesgos_v2))
     st.html(ui.seccion("Roadmap actualizado"))
-    st.html(ui.roadmap(rep.get("roadmap", []), [r["titulo"] for r in riesgos_v1]))
+    st.html(ui.roadmap(rep.get("roadmap", []), [r["titulo"] for r in riesgos_v2]))
     st.html(ui.seccion("Resumen ejecutivo actualizado"))
     st.html(ui.resumen_ejecutivo(rep.get("resumen_ejecutivo", {})))
     # Plegadas por defecto, como en el reporte inicial; se despliegan con un clic.

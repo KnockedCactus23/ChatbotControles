@@ -42,7 +42,7 @@ def ficha() -> dict:
     return _obj({
         "nombre_organizacion": _TEXTO,
         "dimensiones": _obj({k: dimension for k, _, _ in DIMENSIONES}),
-        "resumen_ejecutivo": _TEXTO,
+        "resumen_contexto": _TEXTO,  # distinto del "resumen_ejecutivo" de los reportes (D5)
         "informacion_faltante": _TEXTOS,
         "ambiguedades": _TEXTOS,
         "perfil_riesgo": _obj({
@@ -105,26 +105,45 @@ def reporte() -> dict:
     })
 
 
+TIPOS_DECISION = ["cambio_estado", "actualizar_evidencia", "sin_cambio"]
+MOTIVOS_SIN_CAMBIO = ["", "sin_evidencia", "evidencia_parcial", "pendiente_declarado", "sin_mejora"]
+
+
+def _decision(ids=None) -> dict:
+    return _obj({
+        "id": _enum(ids) if ids else _ids_ig1(), "tipo": _enum(TIPOS_DECISION), "estado_propuesto": _enum(ESTADOS),
+        "motivo_sin_cambio": _enum(MOTIVOS_SIN_CAMBIO), "justificacion": _TEXTO, "iniciativa": _TEXTO,
+        "pagina": _PAGINA, "seccion": _TEXTO, "cita": _TEXTO,
+    })
+
+
+def decisiones_faltantes(ids: list[str]) -> dict:
+    """Segunda pasada de la Etapa 5: exactamente una decisión por cada salvaguarda que quedó sin decidir (F1)."""
+    return _obj({"decisiones": _lista(_decision(ids), exactos=len(ids))})
+
+
 def iniciativas_pdf2() -> dict:
-    evidencia = _obj({"pagina": _PAGINA, "seccion": _TEXTO, "cita": _TEXTO})
+    evidencia = _obj({"salvaguarda": _ids_ig1(), "pagina": _PAGINA, "seccion": _TEXTO, "cita": _TEXTO})
+    pendiente = _obj({"detalle": _TEXTO, "salvaguardas": _lista(_ids_ig1())})
     return _obj({
         "iniciativas": _lista(_obj({
             "nombre": _TEXTO, "que_mejoro": _TEXTO, "salvaguardas": _lista(_ids_ig1()), "evidencia": _lista(evidencia),
-            "alcance": _enum(["completa", "parcial"]), "pendientes": _TEXTO, "riesgos_que_reduce": _TEXTOS,
+            "alcance": _enum(["completa", "parcial"]), "pendientes": _lista(pendiente), "riesgos_que_reduce": _TEXTOS,
         })),
-        "cambios": _lista(_obj({
-            "id": _ids_ig1(), "estado_propuesto": _enum(ESTADOS), "justificacion": _TEXTO, "iniciativa": _TEXTO,
-            "pagina": _PAGINA, "seccion": _TEXTO, "cita": _TEXTO,
-        })),
+        # Una decisión por CADA salvaguarda relacionada (F1); el código detecta las que falten.
+        "decisiones": _lista(_decision()),
+        "alertas": _TEXTOS,
     })
 
 
 def reporte_actualizado() -> dict:
+    """La situación de los riesgos y el estado de las iniciativas los calcula el sistema (state.py);
+    el modelo solo redacta su explicación. riesgos_v2 es la lista vigente a la que apunta el roadmap (F7)."""
     return _obj({
         "resumen_cambios": _TEXTO,
-        "riesgos": _lista(_obj({"titulo": _TEXTO, "situacion": _enum(["reducido", "permanece"]), "explicacion": _TEXTO}), exactos=5),
-        "iniciativas_estado": _lista(_obj({"titulo": _TEXTO, "estado": _enum(["completada", "en_progreso", "pendiente"]),
-                                           "explicacion": _TEXTO}), exactos=5),
+        "riesgos": _lista(_obj({"titulo": _TEXTO, "explicacion": _TEXTO}), exactos=5),
+        "iniciativas_estado": _lista(_obj({"titulo": _TEXTO, "explicacion": _TEXTO}), exactos=5),
+        "riesgos_v2": _lista(_riesgo(), exactos=5),
         "resumen_ejecutivo": _resumen_ejecutivo(),
         "roadmap": _lista(_iniciativa(), exactos=5),
     })

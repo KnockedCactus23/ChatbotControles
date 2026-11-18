@@ -18,6 +18,8 @@ Agente de IA que actúa como consultor de ciberseguridad (actividad **M3.6**). L
 - **No hay evidencia inventada:** cada cita se verifica contra el texto del PDF. Si no aparece, la conclusión se descarta y queda "No verificado".
 - **No hay incumplimiento por falta de información:** "No implementado" exige una cita que lo confirme (R8).
 - **Ningún cambio sin justificación:** los cambios del PDF 2 necesitan una cita verificada y la aprobación del auditor.
+- **Ningún cambio omitido en silencio:** cada salvaguarda relacionada con una iniciativa del PDF 2 recibe una decisión: cambio de estado, actualización de evidencia o sin cambio con motivo. Si el modelo omite alguna, el sistema se la vuelve a pedir.
+- **El avance de riesgos e iniciativas no lo decide el modelo:** se calcula con reglas fijas sobre la matriz v2. Un riesgo queda mitigado, reducido o igual, con severidad residual; una iniciativa queda completada, en progreso o pendiente.
 - **El diagnóstico inicial no se pierde:** la v1 queda fija al cerrarse y todo se guarda automáticamente.
 - **Matriz, indicadores e informe no se contradicen:** los indicadores los calcula el sistema desde la matriz, y los riesgos e iniciativas solo pueden citar salvaguardas que son brecha.
 - **El agente puede explicar el origen de sus conclusiones:** cada fila tiene página y cita, y puedes preguntarle en el chat por qué decidió algo.
@@ -209,7 +211,7 @@ Las pruebas simulan a Gemini y usan un catálogo CIS de prueba, así que no gast
 .venv\Scripts\python -m pytest -q
 ```
 
-Deben pasar las 23 pruebas.
+Deben pasar las 31 pruebas.
 
 ### 9. (Opcional) Regenera el prompt maestro
 

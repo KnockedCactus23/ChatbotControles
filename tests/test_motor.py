@@ -17,7 +17,7 @@ from chatbot.state import Proyecto
 from tests.conftest import PAGINAS
 
 FICHA = {
-    "nombre_organizacion": "Comercial Ficticia", "resumen_ejecutivo": "Comercio con 140 empleados.",
+    "nombre_organizacion": "Comercial Ficticia", "resumen_contexto": "Comercio con 140 empleados.",
     "dimensiones": {k: {"resumen": "", "faltante": "", "hallazgos": []} for k in
                     ["organizacion", "procesos", "infraestructura", "activos", "identidades", "proteccion", "recuperacion",
                      "monitoreo", "gobierno", "restricciones"]},
@@ -72,15 +72,26 @@ def motor_simulado(monkeypatch):
         elif "Etapa 3 —" in sistema:
             ids = texto_usuario.split("sin omitir ninguna): ")[1].split(", ")
             datos = _evaluacion([i.strip() for i in ids])
+        elif "Etapa 5 —" in sistema and "quedaron sin decisión" in texto_usuario:
+            # Segunda pasada: el esquema exige exactamente una decisión por cada salvaguarda que faltaba.
+            datos = {"decisiones": [{"id": "5.1", "tipo": "sin_cambio", "estado_propuesto": "no_verificado",
+                                     "motivo_sin_cambio": "sin_evidencia", "justificacion": "El PDF 2 no la documenta",
+                                     "iniciativa": "MFA", "pagina": 0, "seccion": "", "cita": ""}]}
         elif "Etapa 5 —" in sistema:
-            datos = {"iniciativas": [{"nombre": "MFA", "que_mejoro": "MFA total", "salvaguardas": ["6.1"], "alcance": "completa",
-                                      "pendientes": "", "riesgos_que_reduce": [], "evidencia": []}],
-                     "cambios": [{"id": "6.1", "estado_propuesto": "implementado", "justificacion": "MFA", "iniciativa": "MFA",
-                                  "pagina": 1, "seccion": "", "cita": "MFA para el 100% de los usuarios"}]}
+            # Relaciona 6.1 y 5.1, pero solo decide sobre 6.1: la omisión de 5.1 debe quedar registrada (F1).
+            datos = {"iniciativas": [{"nombre": "MFA", "que_mejoro": "MFA total", "salvaguardas": ["6.1", "5.1"],
+                                      "alcance": "completa", "pendientes": [{"detalle": "Cuenta de GCP", "salvaguardas": []}],
+                                      "riesgos_que_reduce": [], "evidencia": []}],
+                     "decisiones": [{"id": "6.1", "tipo": "cambio_estado", "estado_propuesto": "implementado",
+                                     "motivo_sin_cambio": "", "justificacion": "MFA", "iniciativa": "MFA",
+                                     "pagina": 1, "seccion": "", "cita": "MFA para el 100% de los usuarios"}],
+                     "alertas": ["El PDF 2 está fechado antes que el PDF 1."]}
         elif "Etapa 5.6" in sistema:
             base = _reporte()
-            datos = {"resumen_cambios": "MFA", "riesgos": [{"titulo": "R", "situacion": "permanece", "explicacion": ""}] * 5,
-                     "iniciativas_estado": [{"titulo": "I", "estado": "en_progreso", "explicacion": ""}] * 5,
+            # El modelo "afirma" que los riesgos se redujeron: el sistema debe ignorarlo (F4, F5).
+            datos = {"resumen_cambios": "MFA", "riesgos": [{"titulo": "R", "situacion": "reducido", "explicacion": ""}] * 5,
+                     "iniciativas_estado": [{"titulo": "I", "estado": "completada", "explicacion": "x"}] * 5,
+                     "riesgos_v2": [dict(base["riesgos"][0], titulo=f"Riesgo vigente {n}") for n in range(1, 6)],
                      "resumen_ejecutivo": base["resumen_ejecutivo"], "roadmap": base["iniciativas"]}
         elif "Etapas 3.5 y 4" in sistema:
             datos = _reporte()
@@ -123,11 +134,22 @@ def test_flujo_completo(motor_simulado):
 
     p.documentos["pdf2"] = Documento("pdf2", "avance", "texto", ["Se activó MFA para el 100% de los usuarios de correo."])
     motor.analyze_initiatives(p)
-    assert p.cambios[0].cita_verificada
+    assert p.cambios[0].cita_verificada and p.cambios[0].tipo == "estado"
+    # F1: 5.1 quedó sin decisión en la primera pasada; la segunda la obtuvo con su motivo.
+    assert [(x["id"], x["motivo"]) for x in p.sin_cambio] == [("5.1", "sin_evidencia")]
+    assert any("segunda pasada" in a for a in p.avisos)
+    assert llamadas[-1]["config"].response_json_schema["properties"]["decisiones"]["minItems"] == 1
+    assert p.alertas == ["El PDF 2 está fechado antes que el PDF 1."]                                   # C2
     p.decidir("6.1", "aprobado")
     p.crear_v2()
-    motor.updated_report(p)
+    rep = motor.updated_report(p)
     assert p.etapa == "actualizado"
+    # Situación calculada por el sistema: los riesgos solo usan 11.1, que no cambió → permanece (no "reducido").
+    assert all(r["situacion"] == "permanece" and r["severidad_residual"] == "alta" for r in rep["riesgos"])
+    assert all(e["estado"] == "pendiente" for e in rep["iniciativas_estado"])        # 11.1 sigue sin implementar
+    assert [r["titulo"] for r in rep["riesgos_v2"]] == [f"Riesgo vigente {n}" for n in range(1, 6)]  # F7
+    instruccion = llamadas[-1]["contents"][0]["parts"][0]["text"]
+    assert "CALCULADA por el sistema" in instruccion and "NO aprobados" in instruccion
     assert p.v1.matriz["6.1"].estado == "no_verificado" and p.v2.matriz["6.1"].estado == "implementado"
 
     # Exportación por versión: lo inicial (v1) y lo final (v2) nunca se mezclan.

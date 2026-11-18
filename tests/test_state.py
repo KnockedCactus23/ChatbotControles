@@ -9,7 +9,8 @@ import pytest
 
 from chatbot import almacen, controls
 from chatbot.documentos import Documento, verificar_cita
-from chatbot.state import (Proyecto, Resultado, indicadores, lotes_por_control, validar_reporte, validar_resultado)
+from chatbot.state import (Proyecto, Resultado, citas_repetidas, estado_iniciativas, indicadores, lotes_por_control,
+                           normalizar_ficha, situacion_riesgos, validar_reporte, validar_resultado)
 from tests.conftest import PAGINAS
 
 
@@ -179,3 +180,82 @@ def test_respuestas_si_no_guardadas_se_descartan_al_cargar(doc):
     q = Proyecto.de_dict(datos)
     assert q.v1.matriz["1.1"].estado == "no_verificado" and q.v1.matriz["1.1"].fuente == ""
     assert q.chat == [] and q.avisos
+
+
+# ------------------------------------- Etapa 5.6: situación calculada con reglas fijas (F4, F5, F6)
+def _matrices(**v2):
+    v1 = {f"{i}.1": Resultado(f"{i}.1", "no_implementado", "aplica") for i in range(1, 6)}
+    nueva = {k: Resultado(k, v2.get(k.replace(".", "_"), r.estado), "aplica") for k, r in v1.items()}
+    return v1, nueva
+
+
+def test_riesgo_mitigado_reducido_o_permanece_segun_sus_salvaguardas():
+    v1, v2 = _matrices(**{"1_1": "implementado", "2_1": "implementado", "3_1": "parcial"})
+    riesgos = [{"salvaguardas": ["1.1", "2.1"], "severidad": "alta"},   # todas implementadas
+               {"salvaguardas": ["3.1", "4.1"], "severidad": "alta"},   # una mejoró
+               {"salvaguardas": ["4.1", "5.1"], "severidad": "media"}]  # ninguna mejoró (aunque otras sí)
+    sit = situacion_riesgos(riesgos, v1, v2)
+    assert [(s["situacion"], s["severidad_residual"]) for s in sit] == [("mitigado", "baja"), ("reducido", "media"),
+                                                                         ("permanece", "media")]
+    assert sit[1]["mejoradas"] == ["3.1"] and sit[1]["pendientes"] == ["3.1", "4.1"]
+
+
+def test_iniciativa_completada_solo_si_todas_sus_salvaguardas_estan_implementadas():
+    v1, v2 = _matrices(**{"1_1": "implementado", "2_1": "parcial"})
+    est = estado_iniciativas([{"salvaguardas": ["1.1"]}, {"salvaguardas": ["1.1", "2.1"]}, {"salvaguardas": ["3.1"]}], v1, v2)
+    assert [e["estado"] for e in est] == ["completada", "en_progreso", "pendiente"]
+
+
+# ------------------------------------------- Etapa 5: decisiones por salvaguarda (F1, F9, C4)
+def test_actualizacion_de_evidencia_conserva_el_estado(doc):
+    p = _con_v1_cerrada(doc)
+    p.registrar_cambios([{"id": "10.1", "tipo": "actualizar_evidencia", "estado_propuesto": "parcial",
+                          "justificacion": "Cobertura MFA al 100%", "iniciativa": "MFA",
+                          "cita": "Se implementó MFA para el 100% de los usuarios de correo", "pagina": 1}], p.documentos["pdf2"])
+    c = p.cambios[0]
+    assert c.tipo == "evidencia" and c.aprobable
+    p.decidir("10.1", "aprobado")
+    assert p.crear_v2() == []                                    # no cuenta como cambio de estado
+    assert p.v2.matriz["10.1"].estado == "parcial" and p.v2.matriz["10.1"].fuente == "pdf2"
+    assert p.v1.matriz["10.1"].cita == "antivirus Defender"       # la v1 no se toca
+
+
+def test_empeoramiento_documentado_se_puede_proponer(doc):
+    p = _con_v1_cerrada(doc)
+    p.v1.matriz["6.1"].estado = "implementado"
+    p.registrar_cambios([{"id": "6.1", "tipo": "cambio_estado", "estado_propuesto": "parcial", "justificacion": "Solo correo",
+                          "iniciativa": "MFA", "cita": "Se implementó MFA para el 100% de los usuarios de correo",
+                          "pagina": 1}], p.documentos["pdf2"])
+    p.decidir("6.1", "aprobado")
+    assert p.crear_v2() == ["6.1"] and p.v2.matriz["6.1"].estado == "parcial"
+
+
+def test_salvaguarda_relacionada_sin_decision_queda_registrada(doc):
+    p = _con_v1_cerrada(doc)
+    p.registrar_cambios([{"id": "2.1", "tipo": "sin_cambio", "motivo_sin_cambio": "pendiente_declarado",
+                          "justificacion": "Falta el inventario de software", "iniciativa": "B"}],
+                        p.documentos["pdf2"], relacionadas=["2.1", "3.1"])
+    assert [(x["id"], x["motivo"]) for x in p.sin_cambio] == [("2.1", "pendiente_declarado"), ("3.1", "sin_decision")]
+    assert any("3.1" in a and "no emitió decisión" in a for a in p.avisos)
+
+
+# ------------------------------------------------------ validaciones del reporte (F10, B1, A2, D5)
+def test_explicacion_vacia_de_brecha_se_completa_con_la_matriz(doc):
+    p = _proyecto(doc)
+    p.v1.matriz["7.1"].estado = "no_implementado"
+    rep = {"riesgos": [{"titulo": "Solo incertidumbre", "descripcion": "d", "consecuencia": "c", "justificacion": "j",
+                        "salvaguardas": ["1.1"]}],
+           "iniciativas": [], "resumen_ejecutivo": {"controles_mayores_brechas": [{"control_id": "CIS-07", "explicacion": ""}]}}
+    avisos = validar_reporte(rep, p.v1.matriz, ["CIS-07"])
+    assert "7.1" in rep["resumen_ejecutivo"]["controles_mayores_brechas"][0]["explicacion"]
+    assert any("solo en salvaguardas No verificado" in a for a in avisos)          # B1
+
+
+def test_cita_repetida_entre_salvaguardas_se_senala():
+    m = {"8.1": Resultado("8.1", "parcial", cita="Procedimiento de incidentes"),
+         "17.1": Resultado("17.1", "parcial", cita="procedimiento de  incidentes"), "1.1": Resultado("1.1")}
+    assert len(citas_repetidas(m)) == 1 and "8.1, 17.1" in citas_repetidas(m)[0]
+
+
+def test_ficha_antigua_se_normaliza():
+    assert normalizar_ficha({"resumen_ejecutivo": "x"}) == {"resumen_contexto": "x"}

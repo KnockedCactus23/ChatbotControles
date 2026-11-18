@@ -69,6 +69,12 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
   - Reporte inicial: matriz v1, Excel v1 y reporte ejecutivo inicial (PDF/HTML).
   - Reporte actualizado: matriz v2, Excel v2 y reporte ejecutivo final (PDF/HTML).
   - El Excel v2 y el reporte final no incluyen la matriz ni el reporte de la v1; solo la comparación de indicadores. Cada reporte PDF de la evaluación de prueba ocupa 3 páginas.
+- **Correcciones del análisis del prompt (F1–F10, A–D).** Se aplicaron todas salvo B3 y D2 (ver abajo).
+  - Etapa 5: una decisión por salvaguarda relacionada, con segunda pasada si falta alguna; actualización de evidencia; pendientes por salvaguarda; alertas de contradicciones y fechas.
+  - Etapa 5.6: situación de riesgos e iniciativas calculada en código, severidad residual, 5 riesgos vigentes (v2) para el roadmap y solo cambios aprobados como mitigación.
+  - Prompt maestro: tabla de decisión Parcial / No implementado, pertinencia de citas, BYOD, "por determinar", criterios de severidad y esfuerzo, iniciativas dentro de IG1, R12 concreto y la guía sectorial solo para ponderar.
+  - Prueba real con Gemini sobre NexoPay: las 17 salvaguardas relacionadas recibieron decisión (antes, 8 cambios se omitían), 7.3 actualizó su evidencia y el riesgo 1 quedó mitigado. Ninguna iniciativa quedó "completada" con salvaguardas sin implementar.
+  - **No aplicadas:** B3 (la actividad exige exactamente 5 riesgos y 5 iniciativas; ahora el sistema avisa cuando el formato obliga a incluir uno sin brecha) y D2 (corregir la v1 rompería su inmutabilidad, que es requisito; las correcciones respaldadas por el PDF 2 entran como actualización de evidencia en la v2).
 - **Desplazamiento corregido:** la página ya no baja sola al cambiar de sección o al abrir una matriz. La causa era el chat fijo abajo de Streamlit, que activa "pegarse al final"; ahora el chat va en su sección y cada sección nueva empieza arriba. Comprobado en el navegador.
 - **Ficha de contexto exportable en PDF y HTML** (`ficha_pdf`, `ficha_html`). Incluye las 10 dimensiones con página, cita y verificación de cada hallazgo, la información faltante, las ambigüedades, el perfil de riesgo y los ajustes del equipo (Etapa 2.5). Se descarga desde la propia ficha y desde los entregables de los reportes.
 - Bitácora de validaciones visible en la barra lateral.
@@ -84,7 +90,7 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 
 ## Verificación
 
-- **23 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
+- **31 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
 - **Prueba real con Gemini** y dos PDF ficticios, de punta a punta:
   - ficha con 20 de 20 citas verificadas;
   - evaluación v1 con implementación 31.6 % y cobertura 33.9 %, idéntica en dos corridas;

@@ -186,6 +186,12 @@ class Cambio:
     cita: str = ""
     cita_verificada: bool = False
     decision: str = "pendiente"  # pendiente | aprobado | rechazado
+    tipo: str = "estado"         # "estado" (cambia el estado) | "evidencia" (mismo estado, cita y justificación nuevas)
+
+    @property
+    def aprobable(self) -> bool:
+        """Solo con cita verificada en el PDF 2, y que cambie algo: el estado o la evidencia."""
+        return self.cita_verificada and (self.tipo == "evidencia" or self.estado_propuesto != self.estado_inicial)
 
 
 # ---------------------------------------------------------------------- proyecto
@@ -202,6 +208,8 @@ class Proyecto:
     v2: Version | None = None
     iniciativas: list[dict] = field(default_factory=list)  # análisis del PDF 2
     cambios: list[Cambio] = field(default_factory=list)
+    sin_cambio: list[dict] = field(default_factory=list)    # salvaguardas relacionadas que quedan igual, con motivo (F1)
+    alertas: list[str] = field(default_factory=list)        # contradicciones y fechas del PDF 2 (C1, C2)
     chat: list[dict] = field(default_factory=list)
     avisos: list[str] = field(default_factory=list)        # bitácora de validaciones automáticas
 
@@ -253,28 +261,46 @@ class Proyecto:
         self.v1.cerrada = True
 
     # --------------------------------------------------------------- PDF 2
-    def registrar_cambios(self, propuestas: list[dict], doc: Documento) -> None:
+    def registrar_cambios(self, decisiones: list[dict], doc: Documento, relacionadas=()) -> None:
+        """Registra UNA decisión por salvaguarda (F1): cambio de estado, actualización de evidencia (F9) o sin cambio.
+        Las salvaguardas relacionadas con una iniciativa que se quedaron sin decisión se registran como tales,
+        para que la omisión quede a la vista del auditor."""
         base = self.v1.matriz
-        self.cambios = []
+        self.cambios, self.sin_cambio = [], []
         vistos = set()
-        for p in propuestas:
-            sid, nuevo = p.get("id"), p.get("estado_propuesto")
-            if sid not in base or nuevo not in ESTADOS or sid in vistos:
+        for d in decisiones:
+            sid = d.get("id")
+            if sid not in base or sid in vistos:
                 continue
             vistos.add(sid)
-            pagina = verificar_cita(doc, p.get("cita", ""), p.get("pagina"))
-            c = Cambio(sid, base[sid].estado, nuevo, (p.get("justificacion") or "").strip(), p.get("iniciativa", ""),
-                       pagina or p.get("pagina"), (p.get("seccion") or "").strip(), (p.get("cita") or "").strip(),
-                       pagina is not None)
-            if not c.cita_verificada and nuevo != base[sid].estado:
-                self.avisos.append(f"{sid}: cambio propuesto sin cita verificable en el PDF 2; no se puede aprobar.")
+            tipo = d.get("tipo") or "cambio_estado"
+            nuevo = d.get("estado_propuesto") if d.get("estado_propuesto") in ESTADOS else base[sid].estado
+            if tipo == "cambio_estado" and nuevo == base[sid].estado:
+                tipo = "actualizar_evidencia"  # mismo estado: lo que cambia es la evidencia
+            if tipo == "sin_cambio":
+                self.sin_cambio.append({"id": sid, "motivo": d.get("motivo_sin_cambio") or "sin_evidencia",
+                                        "detalle": (d.get("justificacion") or "").strip(), "iniciativa": d.get("iniciativa", "")})
+                continue
+            pagina = verificar_cita(doc, d.get("cita", ""), d.get("pagina"))
+            c = Cambio(sid, base[sid].estado, nuevo if tipo == "cambio_estado" else base[sid].estado,
+                       (d.get("justificacion") or "").strip(), d.get("iniciativa", ""), pagina or d.get("pagina"),
+                       (d.get("seccion") or "").strip(), (d.get("cita") or "").strip(), pagina is not None,
+                       tipo="estado" if tipo == "cambio_estado" else "evidencia")
+            if not c.cita_verificada:
+                self.avisos.append(f"{sid}: propuesta sin cita verificable en el PDF 2; no se puede aprobar.")
             self.cambios.append(c)
+        for sid in dict.fromkeys(relacionadas):
+            if sid in base and sid not in vistos:
+                self.sin_cambio.append({"id": sid, "motivo": "sin_decision", "iniciativa": "",
+                                        "detalle": "El agente no emitió una decisión para esta salvaguarda relacionada."})
+                self.avisos.append(f"{sid}: relacionada con una iniciativa del PDF 2, pero el agente no emitió decisión; "
+                                   "revísala manualmente (F1).")
 
     def decidir(self, sid: str, decision: str) -> None:
         for c in self.cambios:
             if c.id == sid:
-                if decision == "aprobado" and not (c.cita_verificada and c.estado_propuesto != c.estado_inicial):
-                    raise ValueError("Solo se pueden aprobar cambios con evidencia verificable que modifiquen el estado.")
+                if decision == "aprobado" and not c.aprobable:
+                    raise ValueError("Solo se pueden aprobar cambios con evidencia verificable en el PDF 2.")
                 c.decision = decision
 
     def crear_v2(self) -> list[str]:
@@ -285,6 +311,11 @@ class Proyecto:
             if c.decision != "aprobado":
                 continue
             anterior = matriz[c.id]
+            if c.tipo == "evidencia":  # F9: mismo estado, evidencia vigente del PDF 2
+                matriz[c.id] = Resultado(
+                    c.id, anterior.estado, anterior.aplicabilidad, c.justificacion, "pdf2", c.pagina, c.seccion, c.cita,
+                    f"Evidencia actualizada con el PDF 2 (iniciativa «{c.iniciativa}»); el estado no cambia. Aprobado por el auditor.")
+                continue
             matriz[c.id] = Resultado(
                 c.id, c.estado_propuesto, "no_aplica" if c.estado_propuesto == "no_aplicable" else "aplica",
                 c.justificacion, "pdf2", c.pagina, c.seccion, c.cita,
@@ -301,17 +332,19 @@ class Proyecto:
             "ficha": self.ficha, "ficha_validada": self.ficha_validada, "ajustes": self.ajustes,
             "v1": self.v1.a_dict() if self.v1 else None, "v2": self.v2.a_dict() if self.v2 else None,
             "iniciativas": self.iniciativas, "cambios": [asdict(c) for c in self.cambios],
-            "chat": self.chat, "avisos": self.avisos,
+            "sin_cambio": self.sin_cambio, "alertas": self.alertas, "chat": self.chat, "avisos": self.avisos,
         }
 
     @classmethod
     def de_dict(cls, d: dict) -> "Proyecto":
         p = cls(
-            d["id"], d["nombre"], d["creado"], {k: Documento.de_dict(v) for k, v in d.get("documentos", {}).items()},
-            d.get("ficha"), d.get("ficha_validada", False), d.get("ajustes", []),
-            Version.de_dict(d["v1"]) if d.get("v1") else None, Version.de_dict(d["v2"]) if d.get("v2") else None,
-            d.get("iniciativas", []), [Cambio(**c) for c in d.get("cambios", [])],
-            [m for m in d.get("chat", []) if m.get("tipo") != "respuesta"], d.get("avisos", []))
+            id=d["id"], nombre=d["nombre"], creado=d["creado"],
+            documentos={k: Documento.de_dict(v) for k, v in d.get("documentos", {}).items()},
+            ficha=normalizar_ficha(d.get("ficha")), ficha_validada=d.get("ficha_validada", False), ajustes=d.get("ajustes", []),
+            v1=Version.de_dict(d["v1"]) if d.get("v1") else None, v2=Version.de_dict(d["v2"]) if d.get("v2") else None,
+            iniciativas=d.get("iniciativas", []), cambios=[Cambio(**c) for c in d.get("cambios", [])],
+            sin_cambio=d.get("sin_cambio", []), alertas=d.get("alertas", []),
+            chat=[m for m in d.get("chat", []) if m.get("tipo") != "respuesta"], avisos=d.get("avisos", []))
         p._descartar_declaraciones()
         return p
 
@@ -328,9 +361,81 @@ class Proyecto:
                     self.avisos.append(f"{sid} ({version.nombre}): se descartó una respuesta Sí/No; queda No verificado.")
 
 
-def validar_reporte(rep: dict, matriz: dict[str, Resultado], ids_brechas: list[str], clave_roadmap: str = "iniciativas") -> list[str]:
-    """Evita contradicciones entre matriz e informe: riesgos e iniciativas solo con salvaguardas que son
-    brecha (no implementadas, parciales o no verificadas); controles con brecha solo de la lista calculada."""
+def normalizar_ficha(ficha: dict | None) -> dict | None:
+    """D5: la ficha usa "resumen_contexto" (antes "resumen_ejecutivo", que se confundía con el de los reportes)."""
+    if ficha and "resumen_contexto" not in ficha and "resumen_ejecutivo" in ficha:
+        ficha["resumen_contexto"] = ficha.pop("resumen_ejecutivo")
+    return ficha
+
+
+# ------------------------------------------- situación tras el PDF 2 (reglas fijas, F4-F6)
+_RANGO = {"no_verificado": 0, "no_implementado": 0, "parcial": 1, "implementado": 2}
+_BAJAR = {"alta": "media", "media": "baja", "baja": "baja"}
+SITUACION_RIESGO = {"mitigado": "Mitigado", "reducido": "Reducido", "permanece": "Permanece"}
+
+
+def _cubierta(r: Resultado) -> bool:
+    return r.estado in ("implementado", "no_aplicable")
+
+
+def _mejoro(v1: dict[str, Resultado], v2: dict[str, Resultado], sid: str) -> bool:
+    return v2[sid].estado != "no_aplicable" and _RANGO.get(v2[sid].estado, 0) > _RANGO.get(v1[sid].estado, 0)
+
+
+def situacion_riesgos(riesgos: list[dict], v1: dict[str, Resultado], v2: dict[str, Resultado]) -> list[dict]:
+    """Cada riesgo original se evalúa SOLO con el estado v2 de sus propias salvaguardas (F4, F5):
+    todas cubiertas → mitigado (severidad residual baja); alguna mejoró → reducido (un nivel menos);
+    ninguna mejoró → permanece (misma severidad)."""
+    salida = []
+    for r in riesgos:
+        ids = [s for s in r.get("salvaguardas", []) if s in v2]
+        mejoradas = [s for s in ids if _mejoro(v1, v2, s)]
+        sev = r.get("severidad") or "media"
+        if ids and all(_cubierta(v2[s]) for s in ids):
+            sit, residual = "mitigado", "baja"
+        elif mejoradas:
+            sit, residual = "reducido", _BAJAR.get(sev, sev)
+        else:
+            sit, residual = "permanece", sev
+        salida.append({"situacion": sit, "severidad_residual": residual, "mejoradas": mejoradas,
+                       "pendientes": [s for s in ids if not _cubierta(v2[s])]})
+    return salida
+
+
+def estado_iniciativas(iniciativas: list[dict], v1: dict[str, Resultado], v2: dict[str, Resultado]) -> list[dict]:
+    """F6: completada si TODAS sus salvaguardas están Implementado (o No aplicable) en v2; en progreso si al menos
+    una mejoró; pendiente si ninguna. Se decide por salvaguardas, no por el nombre de la iniciativa del PDF 2."""
+    salida = []
+    for ini in iniciativas:
+        ids = [s for s in ini.get("salvaguardas", []) if s in v2]
+        mejoradas = [s for s in ids if _mejoro(v1, v2, s)]
+        if ids and all(_cubierta(v2[s]) for s in ids):
+            estado = "completada"
+        elif mejoradas:
+            estado = "en_progreso"
+        else:
+            estado = "pendiente"
+        salida.append({"estado": estado, "mejoradas": mejoradas, "pendientes": [s for s in ids if not _cubierta(v2[s])]})
+    return salida
+
+
+def citas_repetidas(matriz: dict[str, Resultado]) -> list[str]:
+    """A2: la misma cita usada para salvaguardas distintas suele indicar evidencia poco pertinente."""
+    por_cita: dict[str, list[str]] = {}
+    for sid, r in matriz.items():
+        if r.cita:
+            por_cita.setdefault(" ".join(r.cita.lower().split()), []).append(sid)
+    return [f"{', '.join(ids)}: comparten la misma cita; revisa que sea pertinente para cada salvaguarda (A2)."
+            for ids in por_cita.values() if len(ids) > 1]
+
+
+def validar_reporte(rep: dict, matriz: dict[str, Resultado], ids_brechas: list[str], clave_roadmap: str = "iniciativas",
+                    clave_riesgos: str = "riesgos") -> list[str]:
+    """Evita contradicciones entre matriz e informe (F10):
+    - riesgos e iniciativas solo con salvaguardas que son brecha (no implementadas, parciales o no verificadas);
+    - un riesgo apoyado solo en No verificado se señala (B1: la incertidumbre no es incumplimiento);
+    - "controles con mayores brechas" = la lista calculada, y una explicación vacía se completa con datos de la matriz;
+    - los campos de texto vacíos quedan en la bitácora."""
     avisos = []
     brecha = {sid for sid, r in matriz.items() if r.estado in ("no_implementado", "parcial", "no_verificado")}
 
@@ -340,18 +445,49 @@ def validar_reporte(rep: dict, matriz: dict[str, Resultado], ids_brechas: list[s
             avisos.append(f"{donde}: se quitaron {', '.join(quitar)} porque no son brecha en la matriz.")
         item["salvaguardas"] = [s for s in dict.fromkeys(item.get("salvaguardas", [])) if s in brecha]
 
-    for i, r in enumerate(rep.get("riesgos", []), 1):
+    def vacios(item: dict, donde: str, campos: tuple):
+        faltan = [c for c in campos if not str(item.get(c) or "").strip()]
+        if faltan:
+            avisos.append(f"{donde}: el modelo dejó vacío {', '.join(faltan)}.")
+
+    for i, r in enumerate(rep.get(clave_riesgos, []), 1):
         filtrar(r, f"Riesgo {i}")
+        vacios(r, f"Riesgo {i}", ("titulo", "descripcion", "consecuencia", "justificacion"))
+        if not r["salvaguardas"]:
+            avisos.append(f"Riesgo {i}: no se apoya en ninguna salvaguarda con brecha; el formato de 5 riesgos obligó a "
+                          "incluirlo (revisa si sigue siendo vigente).")
+        elif all(matriz[s].estado == "no_verificado" for s in r["salvaguardas"]):
+            avisos.append(f"Riesgo {i}: se apoya solo en salvaguardas No verificado; es incertidumbre, no una brecha "
+                          "confirmada (B1). Conviene tratarlo como necesidad de verificación.")
     roadmap = rep.get(clave_roadmap, [])
     for i, ini in enumerate(roadmap, 1):
         filtrar(ini, f"Iniciativa {i}")
+        vacios(ini, f"Iniciativa {i}", ("titulo", "descripcion", "beneficio"))
+        if not ini["salvaguardas"]:
+            avisos.append(f"Iniciativa {i}: no cierra ninguna salvaguarda con brecha en la matriz.")
         ini["riesgos"] = [n for n in ini.get("riesgos", []) if 1 <= n <= 5]
     roadmap.sort(key=lambda x: x.get("prioridad", 9))
     res = rep.get("resumen_ejecutivo", {})
     if "controles_mayores_brechas" in res:
-        explicacion = {c["control_id"]: c.get("explicacion", "") for c in res["controles_mayores_brechas"]}
-        res["controles_mayores_brechas"] = [{"control_id": cid, "explicacion": explicacion.get(cid, "")} for cid in ids_brechas]
+        explicacion = {c["control_id"]: (c.get("explicacion") or "").strip() for c in res["controles_mayores_brechas"]}
+        res["controles_mayores_brechas"] = []
+        for cid in ids_brechas:
+            texto = explicacion.get(cid, "")
+            if not texto:
+                texto = _explicacion_brecha(matriz, cid)
+                avisos.append(f"{cid}: el modelo no explicó la brecha; se completó con los datos de la matriz.")
+            res["controles_mayores_brechas"].append({"control_id": cid, "explicacion": texto})
     return avisos
+
+
+def _explicacion_brecha(matriz: dict[str, Resultado], cid: str) -> str:
+    ids = [s.id for s in control(cid).ig1]
+    partes = []
+    for estado in ("no_implementado", "parcial", "no_verificado"):
+        sids = [s for s in ids if matriz[s].estado == estado]
+        if sids:
+            partes.append(f"{ETIQUETA[estado]}: {', '.join(sids)}")
+    return "Según la matriz — " + "; ".join(partes) + "." if partes else "Sin brechas registradas en la matriz."
 
 
 def lotes_por_control(tamano_max: int = 22) -> list[list[str]]:

@@ -8,6 +8,7 @@ Todo texto que viene del usuario o de Gemini pasa por ``esc()`` antes de
 insertarse en HTML.
 """
 
+import time
 from html import escape as _escape
 
 from .controls import catalogo, control, salvaguarda
@@ -626,6 +627,20 @@ def comparacion(i1: dict, i2: dict, modificados: list[str]) -> str:
     return (f'<div class="tabla-envoltura"><table class="tabla" style="min-width:420px"><thead><tr><th>Indicador</th>'
             f'<th>v1 · Inicial</th><th>v2 · Actualizada</th></tr></thead><tbody>{filas}</tbody></table></div>'
             f'<p class="seccion-sub" style="margin-top:10px">Salvaguardas modificadas: {esc(", ".join(modificados) or "ninguna")}</p>')
+
+
+def subir_al_inicio() -> str:
+    """Lleva la página al inicio (se inserta solo al cambiar de sección). Se repite tras unos instantes porque
+    Streamlit dibuja la página por partes. El sello de tiempo hace que el bloque sea nuevo y el script se ejecute."""
+    return (f'<script data-t="{time.time_ns()}">(() => {{'
+            'const subir = () => {'
+            ' const m = document.querySelector(\'[data-testid="stMain"]\');'
+            ' [window, document.scrollingElement, m, m && m.parentElement,'
+            '  document.querySelector(\'[data-testid="stAppViewContainer"]\')]'
+            '  .forEach(e => e && e.scrollTo && e.scrollTo({top: 0, behavior: "instant"}));'
+            '};'
+            'subir(); [60, 200, 450].forEach(ms => setTimeout(subir, ms));'
+            '})();</script>')
 
 
 def tarjeta_progreso(titulo: str, texto: str) -> str:

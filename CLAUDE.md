@@ -9,7 +9,7 @@ Agente de IA para la actividad **M3.6** (diseño de un agente para la evaluació
 5. **Etapa 5:** lee el **PDF 2**, propone cambios con cita; el auditor aprueba, rechaza o deja pendiente; se crea la **v2** solo con los aprobados y su reporte comparativo.
 6. **Sin preguntas Sí/No al cliente** (decisión del equipo, 2026-11-17: apegarse a la actividad). Solo cuenta la evidencia documental. Al cargar evaluaciones antiguas, `Proyecto._descartar_declaraciones()` devuelve a No verificado las respuestas Sí/No (`fuente == "declaracion"`). No reintroducir preguntas sin preguntar al equipo.
 7. **Chat de consultas** (`engine.ask`, solo lectura, no cambia estados): la entrada solo existe en la ficha de contexto ya generada y en los reportes (`reporte`, `actualizado`) — `CHAT_ACTIVO` en `app.py`. El historial se muestra siempre (ahí salen la prueba preliminar y los errores). Usa la **vista** (no la etapa), así que también funciona al consultar la ficha o el reporte inicial desde etapas posteriores.
-8. **Navegación entre secciones** (`st.segmented_control`, clave `vista`; decisión del equipo, 2026-11-17): siempre Contexto, Reporte inicial y Reporte actualizado (estos dos cuando existen). La Evaluación 56 y la Validación PDF 2 solo aparecen mientras son el paso en curso. Las vistas de etapas pasadas son de **solo lectura**: no se regenera la ficha ni se sube el PDF 2 desde ellas, para no romper R10–R12. Al avanzar de etapa (`etapa_vista`), la vista pasa al paso nuevo. La matriz v1 se muestra abierta en el reporte inicial.
+8. **Navegación entre secciones** (`st.segmented_control`, clave `vista`; decisión del equipo, 2026-11-17): siempre Contexto, Reporte inicial y Reporte actualizado (estos dos cuando existen). La Evaluación 56 y la Validación PDF 2 solo aparecen mientras son el paso en curso. Las vistas de etapas pasadas son de **solo lectura**: no se regenera la ficha ni se sube el PDF 2 desde ellas, para no romper R10–R12. Al avanzar de etapa (`etapa_vista`), la vista pasa al paso nuevo. En los reportes las matrices van **plegadas** (`st.expander`) porque alargan mucho la página: la v1 en el reporte inicial, y la v2 y la v1 en pestañas en el actualizado. Solo en la Evaluación 56 en curso la matriz va abierta.
 
 Proyecto académico de equipo. **Decisión del equipo (2026-11-03): usa la API gratuita de Google Gemini** con el SDK oficial `google-genai`. No mezclar otros proveedores ni capas como LangChain. Este archivo se llama CLAUDE.md solo porque es la configuración de Claude Code (asistente de desarrollo).
 
@@ -20,6 +20,11 @@ Proyecto académico de equipo. **Decisión del equipo (2026-11-03): usa la API g
 - Guardado automático local en `evaluaciones/` (ignorado por git) para conservar v1 y v2 entre semanas.
 - Escala obligatoria: `implementado`=1, `parcial`=0.5, `no_implementado`=0, `no_verificado`=—, `no_aplicable`=—.
 - Sin botón de descarga del prompt maestro en la UI (2026-11-17); el chat solo en contexto con ficha y en reportes (2026-11-17).
+- **Entregables separados por versión** (2026-11-17), sin mezclarse:
+  - Contexto: solo la ficha (PDF/HTML).
+  - Reporte inicial: matriz v1, Excel v1 y reporte inicial.
+  - Reporte actualizado: matriz v2, Excel v2 y reporte final.
+  - El Excel v2 y el reporte final no repiten la matriz v1 ni el reporte inicial; solo comparan indicadores.
 
 ## Stack
 - Python 3.14 (el `python3` del sistema es 3.15 y algunas dependencias aún no tienen wheels).
@@ -38,8 +43,8 @@ chatbot/
   schemas.py               # JSON Schemas por etapa (minItems/maxItems para 56 por lote, 5 riesgos, 5 iniciativas)
   engine.py                # explain, context_sheet, evaluate, report, analyze_initiatives, updated_report, ask
   almacen.py               # guardar/cargar/listar proyectos en evaluaciones/ (EVALUACIONES_DIR para pruebas)
-  exportar.py              # Excel (todas las hojas), CSV, reporte y ficha en HTML (_pagina_html); prompt_maestro_md() lo usa el script
-  reporte_pdf.py           # reporte_pdf() (Entregable 3; con v1+v2 debe caber en 5 páginas, lo verifica test_motor) y ficha_pdf()
+  exportar.py              # excel(p, "v1"|"v2"), reporte_html(p, "v1"|"v2"), csv_matriz, ficha_html (_pagina_html); prompt_maestro_md()
+  reporte_pdf.py           # reporte_pdf(p, "v1"|"v2") (Entregable 3; cada uno debe caber en 5 páginas, lo verifica test_motor) y ficha_pdf()
   ui.py                    # Tokens CSS (OKLCH) y piezas HTML
   data/cis_v8_1_2.json     # NO versionado (licencia CC BY-NC-ND): scripts/importar_cis.py
 scripts/importar_cis.py    # Excel oficial CIS v8.1.x → JSON (reconstruye ids como 3.10 que Excel guarda como 3.1)
@@ -72,6 +77,8 @@ tests/                     # conftest (catálogo falso: 18 IG1), test_state (reg
 - Arquetipo "craft oscuro"; colores de los 5 estados en tokens `--st-implementado`, `--st-parcial`, `--st-no_implementado`, `--st-no_verificado`, `--st-no_aplicable`. No hex sueltos.
 - `st.html` sanitiza: **elimina `<svg>`** y **descarta un `<style>` completo si contiene `<`** (incluso en comentarios; usar `\3c`).
 - Todo texto de Gemini o del usuario pasa por `ui.esc()`.
+- **`st.chat_input` nunca en la raíz**, siempre dentro de `st.container(key="chat")`. En la raíz, Streamlit lo fija abajo y activa "pegarse al final" (`stAppScrollToBottomContainer`), que arrastra la página hasta abajo al cambiar de sección o abrir un plegable.
+- Al cambiar de sección se sube al inicio con `ui.subir_al_inicio()` (`st.html(..., unsafe_allow_javascript=True)`), solo cuando cambia `vista_mostrada`.
 - Respetar `prefers-reduced-motion`; revisar en 375px y escritorio.
 
 ## Comandos

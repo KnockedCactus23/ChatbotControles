@@ -56,7 +56,19 @@ def _indicadores(v: Version) -> list:
     return [i["total"]] + [i[e] for e in ESTADOS] + [formato_pct(i["implementacion"]), formato_pct(i["cobertura"])]
 
 
-def excel(p: Proyecto) -> bytes:
+def _version(p: Proyecto, cual: str) -> Version:
+    v = p.v1 if cual == "v1" else p.v2 if cual == "v2" else None
+    if v is None:
+        raise ValueError(f"La versión {cual} no existe todavía.")
+    return v
+
+
+def excel(p: Proyecto, cual: str) -> bytes:
+    """Excel completo de UNA versión. "v1": evaluación inicial (contexto, matriz v1, indicadores, riesgos y roadmap).
+    "v2": evaluación actualizada (contexto, matriz v2, indicadores v1 frente a v2, situación de los riesgos,
+    estado de las iniciativas, roadmap actualizado y cambios del PDF 2). La matriz v1 no se repite en el de v2."""
+    v = _version(p, cual)
+    rep = v.reporte or {}
     libro = Workbook()
     libro.remove(libro.active)
     if p.ficha:
@@ -67,32 +79,33 @@ def excel(p: Proyecto) -> bytes:
                 filas.append([nombre, d.get("resumen", ""), h.get("dato", ""), h.get("pagina", ""), h.get("seccion", ""),
                               h.get("cita", ""), "Sí" if h.get("verificada") else ("No" if h else ""), d.get("faltante", "")])
         _hoja(libro, "Contexto", ["Dimensión", "Resumen", "Hallazgo", "Página", "Sección", "Cita", "Cita verificada", "Falta"], filas)
-    versiones = [v for v in (p.v1, p.v2) if v]
-    for v in versiones:
-        _hoja(libro, "Matriz " + v.nombre.split(" ·")[0], COLUMNAS_MATRIZ, filas_matriz(p, v))
-    if versiones:
-        enc = ["Versión", "Total", *[ETIQUETA[e] for e in ESTADOS], "Implementación IG1", "Cobertura IG1"]
-        _hoja(libro, "Indicadores", enc, [[v.nombre, *_indicadores(v)] for v in versiones])
-    for v in versiones:
-        rep = v.reporte or {}
-        etiqueta = v.nombre.split(" ·")[0]
-        riesgos = rep.get("riesgos") or (p.v1.reporte or {}).get("riesgos", [])
-        if rep.get("riesgos") and v is p.v1:
-            _hoja(libro, f"Riesgos {etiqueta}", ["#", "Riesgo", "Descripción", "Activo o proceso", "Deficiencia", "Consecuencia",
-                                                  "Severidad", "Justificación", "Salvaguardas"],
-                  [[i, r["titulo"], r["descripcion"], r["activo_proceso"], r["deficiencia"], r["consecuencia"], r["severidad"],
-                    r["justificacion"], ", ".join(r["salvaguardas"])] for i, r in enumerate(riesgos, 1)])
-        if v is p.v2 and rep.get("riesgos"):
-            _hoja(libro, "Riesgos v2", ["#", "Riesgo original", "Situación", "Explicación"],
-                  [[i, r["titulo"], r["situacion"], r["explicacion"]] for i, r in enumerate(rep["riesgos"], 1)])
-        roadmap = rep.get("iniciativas") or rep.get("roadmap") or []
-        if roadmap:
-            _hoja(libro, f"Roadmap {etiqueta}", ["Prioridad", "Iniciativa", "Descripción", "Riesgos", "Salvaguardas", "Beneficio",
-                                                  "Esfuerzo", "Clasificación"],
-                  [[x["prioridad"], x["titulo"], x["descripcion"], ", ".join(map(str, x["riesgos"])), ", ".join(x["salvaguardas"]),
-                    x["beneficio"], x["esfuerzo"], "Quick win" if x["tipo"] == "quick_win" else "Inversión o proyecto"]
-                   for x in roadmap])
-    if p.cambios:
+    _hoja(libro, f"Matriz {cual}", COLUMNAS_MATRIZ, filas_matriz(p, v))
+    enc = ["Versión", "Total", *[ETIQUETA[e] for e in ESTADOS], "Implementación IG1", "Cobertura IG1"]
+    comparadas = [p.v1, p.v2] if cual == "v2" else [p.v1]
+    _hoja(libro, "Indicadores", enc, [[x.nombre, *_indicadores(x)] for x in comparadas])
+    riesgos_v1 = (p.v1.reporte or {}).get("riesgos", [])
+    if cual == "v1" and riesgos_v1:
+        _hoja(libro, "Riesgos v1", ["#", "Riesgo", "Descripción", "Activo o proceso", "Deficiencia", "Consecuencia",
+                                    "Severidad", "Justificación", "Salvaguardas"],
+              [[i, r["titulo"], r["descripcion"], r["activo_proceso"], r["deficiencia"], r["consecuencia"], r["severidad"],
+                r["justificacion"], ", ".join(r["salvaguardas"])] for i, r in enumerate(riesgos_v1, 1)])
+    if cual == "v2" and rep.get("riesgos"):
+        _hoja(libro, "Riesgos v2", ["#", "Riesgo", "Severidad inicial", "Salvaguardas", "Situación", "Explicación"],
+              [[i, r.get("titulo", ""), (riesgos_v1[i - 1].get("severidad", "") if i <= len(riesgos_v1) else ""),
+                ", ".join(riesgos_v1[i - 1].get("salvaguardas", [])) if i <= len(riesgos_v1) else "",
+                r.get("situacion", ""), r.get("explicacion", "")] for i, r in enumerate(rep["riesgos"], 1)])
+    if cual == "v2" and rep.get("iniciativas_estado"):
+        _hoja(libro, "Iniciativas v1 estado", ["#", "Iniciativa", "Estado", "Explicación"],
+              [[i, e.get("titulo", ""), e.get("estado", ""), e.get("explicacion", "")]
+               for i, e in enumerate(rep["iniciativas_estado"], 1)])
+    roadmap = rep.get("iniciativas") or rep.get("roadmap") or []
+    if roadmap:
+        _hoja(libro, f"Roadmap {cual}", ["Prioridad", "Iniciativa", "Descripción", "Riesgos", "Salvaguardas", "Beneficio",
+                                         "Esfuerzo", "Clasificación"],
+              [[x["prioridad"], x["titulo"], x["descripcion"], ", ".join(map(str, x["riesgos"])), ", ".join(x["salvaguardas"]),
+                x["beneficio"], x["esfuerzo"], "Quick win" if x["tipo"] == "quick_win" else "Inversión o proyecto"]
+               for x in roadmap])
+    if cual == "v2" and p.cambios:
         _hoja(libro, "Cambios PDF 2", ["ID CIS", "Estado inicial", "Estado propuesto", "Justificación", "Iniciativa", "Página",
                                        "Cita", "Cita verificada", "Decisión del auditor"],
               [[c.id, ETIQUETA[c.estado_inicial], ETIQUETA[c.estado_propuesto], c.justificacion, c.iniciativa, c.pagina or "",
@@ -104,30 +117,36 @@ def excel(p: Proyecto) -> bytes:
     return salida.getvalue()
 
 
-def reporte_html(p: Proyecto) -> str:
-    """Reporte ejecutivo autocontenido (se puede imprimir a PDF desde el navegador)."""
-    partes = [f"<h1 class='titular'>Reporte ejecutivo · {ui.esc(p.nombre)}</h1>",
-              f"<p class='lead'>{ui.esc(prompts.NOMBRE_AGENTE)} · CIS Controls v8.1 IG1 · 56 salvaguardas</p>"]
+def reporte_html(p: Proyecto, cual: str) -> str:
+    """Reporte ejecutivo de UNA versión: "v1" (inicial) o "v2" (final, con la comparación frente a v1)."""
+    v = _version(p, cual)
+    rep = v.reporte or {}
+    nombre = "Reporte ejecutivo inicial" if cual == "v1" else "Reporte ejecutivo final"
+    partes = [f"<h1 class='titular'>{nombre} · {ui.esc(p.nombre)}</h1>",
+              f"<p class='lead'>{ui.esc(prompts.NOMBRE_AGENTE)} · CIS Controls v8.1 IG1 · 56 salvaguardas · "
+              f"{ui.esc(v.nombre)} del {ui.esc(v.fecha)}</p>"]
     if p.ficha:
         partes += [ui.seccion("Contexto de la empresa"), f"<p class='ficha-resumen'>{ui.esc(p.ficha.get('resumen_ejecutivo'))}</p>"]
-    for v in (p.v1, p.v2):
-        if not (v and v.reporte):
-            continue
-        rep = v.reporte
-        previo = p.v1.indicadores() if v is p.v2 else None
-        roadmap = rep.get("iniciativas") or rep.get("roadmap") or []
-        partes += [ui.seccion(f"Dashboard · {v.nombre}"), ui.tablero(v.indicadores(), 5, len(roadmap), previo),
-                   ui.seccion("Resumen ejecutivo"), ui.resumen_ejecutivo(rep.get("resumen_ejecutivo", {}))]
-        riesgos_v1 = p.v1.reporte.get("riesgos", [])
-        if v is p.v1:
-            partes += [ui.seccion("Cinco riesgos principales"), ui.riesgos(riesgos_v1)]
-        else:
-            partes += [ui.seccion("Cambios derivados del PDF 2"), f"<p class='ficha-resumen'>{ui.esc(rep.get('resumen_cambios'))}</p>",
-                       ui.comparacion(p.v1.indicadores(), v.indicadores(), [c.id for c in p.cambios if c.decision == "aprobado"]),
-                       ui.seccion("Riesgos tras las mejoras"), ui.riesgos(riesgos_v1, rep.get("riesgos"))]
-        partes += [ui.seccion("Roadmap de cinco iniciativas" + (" (actualizado)" if v is p.v2 else "")),
-                   ui.roadmap(roadmap, [r["titulo"] for r in riesgos_v1])]
-    return _pagina_html(f"Reporte {p.nombre}", partes)
+    riesgos_v1 = (p.v1.reporte or {}).get("riesgos", [])
+    titulos = [r["titulo"] for r in riesgos_v1]
+    roadmap = rep.get("iniciativas") or rep.get("roadmap") or []
+    if cual == "v1":
+        partes += [ui.seccion(f"Dashboard · {v.nombre}"), ui.tablero(v.indicadores(), len(riesgos_v1), len(roadmap)),
+                   ui.seccion("Resumen ejecutivo"), ui.resumen_ejecutivo(rep.get("resumen_ejecutivo", {})),
+                   ui.seccion("Cinco riesgos principales"), ui.riesgos(riesgos_v1),
+                   ui.seccion("Roadmap de cinco iniciativas"), ui.roadmap(roadmap, titulos)]
+    else:
+        aprobados = [c.id for c in p.cambios if c.decision == "aprobado"]
+        partes += [ui.seccion(f"Dashboard · {v.nombre} frente a v1"),
+                   ui.tablero(v.indicadores(), len(rep.get("riesgos", [])), len(roadmap), p.v1.indicadores()),
+                   ui.seccion("Cambios derivados del PDF 2"), f"<p class='ficha-resumen'>{ui.esc(rep.get('resumen_cambios'))}</p>",
+                   ui.comparacion(p.v1.indicadores(), v.indicadores(), aprobados),
+                   ui.seccion("Resumen ejecutivo actualizado"), ui.resumen_ejecutivo(rep.get("resumen_ejecutivo", {})),
+                   ui.seccion("Riesgos que cambiaron y riesgos que permanecen"), ui.riesgos(riesgos_v1, rep.get("riesgos")),
+                   ui.seccion("Iniciativas del roadmap original: completadas o en progreso"),
+                   ui.roadmap(p.v1.reporte.get("iniciativas", []), titulos, rep.get("iniciativas_estado")),
+                   ui.seccion("Roadmap actualizado"), ui.roadmap(roadmap, titulos)]
+    return _pagina_html(f"{nombre} {p.nombre}", partes)
 
 
 def ficha_html(p: Proyecto) -> str:

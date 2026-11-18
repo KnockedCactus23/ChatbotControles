@@ -130,21 +130,32 @@ def test_flujo_completo(motor_simulado):
     assert p.etapa == "actualizado"
     assert p.v1.matriz["6.1"].estado == "no_verificado" and p.v2.matriz["6.1"].estado == "implementado"
 
-    # Exportación: Excel con todas las hojas y CSV con todas las salvaguardas.
-    libro = openpyxl.load_workbook(io.BytesIO(exportar.excel(p)))
-    assert {"Contexto", "Matriz v1", "Matriz v2", "Indicadores", "Cambios PDF 2", "Roadmap v1", "Roadmap v2"} <= set(libro.sheetnames)
-    assert libro["Matriz v1"].max_row == len(ids) + 1
+    # Exportación por versión: lo inicial (v1) y lo final (v2) nunca se mezclan.
+    inicial = openpyxl.load_workbook(io.BytesIO(exportar.excel(p, "v1")))
+    final = openpyxl.load_workbook(io.BytesIO(exportar.excel(p, "v2")))
+    assert {"Contexto", "Matriz v1", "Indicadores", "Riesgos v1", "Roadmap v1"} <= set(inicial.sheetnames)
+    assert not {"Matriz v2", "Roadmap v2", "Cambios PDF 2", "Riesgos v2"} & set(inicial.sheetnames)
+    assert {"Contexto", "Matriz v2", "Indicadores", "Riesgos v2", "Roadmap v2", "Cambios PDF 2"} <= set(final.sheetnames)
+    assert not {"Matriz v1", "Roadmap v1", "Riesgos v1"} & set(final.sheetnames)
+    assert inicial["Matriz v1"].max_row == final["Matriz v2"].max_row == len(ids) + 1
+    estado_6_1 = {n: next(r[4].value for r in libro[f"Matriz {v}"].iter_rows(min_row=2) if r[0].value == "6.1")
+                  for n, libro, v in (("v1", inicial, "v1"), ("v2", final, "v2"))}
+    assert estado_6_1 == {"v1": "No verificado", "v2": "Implementado"}             # matrices distintas
+    assert final["Indicadores"].max_row == 3 and inicial["Indicadores"].max_row == 2  # v2 se compara con v1
     filas = list(csv.reader(io.StringIO(exportar.csv_matriz(p, p.v2).decode("utf-8-sig"))))
     assert len(filas) == len(ids) + 1 and filas[0][0] == "ID CIS"
-    html = exportar.reporte_html(p)
-    assert "Cambios derivados del PDF 2" in html and "Roadmap de cinco iniciativas" in html
+    html_v1, html_v2 = exportar.reporte_html(p, "v1"), exportar.reporte_html(p, "v2")
+    assert "Reporte ejecutivo inicial" in html_v1 and "Cambios derivados del PDF 2" not in html_v1
+    assert "Reporte ejecutivo final" in html_v2 and "Cambios derivados del PDF 2" in html_v2 and "Roadmap actualizado" in html_v2
     assert "R12." in exportar.prompt_maestro_md()
 
-    # Reporte ejecutivo en PDF: válido, con v1 y v2, y dentro del límite de 5 páginas de la actividad.
-    pdf = PdfReader(io.BytesIO(reporte_pdf(p)))
-    texto = " ".join(pg.extract_text() for pg in pdf.pages)
-    assert len(pdf.pages) <= 5
-    assert "Cinco riesgos principales" in texto and "Cambios derivados del PDF 2" in texto and "Roadmap actualizado" in texto
+    # Reportes ejecutivos en PDF: uno por versión, cada uno dentro del límite de 5 páginas de la actividad.
+    pdf_v1, pdf_v2 = (PdfReader(io.BytesIO(reporte_pdf(p, v))) for v in ("v1", "v2"))
+    t1, t2 = (" ".join(pg.extract_text() for pg in d.pages) for d in (pdf_v1, pdf_v2))
+    assert len(pdf_v1.pages) <= 5 and len(pdf_v2.pages) <= 5
+    assert "Reporte ejecutivo inicial" in t1 and "Cinco riesgos principales" in t1 and "Cambios derivados del PDF 2" not in t1
+    assert "Reporte ejecutivo final" in t2 and "Cambios derivados del PDF 2" in t2 and "Roadmap actualizado" in t2
+    assert "Cinco riesgos principales" not in t2
 
     # Ficha de contexto exportable: las 10 dimensiones, la evidencia y los ajustes del equipo.
     p.ajustes.append({"fecha": "2026-11-17 10:00", "texto": "Microsoft 365 es un servicio contratado."})

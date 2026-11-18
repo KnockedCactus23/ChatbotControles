@@ -315,17 +315,20 @@ def _version(pdf: _Reporte, p: Proyecto, v: Version):
 
 
 # -------------------------------------------------------------------- API
-def reporte_pdf(p: Proyecto) -> bytes:
-    """Reporte ejecutivo completo: contexto, y para v1 (y v2 si existe) dashboard, resumen, riesgos y roadmap."""
-    versiones = [v for v in (p.v1, p.v2) if v and v.reporte]
-    fuentes = " · ".join(f"{d.etiqueta}: {d.nombre}" for d in p.documentos.values())
-    pdf = _inicio(p, "Reporte ejecutivo",
-                  f"Versiones: {', '.join(v.nombre for v in versiones) or 'sin reporte'}. Fuentes: {fuentes}.")
+def reporte_pdf(p: Proyecto, cual: str) -> bytes:
+    """Reporte ejecutivo de UNA versión. "v1": reporte inicial (solo PDF 1). "v2": reporte final, con los cambios
+    del PDF 2 y la comparación de indicadores frente a v1 (sin repetir la matriz ni el reporte inicial)."""
+    v = p.v1 if cual == "v1" else p.v2 if cual == "v2" else None
+    if v is None or not v.reporte:
+        raise ValueError(f"La versión {cual} aún no tiene reporte.")
+    usados = ("pdf1",) if cual == "v1" else ("pdf1", "pdf2")
+    fuentes = " · ".join(f"{d.etiqueta}: {d.nombre}" for k, d in p.documentos.items() if k in usados)
+    nombre = "Reporte ejecutivo inicial" if cual == "v1" else "Reporte ejecutivo final"
+    pdf = _inicio(p, nombre, f"{v.nombre} del {v.fecha}. Fuentes: {fuentes}.")
     if p.ficha:
         pdf.titulo_seccion("Contexto de la empresa")
         pdf.parrafo(p.ficha.get("resumen_ejecutivo"))
-    for v in versiones:
-        _version(pdf, p, v)
+    _version(pdf, p, v)
     return bytes(pdf.output())
 
 

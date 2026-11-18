@@ -48,6 +48,7 @@ def nuevo(proyecto: Proyecto | None = None):
     st.session_state.estados_previos = {}
     st.session_state.pop("vista", None)       # al abrir otra evaluación, se muestra su paso actual
     st.session_state.pop("etapa_vista", None)
+    st.session_state["vista_mostrada"] = "nueva"  # al abrir otra evaluación también se sube al inicio
 
 
 if "proyecto" not in st.session_state or not hasattr(st.session_state.proyecto, "ficha_validada"):
@@ -124,23 +125,25 @@ def descargas_ficha(cols):
                             mime="text/html", icon=":material/article:", use_container_width=True, disabled=ocupado)
 
 
-def exportes():
-    st.html(ui.seccion("Entregables", "Matriz (Excel con todas las hojas o CSV), reporte ejecutivo y ficha de contexto en PDF o HTML."))
-    col = st.columns(5)
-    col[0].download_button("Excel completo", exportar.excel(p), file_name=f"centinela_ig1_{p.id}.xlsx",
-                           icon=":material/table_view:", use_container_width=True)
-    if p.v1:
-        col[1].download_button("Matriz v1 (CSV)", exportar.csv_matriz(p, p.v1), file_name=f"matriz_v1_{p.id}.csv",
-                               icon=":material/csv:", use_container_width=True)
-    if p.v2:
-        col[2].download_button("Matriz v2 (CSV)", exportar.csv_matriz(p, p.v2), file_name=f"matriz_v2_{p.id}.csv",
-                               icon=":material/csv:", use_container_width=True)
-    col[3].download_button("Reporte ejecutivo (PDF)", reporte_pdf(p), file_name=f"reporte_{p.id}.pdf",
-                           mime="application/pdf", icon=":material/picture_as_pdf:", use_container_width=True)
-    col[4].download_button("Reporte ejecutivo (HTML)", exportar.reporte_html(p), file_name=f"reporte_{p.id}.html",
-                           icon=":material/article:", use_container_width=True)
-    if p.ficha:
-        descargas_ficha(st.columns(5))
+def exportes(cual: str):
+    """Entregables de UNA versión: "v1" en el reporte inicial y "v2" en el reporte actualizado (nunca se mezclan)."""
+    inicial = cual == "v1"
+    v = p.v1 if inicial else p.v2
+    nombre = "inicial" if inicial else "final"
+    st.html(ui.seccion(f"Entregables · {v.nombre}",
+                       "Matriz, Excel y reporte ejecutivo de la evaluación inicial (v1)." if inicial else
+                       "Matriz, Excel y reporte ejecutivo de la evaluación actualizada (v2), con la comparación frente a v1."))
+    col = st.columns(4)
+    col[0].download_button(f"Matriz {cual} (CSV)", exportar.csv_matriz(p, v), file_name=f"matriz_{cual}_{p.id}.csv",
+                           mime="text/csv", icon=":material/csv:", use_container_width=True, key=f"csv_{cual}")
+    col[1].download_button(f"Excel completo {cual}", exportar.excel(p, cual), file_name=f"centinela_ig1_{cual}_{p.id}.xlsx",
+                           icon=":material/table_view:", use_container_width=True, key=f"xlsx_{cual}")
+    col[2].download_button(f"Reporte {nombre} (PDF)", reporte_pdf(p, cual), file_name=f"reporte_{nombre}_{p.id}.pdf",
+                           mime="application/pdf", icon=":material/picture_as_pdf:", use_container_width=True,
+                           key=f"pdf_{cual}")
+    col[3].download_button(f"Reporte {nombre} (HTML)", exportar.reporte_html(p, cual),
+                           file_name=f"reporte_{nombre}_{p.id}.html", mime="text/html", icon=":material/article:",
+                           use_container_width=True, key=f"html_{cual}")
 
 
 def reporte_v1():
@@ -154,9 +157,9 @@ def reporte_v1():
     st.html(ui.riesgos(riesgos))
     st.html(ui.seccion("Roadmap de cinco iniciativas"))
     st.html(ui.roadmap(rep.get("iniciativas", []), [r["titulo"] for r in riesgos]))
-    st.html(ui.seccion("Matriz de las 56 salvaguardas · v1 (evaluación inicial)",
-                       "Base del reporte: todas las salvaguardas con su estado, justificación y evidencia."))
-    st.html(ui.matriz56(p.v1, p.documentos))
+    # Plegada por defecto: con 56 filas alarga mucho la página; se despliega con un clic.
+    with st.expander("Matriz de las 56 salvaguardas · v1 (evaluación inicial)", icon=":material/table_rows:"):
+        st.html(ui.matriz56(p.v1, p.documentos))
 
 
 etapa = p.etapa
@@ -176,6 +179,9 @@ if len(opciones) > 1:
     st.segmented_control("Sección del análisis", opciones, format_func=VISTAS.get, key="vista", required=True,
                          disabled=ocupado, label_visibility="collapsed")
 vista = st.session_state.vista or etapa
+if st.session_state.get("vista_mostrada") not in (None, vista):
+    st.html(ui.subir_al_inicio(), unsafe_allow_javascript=True)  # sección nueva: empezar desde arriba
+st.session_state.vista_mostrada = vista
 
 # --------------------------------------------------------- Etapa 1-2: contexto
 if vista == "contexto" and etapa != "contexto":
@@ -267,7 +273,7 @@ elif vista == "evaluacion":
 elif vista == "reporte":
     st.html(ui.titular("Reporte inicial", f"{p.nombre} · línea base v1 del {p.v1.fecha}. Esta versión ya no se modifica."))
     reporte_v1()
-    exportes()
+    exportes("v1")
     if etapa == "reporte":  # la carga del PDF 2 solo mientras es el paso en curso
         st.html(ui.seccion("Etapa 5 · Avance de iniciativas (PDF 2)",
                            "El agente parte de esta evaluación (no de cero) y propone cambios que tú validas como auditor."))
@@ -339,26 +345,33 @@ elif vista == "actualizado":
     st.html(ui.roadmap(rep.get("roadmap", []), [r["titulo"] for r in riesgos_v1]))
     st.html(ui.seccion("Resumen ejecutivo actualizado"))
     st.html(ui.resumen_ejecutivo(rep.get("resumen_ejecutivo", {})))
-    st.html(ui.seccion("Matrices de las 56 salvaguardas", "Las salvaguardas modificadas en v2 aparecen resaltadas."))
-    t1, t2 = st.tabs(["v2 · Actualizada", "v1 · Inicial"])
-    with t2:
-        st.html(ui.matriz56(p.v1, p.documentos))
-    with t1:
-        st.html(ui.matriz56(p.v2, p.documentos, set(aprobados)))
-    exportes()
+    # Plegadas por defecto, como en el reporte inicial; se despliegan con un clic.
+    with st.expander("Matrices de las 56 salvaguardas · v2 y v1 (las modificadas en v2 aparecen resaltadas)",
+                     icon=":material/table_rows:"):
+        t1, t2 = st.tabs(["v2 · Actualizada", "v1 · Inicial"])
+        with t2:
+            st.html(ui.matriz56(p.v1, p.documentos))
+        with t1:
+            st.html(ui.matriz56(p.v2, p.documentos, set(aprobados)))
+    exportes("v2")
 
 # ------------------------------------------------------- consultas al agente
 mensajes = [m for m in p.chat if m["tipo"] == "texto"]
-if mensajes:
+# El chat solo se ofrece cuando hay algo que explicar: la ficha del PDF 1 ya generada o un reporte.
+# El historial se sigue mostrando en todas las etapas (incluye la prueba preliminar y los errores).
+CHAT_ACTIVO = (vista == "contexto" and bool(p.ficha)) or vista in ("reporte", "actualizado")
+if mensajes or CHAT_ACTIVO:
     st.html(ui.seccion("Conversación con el agente"))
     for m in mensajes:
         with st.chat_message(m["role"], avatar=AVATAR[m["role"]]):
             st.markdown(m["content"])
-# El chat solo se ofrece cuando hay algo que explicar: la ficha del PDF 1 ya generada o un reporte.
-# El historial se sigue mostrando en todas las etapas (incluye la prueba preliminar y los errores).
-CHAT_ACTIVO = (vista == "contexto" and bool(p.ficha)) or vista in ("reporte", "actualizado")
-pregunta_usuario = st.chat_input(f"Pregunta a {NOMBRE_AGENTE} por qué tomó una decisión o qué falta…",
-                                 disabled=ocupado) if CHAT_ACTIVO else None
+# El chat_input va DENTRO de un contenedor: en la raíz, Streamlit lo fija abajo y activa "pegarse al final",
+# que arrastra la página hasta abajo cada vez que crece (al cambiar de sección o abrir una matriz).
+pregunta_usuario = None
+if CHAT_ACTIVO:
+    with st.container(key="chat"):
+        pregunta_usuario = st.chat_input(f"Pregunta a {NOMBRE_AGENTE} por qué tomó una decisión o qué falta…",
+                                         disabled=ocupado)
 if pregunta_usuario:
     decir(pregunta_usuario, "user")
     pedir("consulta", pregunta=pregunta_usuario)

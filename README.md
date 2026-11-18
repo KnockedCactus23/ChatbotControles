@@ -9,7 +9,7 @@ Agente de IA que actúa como consultor de ciberseguridad (actividad **M3.6**). L
 | 3. Evaluación | **Matriz de las 56 salvaguardas** con aplicabilidad, uno de los 5 estados, justificación, evidencia, cita y observaciones. Calcula los indicadores de **implementación** y **cobertura** con las fórmulas de la actividad. |
 | 4. Reporte | **Resumen ejecutivo**, **5 riesgos**, **roadmap de 5 iniciativas** (quick win o proyecto) y **dashboard**. |
 | 5. Iniciativas (PDF 2) | Parte de la evaluación inicial y **propone** cambios con evidencia; el equipo los **aprueba, rechaza o deja pendientes**. Genera la **versión v2** sin perder la v1. |
-| Entregables | Excel con todas las hojas (contexto, matrices v1 y v2, indicadores, riesgos, roadmaps, cambios), CSV, reporte ejecutivo en **PDF** (máximo 5 páginas) o HTML y ficha de contexto en PDF o HTML, descargables desde la app. El prompt maestro se genera con `scripts/exportar_prompt.py`. |
+| Entregables | Separados por versión. En el **reporte inicial**: matriz v1 (CSV), Excel v1 y reporte ejecutivo inicial (PDF o HTML). En el **reporte actualizado**: matriz v2 (CSV), Excel v2 y reporte ejecutivo final (PDF o HTML). En el **contexto**: la ficha en PDF o HTML. El prompt maestro se genera con `scripts/exportar_prompt.py`. |
 
 **Escala obligatoria:** Implementado (1) · Parcialmente implementado (0.5) · No implementado (0) · No verificado (—) · No aplicable (—).
 
@@ -59,9 +59,10 @@ Está hecho con **Python + Streamlit** y usa la **API gratuita de Google Gemini*
 
 | Salida | Formato |
 |---|---|
-| Matriz de las 56 salvaguardas (v1 y v2) | Excel (con contexto, indicadores, riesgos, roadmaps, cambios y ajustes) y CSV |
-| Reporte ejecutivo | **PDF** listo para entregar (A4, v1 y v2, pensado para no pasar de 5 páginas) o HTML con el diseño de la app |
-| Ficha de contexto | PDF o HTML: las 10 dimensiones con página y cita de cada hallazgo, información faltante, ambigüedades, perfil de riesgo y ajustes del equipo. Se descarga desde la misma ficha o desde los entregables |
+| Matriz v1 y Excel v1 *(reporte inicial)* | CSV con las 56 salvaguardas de la evaluación inicial. Excel con contexto, matriz v1, indicadores v1, 5 riesgos, roadmap y ajustes |
+| Matriz v2 y Excel v2 *(reporte actualizado)* | CSV con las 56 salvaguardas actualizadas. Excel con contexto, matriz v2, indicadores v1 frente a v2, situación de los riesgos, estado de las iniciativas, roadmap actualizado, cambios del PDF 2 y ajustes. No repite la matriz v1 |
+| Reporte ejecutivo inicial / final | **PDF** listo para entregar (A4, máximo 5 páginas cada uno) o HTML con el diseño de la app. El inicial solo usa v1; el final usa v2 y su comparación con v1 |
+| Ficha de contexto | PDF o HTML: las 10 dimensiones con página y cita de cada hallazgo, información faltante, ambigüedades, perfil de riesgo y ajustes del equipo. Se descarga desde la sección Contexto |
 | Prompt maestro | Markdown, generado con `scripts/exportar_prompt.py` |
 
 ### Qué no hace
@@ -232,7 +233,10 @@ El repositorio ya incluye [`docs/prompt_maestro_centinela_ig1.md`](docs/prompt_m
 5. **Genera el reporte inicial.** Esto cierra la versión **v1**, que ya no se modifica.
 6. **Carga el PDF 2** (avance de iniciativas). El agente propone cambios. Como auditor, apruébalos, recházalos o déjalos pendientes; solo los aprobados se aplican.
 7. **Aplica los cambios aprobados.** Se genera la versión **v2** con la comparación de indicadores, los riesgos que cambiaron o permanecen, el estado de las iniciativas y el roadmap actualizado.
-8. **Descarga los entregables:** Excel, CSV, reporte ejecutivo y ficha de contexto (PDF o HTML).
+8. **Descarga los entregables de cada sección:**
+   - **Contexto:** la ficha.
+   - **Reporte inicial:** matriz v1, Excel v1 y reporte inicial.
+   - **Reporte actualizado:** matriz v2, Excel v2 y reporte final.
 
 **Navega entre las secciones del análisis** con la barra bajo el encabezado:
 - Siempre: **Contexto**, **Reporte inicial** y **Reporte actualizado** (cuando ya existen).
@@ -277,8 +281,8 @@ chatbot/
   schemas.py            Esquemas JSON de las respuestas estructuradas
   engine.py             Llamadas a Gemini por etapa, con reintentos, timeout y semilla fija
   almacen.py            Guardado automático en evaluaciones/
-  exportar.py           Excel, CSV, reporte HTML y prompt maestro
-  reporte_pdf.py        Reporte ejecutivo y ficha de contexto en PDF (fpdf2)
+  exportar.py           Excel y reporte HTML por versión (v1 o v2), CSV, ficha HTML y prompt maestro
+  reporte_pdf.py        Reporte ejecutivo inicial/final y ficha de contexto en PDF (fpdf2)
   ui.py                 Diseño: CSS y piezas HTML
   data/                 cis_v8_1_2.json generado localmente (no se sube al repositorio)
 scripts/

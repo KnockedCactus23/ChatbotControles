@@ -63,7 +63,13 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
   - siempre Contexto, Reporte inicial y Reporte actualizado;
   - la Evaluación 56 y la Validación PDF 2 solo mientras son el paso en curso;
   - lo ya cerrado es de solo lectura.
-  - La matriz v1 ahora se ve abierta en el reporte inicial. Se quitaron las copias plegables del reporte inicial dentro de la validación del PDF 2 y del reporte actualizado, porque ya se llega a él desde la barra.
+  - Las matrices de ambos reportes van plegadas y se despliegan con un clic. Se probó mostrarlas abiertas, pero alargaban demasiado la página. Se quitaron las copias plegables del reporte inicial dentro de la validación del PDF 2 y del reporte actualizado, porque ya se llega a él desde la barra.
+- **Botones por sección y entregables separados por versión:**
+  - Contexto: solo la ficha (PDF/HTML).
+  - Reporte inicial: matriz v1, Excel v1 y reporte ejecutivo inicial (PDF/HTML).
+  - Reporte actualizado: matriz v2, Excel v2 y reporte ejecutivo final (PDF/HTML).
+  - El Excel v2 y el reporte final no incluyen la matriz ni el reporte de la v1; solo la comparación de indicadores. Cada reporte PDF de la evaluación de prueba ocupa 3 páginas.
+- **Desplazamiento corregido:** la página ya no baja sola al cambiar de sección o al abrir una matriz. La causa era el chat fijo abajo de Streamlit, que activa "pegarse al final"; ahora el chat va en su sección y cada sección nueva empieza arriba. Comprobado en el navegador.
 - **Ficha de contexto exportable en PDF y HTML** (`ficha_pdf`, `ficha_html`). Incluye las 10 dimensiones con página, cita y verificación de cada hallazgo, la información faltante, las ambigüedades, el perfil de riesgo y los ajustes del equipo (Etapa 2.5). Se descarga desde la propia ficha y desde los entregables de los reportes.
 - Bitácora de validaciones visible en la barra lateral.
 

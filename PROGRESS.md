@@ -69,6 +69,19 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
   - Reporte inicial: matriz v1, Excel v1 y reporte ejecutivo inicial (PDF/HTML).
   - Reporte actualizado: matriz v2, Excel v2 y reporte ejecutivo final (PDF/HTML).
   - El Excel v2 y el reporte final no incluyen la matriz ni el reporte de la v1; solo la comparación de indicadores. Cada reporte PDF de la evaluación de prueba ocupa 3 páginas.
+- **Cambio de proveedor: de Gemini a la API de Claude** (Claude Sonnet 5.5 por defecto; Haiku 5.5 para depurar). Optimizado para ahorrar tokens sin bajar la calidad:
+  - caché de prompts donde se reutiliza (lotes de la evaluación, ficha regenerada, chat);
+  - documento como texto paginado en vez del PDF;
+  - ficha resumida y JSON compacto en las etapas posteriores;
+  - `max_tokens` por etapa.
+  - Se añadieron el panel de consumo (tokens, caché y costo estimado por llamada) y el reintento del servidor si el filtro de seguridad declina.
+  - Ya no hay temperatura 0 ni semilla (Sonnet 5.5 no las admite); la consistencia la dan las reglas del código.
+  - Corrección tras la primera prueba con Haiku:
+    - **400 "compiled grammar is too large"** en la ficha. Se resolvió compactando los esquemas con `$defs` (6.5K → 2.5K caracteres, mismas restricciones), verificado contra la API con Haiku y Sonnet.
+    - Haiku en esfuerzo "high" agotaba el límite razonando; ahora usa su valor por defecto, "medium".
+    - La caché no se leía entre lotes porque el esquema cambiaba por lote; ahora es el mismo.
+  - Prueba real con Haiku 5.5 sobre NexoPay (ficha + 56 salvaguardas): 39 de 39 citas de la ficha verificadas, cobertura 69.6 %, implementación 48.7 %, US$0.031 en total. Los lotes 2 y 3 leyeron 32K tokens de la caché.
+  - Pendiente: corrida completa con Sonnet 5.5 (≈ US$1–1.60).
 - **Correcciones del análisis del prompt (F1–F10, A–D).** Se aplicaron todas salvo B3 y D2 (ver abajo).
   - Etapa 5: una decisión por salvaguarda relacionada, con segunda pasada si falta alguna; actualización de evidencia; pendientes por salvaguarda; alertas de contradicciones y fechas.
   - Etapa 5.6: situación de riesgos e iniciativas calculada en código, severidad residual, 5 riesgos vigentes (v2) para el roadmap y solo cambios aprobados como mitigación.
@@ -90,7 +103,7 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 
 ## Verificación
 
-- **31 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
+- **35 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
 - **Prueba real con Gemini** y dos PDF ficticios, de punta a punta:
   - ficha con 20 de 20 citas verificadas;
   - evaluación v1 con implementación 31.6 % y cobertura 33.9 %, idéntica en dos corridas;
@@ -112,5 +125,5 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 
 ## Limitaciones conocidas
 
-- Plan gratuito de Gemini: latencia variable y saturación (503). Si pasa, usar `GEMINI_MODEL=gemini-3.1-flash-lite`.
+- La API de Claude tiene costo (≈ US$1 por evaluación completa con Sonnet 5.5, según la estimación). El panel "Consumo de Claude" muestra lo real.
 - PDF escaneados sin texto: las citas no se pueden verificar y todo queda No verificado.

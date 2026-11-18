@@ -207,7 +207,7 @@ def prompt_maestro_md() -> str:
             "# Fuente normativa\nEl catálogo oficial CIS Controls v8.1 IG1 (56 salvaguardas: ID, título, descripción y control) "
             "se carga desde el Excel oficial de CIS y se incluye sin modificar en cada evaluación. "
             "No se reproduce aquí por su licencia (CC BY-NC-ND 4.0).\n\n"
-            "# Configuración técnica\n- Plataforma: Google Gemini (API, plan gratuito).\n- Temperatura 0 y semilla fija (reproducibilidad).\n"
+            "# Configuración técnica\n- Plataforma: API de Claude (Anthropic), modelo Claude Sonnet 5.5, razonamiento adaptativo con esfuerzo fijo.\n- Consistencia: instrucciones fijas, salida estructurada y reglas deterministas en el código (estados, indicadores y situación de riesgos e iniciativas).\n"
             "- Salida estructurada con JSON Schema en cada etapa.\n- Validaciones automáticas: 56 salvaguardas siempre presentes, "
             "verificación de cada cita contra el documento, indicadores calculados por el sistema y cambios del PDF 2 sujetos a aprobación.\n\n"
             "# Instrucciones por etapa\n\n" + "\n\n".join(secciones))

@@ -4,7 +4,7 @@ Arquetipo "craft oscuro": neutros fríos de croma muy bajo, bordes de 1px,
 un solo acento (verde azulado) y colores de estado con el mismo peso.
 Momento firma: el anillo de implementación y la matriz de controles en la barra lateral.
 
-Todo texto que viene del usuario o de Gemini pasa por ``esc()`` antes de
+Todo texto que viene del usuario o de Claude pasa por ``esc()`` antes de
 insertarse en HTML.
 """
 
@@ -684,6 +684,20 @@ def tarjeta_completada(titulo: str, texto: str) -> str:
     return (f'<div class="barra carga" aria-hidden="true"><i style="--p:1"></i></div>'
             f'<div class="verif-fin" role="status" aria-live="polite"><span class="check" aria-hidden="true"><i></i></span>'
             f'<div><p class="verif-fin-titulo">{esc(titulo)}</p><p class="verif-fin-texto">{esc(texto)}</p></div></div>')
+
+
+def consumo(filas: list[dict]) -> str:
+    """Tokens por llamada: la caché aparece como lectura (barata) o escritura; el costo es una estimación."""
+    def n(x):
+        return f"{x:,}".replace(",", " ")
+    cuerpo = "".join(f'<tr><td>{esc(f["etapa"])}</td><td class="mono">{n(f["entrada"])}</td>'
+                     f'<td class="mono">{n(f["cache_leida"])}</td><td class="mono">{n(f["cache_escrita"])}</td>'
+                     f'<td class="mono">{n(f["salida"])}</td><td class="mono">{f["usd"]:.3f}</td></tr>' for f in filas[-30:])
+    leida = sum(f["cache_leida"] for f in filas)
+    total = leida + sum(f["entrada"] + f["cache_escrita"] for f in filas)
+    return (f'<p class="aviso">Entrada servida desde caché: {100 * leida / total if total else 0:.0f}%</p>'
+            f'<div class="tabla-envoltura"><table class="tabla"><thead><tr><th>Etapa</th><th>Entrada</th><th>Caché leída</th>'
+            f'<th>Caché escrita</th><th>Salida</th><th>US$</th></tr></thead><tbody>{cuerpo}</tbody></table></div>')
 
 
 def avisos(lista: list[str]) -> str:

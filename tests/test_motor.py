@@ -9,11 +9,11 @@ import openpyxl
 import pytest
 from pypdf import PdfReader
 
-from chatbot import controls, exportar
+from chatbot import controls, engine, exportar
 from chatbot.documentos import Documento
 from chatbot.engine import ErrorChatbot, Motor
 from chatbot.reporte_pdf import ficha_pdf, reporte_pdf
-from chatbot.state import Proyecto
+from chatbot.state import Proyecto, lotes_por_control
 from tests.conftest import PAGINAS
 
 FICHA = {
@@ -59,14 +59,16 @@ def _reporte():
 
 @pytest.fixture
 def motor_simulado(monkeypatch):
-    monkeypatch.setenv("GEMINI_API_KEY", "test")
-    motor = Motor()
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    # El catálogo de prueba (18 salvaguardas) cabe en un lote; con lotes de 6 se comprueba la caché entre lotes.
+    monkeypatch.setattr(engine, "lotes_por_control", lambda: lotes_por_control(tamano_max=6))
+    motor = Motor(modelo="claude-sonnet-5-5")
     llamadas = []
 
     def generar(**kw):
         llamadas.append(kw)
-        sistema = kw["config"].system_instruction
-        texto_usuario = " ".join(p.get("text", "") for p in kw["contents"][0]["parts"] if isinstance(p, dict))
+        sistema = " ".join(b["text"] for b in kw["system"])
+        texto_usuario = " ".join(b.get("text", "") for b in kw["messages"][0]["content"])
         if "Etapa 2" in sistema:
             datos = FICHA
         elif "Etapa 3 —" in sistema:
@@ -97,9 +99,14 @@ def motor_simulado(monkeypatch):
             datos = _reporte()
         else:
             datos = {"mensaje": "Explicación del agente"}
-        return SimpleNamespace(text=json.dumps(datos), prompt_feedback=None, candidates=[])
+        uso = SimpleNamespace(input_tokens=200, output_tokens=100, cache_creation_input_tokens=0,
+                              cache_read_input_tokens=9000)
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text=json.dumps(datos))], stop_reason="end_turn",
+                               model=kw["model"], usage=uso)
 
-    monkeypatch.setattr(motor.client.models, "generate_content", generar)
+    cliente = SimpleNamespace(beta=SimpleNamespace(messages=SimpleNamespace(create=generar)))
+    cliente.with_options = lambda **_: cliente
+    motor.client = cliente
     return motor, llamadas
 
 
@@ -108,7 +115,7 @@ def test_flujo_completo(motor_simulado):
     p = Proyecto()
     p.documentos["pdf1"] = Documento("pdf1", "caso", "texto", PAGINAS)
 
-    assert "Centinela IG1" in llamadas[0]["config"].system_instruction if motor.explain() else False
+    assert "Centinela IG1" in llamadas[0]["system"][0]["text"] if motor.explain() else False
 
     motor.context_sheet(p)
     hallazgos = p.ficha["dimensiones"]["proteccion"]["hallazgos"]
@@ -121,11 +128,20 @@ def test_flujo_completo(motor_simulado):
     assert p.v1.matriz["10.1"].estado == "implementado"
     assert p.v1.matriz["11.1"].estado == "no_verificado"             # cita inventada → descartada
     assert p.v1.matriz["17.1"].estado == "no_verificado"             # omitida → visible como pendiente
-    assert "preguntas" not in llamadas[-1]["config"].response_json_schema["properties"]  # sin preguntas Sí/No
-    cfg = llamadas[-1]["config"]
-    assert cfg.temperature == 0 and cfg.seed is not None              # reproducible (R9)
-    assert "R8." in cfg.system_instruction and "Criterio de prueba 10.1" in cfg.system_instruction
-    assert "Criterio de prueba 10.2" not in cfg.system_instruction    # solo IG1
+    assert "preguntas" not in llamadas[-1]["output_config"]["format"]["schema"]["properties"]  # sin preguntas Sí/No
+    sistema = " ".join(b["text"] for b in llamadas[-1]["system"])
+    assert "R8." in sistema and "Criterio de prueba 10.1" in sistema
+    assert "Criterio de prueba 10.2" not in sistema                   # solo IG1
+    # Ahorro de tokens: el bloque común es idéntico en todas las llamadas (caché) y los lotes de la evaluación
+    # comparten documento + ficha cacheados; solo cambia la lista de salvaguardas, al final.
+    assert len({c["system"][0]["text"] for c in llamadas}) == 1
+    lotes = [c for c in llamadas if "Etapa 3 —" in c["system"][1]["text"]]
+    assert len(lotes) > 1 and all(c["messages"][0]["content"][:2] == lotes[0]["messages"][0]["content"][:2] for c in lotes)
+    assert lotes[0]["messages"][0]["content"][1]["cache_control"] == {"type": "ephemeral"}
+    # El esquema es parte del prefijo cacheado: debe ser el mismo en todos los lotes (si no, la caché no se lee).
+    assert all(c["output_config"] == lotes[0]["output_config"] for c in lotes)
+    assert "[Página 1]" in lotes[0]["messages"][0]["content"][0]["text"]  # texto paginado, no el PDF
+    assert '"cita"' not in lotes[0]["messages"][0]["content"][1]["text"]  # ficha resumida: sin citas repetidas
 
     motor.report(p)
     assert p.v1.cerrada
@@ -138,7 +154,9 @@ def test_flujo_completo(motor_simulado):
     # F1: 5.1 quedó sin decisión en la primera pasada; la segunda la obtuvo con su motivo.
     assert [(x["id"], x["motivo"]) for x in p.sin_cambio] == [("5.1", "sin_evidencia")]
     assert any("segunda pasada" in a for a in p.avisos)
-    assert llamadas[-1]["config"].response_json_schema["properties"]["decisiones"]["minItems"] == 1
+    segunda = llamadas[-1]
+    assert segunda["output_config"]["format"]["schema"]["properties"]["decisiones"]["items"]["properties"]["id"]["enum"] == ["5.1"]
+    assert segunda["messages"][0]["content"][:2] == llamadas[-2]["messages"][0]["content"][:2]  # mismo prefijo cacheado
     assert p.alertas == ["El PDF 2 está fechado antes que el PDF 1."]                                   # C2
     p.decidir("6.1", "aprobado")
     p.crear_v2()
@@ -148,7 +166,7 @@ def test_flujo_completo(motor_simulado):
     assert all(r["situacion"] == "permanece" and r["severidad_residual"] == "alta" for r in rep["riesgos"])
     assert all(e["estado"] == "pendiente" for e in rep["iniciativas_estado"])        # 11.1 sigue sin implementar
     assert [r["titulo"] for r in rep["riesgos_v2"]] == [f"Riesgo vigente {n}" for n in range(1, 6)]  # F7
-    instruccion = llamadas[-1]["contents"][0]["parts"][0]["text"]
+    instruccion = llamadas[-1]["messages"][0]["content"][0]["text"]
     assert "CALCULADA por el sistema" in instruccion and "NO aprobados" in instruccion
     assert p.v1.matriz["6.1"].estado == "no_verificado" and p.v2.matriz["6.1"].estado == "implementado"
 
@@ -189,6 +207,7 @@ def test_flujo_completo(motor_simulado):
 
 
 def test_sin_api_key(monkeypatch):
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
     with pytest.raises(ErrorChatbot):
         Motor()

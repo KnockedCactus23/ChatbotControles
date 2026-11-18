@@ -57,8 +57,8 @@ Criterios de decisión (aplícalos igual en las 56, R9):
 El catálogo oficial CIS Controls v8.1 IG1 (56 salvaguardas: ID, título, descripción y control) se carga desde el Excel oficial de CIS y se incluye sin modificar en cada evaluación. No se reproduce aquí por su licencia (CC BY-NC-ND 4.0).
 
 # Configuración técnica
-- Plataforma: Google Gemini (API, plan gratuito).
-- Temperatura 0 y semilla fija (reproducibilidad).
+- Plataforma: API de Claude (Anthropic), modelo Claude Sonnet 5.5, razonamiento adaptativo con esfuerzo fijo.
+- Consistencia: instrucciones fijas, salida estructurada y reglas deterministas en el código (estados, indicadores y situación de riesgos e iniciativas).
 - Salida estructurada con JSON Schema en cada etapa.
 - Validaciones automáticas: 56 salvaguardas siempre presentes, verificación de cada cita contra el documento, indicadores calculados por el sistema y cambios del PDF 2 sujetos a aprobación.
 

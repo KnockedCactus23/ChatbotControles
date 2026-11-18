@@ -3,7 +3,7 @@
 Etapas: contexto (PDF 1) → validación de la ficha → evaluación de las 56 salvaguardas →
 reporte inicial (v1) → avance de iniciativas (PDF 2) con validación del auditor → reporte (v2).
 
-Las llamadas a Gemini se piden con ``pedir()`` y se ejecutan al FINAL del script, cuando la
+Las llamadas a Claude se piden con ``pedir()`` y se ejecutan al FINAL del script, cuando la
 página ya se dibujó con los controles deshabilitados; así no quedan botones viejos activos.
 Todo se guarda automáticamente en ``evaluaciones/`` para conservar v1 y v2 entre sesiones.
 """
@@ -105,12 +105,15 @@ with st.sidebar:
     if p.avisos:
         with st.expander(f"Bitácora de validaciones · {len(p.avisos)}"):
             st.html(ui.avisos(p.avisos))
+    if p.consumo:
+        with st.expander(f"Consumo de Claude · ≈ US$ {sum(c['usd'] for c in p.consumo):.2f}"):
+            st.html(ui.consumo(p.consumo))
 
 # ------------------------------------------------------------------ cuerpo
 st.html(ui.encabezado(p.etapa))
 if motor is None:
-    st.error(f"{st.session_state.get('error_inicio')}. Copia `.env.example` como `.env` y pon tu `GEMINI_API_KEY` "
-             "(gratis en aistudio.google.com/apikey).", icon=":material/key:")
+    st.error(f"{st.session_state.get('error_inicio')}. Copia `.env.example` como `.env` y pon tu `ANTHROPIC_API_KEY` "
+             "(se crea en platform.claude.com, en API keys).", icon=":material/key:")
     st.stop()
 
 lugar_progreso = st.empty()  # cada etapa lo reubica junto a su botón principal
@@ -423,6 +426,8 @@ if tarea:
         if tarea["tipo"] == "evaluar":
             p.v1 = None  # la evaluación incompleta no se conserva; se puede reintentar desde la ficha
     finally:
+        p.consumo.extend(motor.consumo)  # tokens y costo de lo que se acaba de ejecutar
+        motor.consumo.clear()
         st.session_state.tarea = None
         guardar()
     st.rerun()

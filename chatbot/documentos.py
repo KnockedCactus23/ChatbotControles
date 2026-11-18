@@ -1,6 +1,6 @@
 """Documentos de evidencia del caso (PDF 1: contexto, PDF 2: iniciativas, o texto pegado).
 
-Además de enviarse a Gemini, el texto de cada página se extrae localmente para VERIFICAR las
+El texto de cada página se extrae localmente para VERIFICAR las
 citas que devuelve el modelo (reglas R3 y R6): si una cita no aparece en el documento, la
 conclusión no se acepta como evidencia documental.
 """
@@ -21,7 +21,7 @@ class Documento:
     nombre: str                # nombre del archivo o "Texto proporcionado"
     tipo: str                  # "pdf" | "texto"
     paginas: list[str] = field(default_factory=list)
-    archivo: str = ""          # ruta local del PDF guardado (para reenviarlo a Gemini)
+    archivo: str = ""          # ruta local del PDF guardado (se reenvía como archivo solo si no tiene texto extraíble)
 
     @property
     def etiqueta(self) -> str:

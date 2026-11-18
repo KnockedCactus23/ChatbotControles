@@ -11,7 +11,7 @@ Agente de IA para la actividad **M3.6** (diseño de un agente para la evaluació
 7. **Chat de consultas** (`engine.ask`, solo lectura, no cambia estados): la entrada solo existe en la ficha de contexto ya generada y en los reportes (`reporte`, `actualizado`) — `CHAT_ACTIVO` en `app.py`. El historial se muestra siempre (ahí salen la prueba preliminar y los errores). Usa la **vista** (no la etapa), así que también funciona al consultar la ficha o el reporte inicial desde etapas posteriores.
 8. **Navegación entre secciones** (`st.segmented_control`, clave `vista`; decisión del equipo, 2026-11-17): siempre Contexto, Reporte inicial y Reporte actualizado (estos dos cuando existen). La Evaluación 56 y la Validación PDF 2 solo aparecen mientras son el paso en curso. Las vistas de etapas pasadas son de **solo lectura**: no se regenera la ficha ni se sube el PDF 2 desde ellas, para no romper R10–R12. Al avanzar de etapa (`etapa_vista`), la vista pasa al paso nuevo. En los reportes las matrices van **plegadas** (`st.expander`) porque alargan mucho la página: la v1 en el reporte inicial, y la v2 y la v1 en pestañas en el actualizado. Solo en la Evaluación 56 en curso la matriz va abierta.
 
-Proyecto académico de equipo. **Decisión del equipo (2026-11-03): usa la API gratuita de Google Gemini** con el SDK oficial `google-genai`. No mezclar otros proveedores ni capas como LangChain. Este archivo se llama CLAUDE.md solo porque es la configuración de Claude Code (asistente de desarrollo).
+Proyecto académico de equipo. **Decisión del equipo (2026-11-17): usa la API de Claude** con el SDK oficial `anthropic` (antes era Gemini gratuito; se cambió por la calidad del razonamiento). No mezclar otros proveedores ni capas como LangChain. Este archivo se llama CLAUDE.md solo porque es la configuración de Claude Code (asistente de desarrollo).
 
 ## Decisiones del equipo (no cambiarlas sin preguntar)
 - Alcance: **solo IG1** (56 salvaguardas; están en 15 controles: 13, 16 y 18 no tienen IG1). `controls.IG_EVALUADO = 1`.
@@ -28,9 +28,11 @@ Proyecto académico de equipo. **Decisión del equipo (2026-11-03): usa la API g
 
 ## Stack
 - Python 3.14 (el `python3` del sistema es 3.15 y algunas dependencias aún no tienen wheels).
-- `google-genai`, `streamlit`, `python-dotenv`, `openpyxl` (importador y Excel), `pypdf` (texto del PDF para verificar citas), `fpdf2` (reporte ejecutivo en PDF; fuentes estándar con cp1252, sin fuentes del sistema).
-- Modelo por defecto `gemini-3.5-flash-lite` (`GEMINI_MODEL` en `.env`; el equipo usa `gemini-3.1-flash-lite` cuando el otro está saturado). No usar `gemini-2.5-flash` (obsoleto desde 2026-12-01).
-- Plan gratuito: límites por minuto/día y **Google puede usar el contenido**: usar casos ficticios o los del profesor.
+- `anthropic`, `streamlit`, `python-dotenv`, `openpyxl` (importador y Excel), `pypdf` (texto del PDF para verificar citas), `fpdf2` (reporte ejecutivo en PDF; fuentes estándar con cp1252, sin fuentes del sistema).
+- Modelo por defecto `claude-sonnet-5-5` (`CLAUDE_MODEL` en `.env`); `claude-haiku-5-5` solo para depurar. Un solo modelo en toda una evaluación (consistencia).
+- Sonnet 5.5: `temperature`/`top_p` dan 400 (sin semilla); el razonamiento es adaptativo (no se manda `thinking`) y el esfuerzo es fijo (`engine.ESFUERZO`); cambiarlo entre llamadas invalida la caché. Forced `tool_choice` da 400: se usa `output_config.format` (JSON Schema).
+- `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) en Sonnet/Opus 5.5: si el clasificador de seguridad declina (p. ej. "cyber"), el servidor reintenta en otro modelo. Haiku 5.5 no lo admite (`CON_FALLBACK`).
+- Usar casos ficticios o los del profesor.
 
 ## Estructura
 ```
@@ -40,8 +42,8 @@ chatbot/
   documentos.py            # Documento (páginas de texto), leer_pdf(), verificar_cita()
   state.py                 # Resultado, Version, Cambio, Proyecto; validar_resultado(), indicadores(), validar_reporte()
   prompts.py               # Prompt maestro (identidad, alcance, R1–R12, escala) + tarea por etapa; DIMENSIONES
-  schemas.py               # JSON Schemas por etapa (minItems/maxItems para 56 por lote, 5 riesgos, 5 iniciativas)
-  engine.py                # explain, context_sheet, evaluate, report, analyze_initiatives, updated_report, ask
+  schemas.py               # JSON Schemas por etapa (sus minItems/maxItems se quitan al enviar: Claude no los admite; el código exige los conteos)
+  engine.py                # explain, context_sheet, evaluate, report, analyze_initiatives, updated_report, ask; caché y consumo
   almacen.py               # guardar/cargar/listar proyectos en evaluaciones/ (EVALUACIONES_DIR para pruebas)
   exportar.py              # excel(p, "v1"|"v2"), reporte_html(p, "v1"|"v2"), csv_matriz, ficha_html (_pagina_html); prompt_maestro_md()
   reporte_pdf.py           # reporte_pdf(p, "v1"|"v2") (Entregable 3; cada uno debe caber en 5 páginas, lo verifica test_motor) y ficha_pdf()
@@ -76,22 +78,30 @@ tests/                     # conftest (catálogo falso: 18 IG1), test_state (reg
   - registra campos vacíos.
   - Aparte, `citas_repetidas()` señala una misma cita usada en varias salvaguardas (A2).
 - La ficha usa `resumen_contexto` (D5); `normalizar_ficha()` convierte las guardadas con `resumen_ejecutivo`.
-- Reproducibilidad (R9): temperatura 0 y `SEMILLA` fija.
+- Consistencia (R9): no hay temperatura ni semilla en Sonnet 5.5; la consistencia la dan las instrucciones fijas, la salida estructurada y las reglas deterministas del código.
 
 ## Convenciones
 - Código y comentarios en español; identificadores sin acentos.
-- El estado en Python es la fuente de verdad; Gemini propone y Python valida.
-- Salida estructurada siempre (`response_mime_type="application/json"` + `response_json_schema`); validar en Python con `.get()`.
+- El estado en Python es la fuente de verdad; Claude propone y Python valida.
+- Salida estructurada siempre (`output_config.format` con `json_schema`); validar en Python con `.get()`. Revisar `stop_reason` (`refusal`, `max_tokens`) antes de leer el contenido.
 - Nunca escribir la API key en el código ni subir `.env`.
 - **Licencia CIS (CC BY-NC-ND 4.0):** nunca versionar ni traducir/modificar los textos de CIS; se usan en inglés tal cual. El prompt maestro exportado NO incluye el catálogo. Mostrar `controls.atribucion()`.
 - Las pruebas usan un catálogo falso (`CIS_CATALOGO`); no dependen del Excel ni del JSON real.
-- Gemini gratuito: latencia muy variable. `REINTENTOS` (SDK) cubre 429/5xx/timeouts y conexión; `TIMEOUT_S`=30 y `TIMEOUT_LARGO_S`=120 (PDF/salidas largas) por intento. El SDK ya reintenta timeouts: no añadir un bucle propio.
+- `REINTENTOS`=3 (lo hace el SDK: 408/409/429/5xx/529, timeouts y conexión); `TIMEOUT_S`=120 y `TIMEOUT_LARGO_S`=420 por intento. No añadir un bucle propio.
+- **Ahorro de tokens (no romperlo):**
+  - **Caché de prompts (5 min) solo donde hay reutilización**, con `_llamar(..., cachear=True)`: lotes de la evaluación, ficha regenerada y consultas. **El esquema de salida es parte del prefijo cacheado:** dos llamadas con esquemas distintos no comparten caché. Por eso los 3 lotes usan el MISMO esquema (los 56 ids) y el código filtra los de cada lote; con un esquema por lote se midieron 0 tokens leídos. Las llamadas únicas (reportes, PDF 2) no se cachean: pagarían la escritura (1.25x) sin leerla. `prompts.base()` va primero e idéntico; nada variable antes de los puntos de caché.
+  - **Esquemas compactos:** `_esquema_para_api()` quita `minItems`/`maxItems` y mueve subesquemas repetidos a `$defs`. Sin esto, la ficha da 400 "compiled grammar is too large".
+  - **Esfuerzo por modelo:** `ESFUERZO` = el valor por defecto de cada uno (Sonnet 5.5 "high", Haiku 5.5 "medium"). Haiku en "high" gastó los 24K tokens de la ficha razonando, sin responder.
+  - **Prefijo de mensajes.** Documento y contexto llevan `cache_control` (5 min) para que los lotes de la evaluación, la segunda pasada de la Etapa 5 y las consultas seguidas los lean de caché. Lo que cambia (lote, pregunta) va al final.
+  - **Documento como texto paginado** (`Documento.texto_completo()`), no como PDF; solo un PDF sin texto va como archivo.
+  - **Payload compacto.** `ficha_resumida()` sin citas para las etapas posteriores, JSON compacto y `matriz_compacta()` sin nombres (están en el catálogo). `MAX_TOKENS` por etapa.
+  - **Consumo.** `Motor.consumo` → `Proyecto.consumo` (panel de la barra lateral). Verificar `cache_read_input_tokens` > 0 tras cambiar prompts.
 - Tareas lentas en la UI: `pedir(tipo)` → rerun con controles deshabilitados → se ejecutan al final del script con la tarjeta de progreso en `lugar_progreso`.
 
 ## Diseño (UI)
 - Arquetipo "craft oscuro"; colores de los 5 estados en tokens `--st-implementado`, `--st-parcial`, `--st-no_implementado`, `--st-no_verificado`, `--st-no_aplicable`. No hex sueltos.
 - `st.html` sanitiza: **elimina `<svg>`** y **descarta un `<style>` completo si contiene `<`** (incluso en comentarios; usar `\3c`).
-- Todo texto de Gemini o del usuario pasa por `ui.esc()`.
+- Todo texto de Claude o del usuario pasa por `ui.esc()`.
 - **`st.chat_input` nunca en la raíz**, siempre dentro de `st.container(key="chat")`. En la raíz, Streamlit lo fija abajo y activa "pegarse al final" (`stAppScrollToBottomContainer`), que arrastra la página hasta abajo al cambiar de sección o abrir un plegable.
 - Al cambiar de sección se sube al inicio con `ui.subir_al_inicio()` (`st.html(..., unsafe_allow_javascript=True)`), solo cuando cambia `vista_mostrada`.
 - Respetar `prefers-reduced-motion`; revisar en 375px y escritorio.
@@ -101,9 +111,9 @@ tests/                     # conftest (catálogo falso: 18 IG1), test_state (reg
 python3.14 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python scripts/importar_cis.py "ruta/CIS_Controls_Version_8.1.2___March_2025.xlsx"   # genera el catálogo local
-cp .env.example .env            # y poner GEMINI_API_KEY (gratis en aistudio.google.com/apikey)
+cp .env.example .env            # y poner ANTHROPIC_API_KEY (platform.claude.com → API keys)
 streamlit run app.py
-python -m pytest -q             # 31 pruebas sin API
+python -m pytest -q             # 35 pruebas sin API
 python scripts/exportar_prompt.py   # regenera docs/prompt_maestro_centinela_ig1.md
 ```
 

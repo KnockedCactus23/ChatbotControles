@@ -23,11 +23,11 @@ Agente de IA que actúa como consultor de ciberseguridad (actividad **M3.6**). L
 - **El diagnóstico inicial no se pierde:** la v1 queda fija al cerrarse y todo se guarda automáticamente.
 - **Matriz, indicadores e informe no se contradicen:** los indicadores los calcula el sistema desde la matriz, y los riesgos e iniciativas solo pueden citar salvaguardas que son brecha.
 - **El agente puede explicar el origen de sus conclusiones:** cada fila tiene página y cita, y puedes preguntarle en el chat por qué decidió algo.
-- **Reproducibilidad:** temperatura 0 y semilla fija, así que el mismo documento da la misma evaluación.
+- **Consistencia:** instrucciones fijas, salida estructurada y reglas deterministas en el código. Los estados verificados, los indicadores y la situación de riesgos e iniciativas no dependen del azar del modelo.
 
 El agente **no hace preguntas Sí/No al cliente**: se apega a la actividad y solo usa la evidencia documental de los PDF. Lo que no está documentado queda como No verificado.
 
-Está hecho con **Python + Streamlit** y usa la **API gratuita de Google Gemini** (SDK oficial `google-genai`).
+Está hecho con **Python + Streamlit** y usa la **API de Claude** (SDK oficial `anthropic`), con **Claude Sonnet 5.5** por defecto.
 
 ---
 
@@ -81,7 +81,7 @@ Está hecho con **Python + Streamlit** y usa la **API gratuita de Google Gemini*
 |---|---|
 | **Python 3.12, 3.13 o 3.14** | El código necesita 3.12 o superior. Python 3.15 todavía puede fallar al instalar dependencias porque algunas no tienen versión compilada para él. Comprueba tu versión con `python3 --version`. |
 | **Git** | Para clonar el repositorio. |
-| **Cuenta de Google** | Para obtener una API key gratuita de Gemini. |
+| **Cuenta en platform.claude.com** | Para obtener una API key de Claude, con saldo. Una evaluación completa con Sonnet 5.5 cuesta alrededor de un dólar. |
 | **Excel de CIS Controls v8.1** | Se descarga gratis de CIS (paso 4). No está en el repositorio por su licencia. |
 
 Si no tienes una versión compatible de Python:
@@ -153,10 +153,10 @@ Por eso no está en el repositorio: cada integrante lo genera desde el Excel ofi
 
 Debe decir `Listo: 18 controles y 153 salvaguardas`. Esto crea `chatbot/data/cis_v8_1_2.json`, que está en `.gitignore`.
 
-### 5. Obtén tu API key de Gemini (gratis)
+### 5. Obtén tu API key de Claude
 
-1. Entra a **[aistudio.google.com/apikey](https://aistudio.google.com/apikey)** con tu cuenta de Google.
-2. Da clic en **Create API key** y cópiala.
+1. Entra a **[platform.claude.com](https://platform.claude.com)**, ve a **API keys** y crea una.
+2. Revisa que la cuenta tenga saldo (en **Billing**).
 
 ### 6. Configura el archivo `.env`
 
@@ -175,11 +175,11 @@ copy .env.example .env
 Abre `.env` y pega tu key, sin comillas ni espacios:
 
 ```
-GEMINI_API_KEY=AIza...tu_key...
-GEMINI_MODEL=gemini-3.5-flash-lite
+ANTHROPIC_API_KEY=sk-ant-...tu_key...
+CLAUDE_MODEL=claude-sonnet-5-5
 ```
 
-Si ese modelo está saturado, cambia la segunda línea a `GEMINI_MODEL=gemini-3.1-flash-lite`.
+Para depurar o probar cambios gastando centavos, usa `CLAUDE_MODEL=claude-haiku-5-5`. Para las corridas que vas a entregar, usa `claude-sonnet-5-5` en todas las etapas.
 
 > `.env` está en `.gitignore` y **nunca debe subirse al repositorio**. Cada integrante usa su propia key.
 
@@ -199,7 +199,7 @@ Se abrirá en el navegador en **http://localhost:8501**. Para detenerlo, presion
 
 ### 8. (Opcional) Corre las pruebas
 
-Las pruebas simulan a Gemini y usan un catálogo CIS de prueba, así que no gastan cuota ni necesitan API key ni el Excel.
+Las pruebas simulan a Claude y usan un catálogo CIS de prueba, así que no gastan saldo ni necesitan API key ni el Excel.
 
 **macOS / Linux:**
 ```bash
@@ -211,7 +211,7 @@ Las pruebas simulan a Gemini y usan un catálogo CIS de prueba, así que no gast
 .venv\Scripts\python -m pytest -q
 ```
 
-Deben pasar las 31 pruebas.
+Deben pasar las 35 pruebas.
 
 ### 9. (Opcional) Regenera el prompt maestro
 
@@ -251,7 +251,7 @@ Puedes **preguntarle al agente** en el chat por qué tomó una decisión. Respon
 
 > **Para la demo:** la bitácora de validaciones de la barra lateral muestra cada vez que el sistema corrigió al modelo. Por ejemplo: "propuso No implementado sin cita; queda No verificado". Es evidencia de una limitación del modelo y de cómo se controla.
 
-> **Usa casos ficticios o los del profesor.** En el plan gratuito de Gemini, Google puede usar el contenido enviado para mejorar sus productos.
+> **Usa casos ficticios o los del profesor.** No envíes documentos reales de una empresa sin autorización.
 
 ---
 
@@ -261,13 +261,25 @@ Variables en `.env`:
 
 | Variable | Obligatoria | Valor por defecto | Descripción |
 |---|---|---|---|
-| `GEMINI_API_KEY` | Sí | — | Tu API key de Google AI Studio. |
-| `GEMINI_MODEL` | No | `gemini-3.5-flash-lite` | Modelo de Gemini. Si el modelo por defecto está saturado, `gemini-3.1-flash-lite` suele responder más rápido y también es gratuito. |
+| `ANTHROPIC_API_KEY` | Sí | — | Tu API key de Claude (platform.claude.com). |
+| `CLAUDE_MODEL` | No | `claude-sonnet-5-5` | Modelo de Claude. `claude-haiku-5-5` para depurar por centavos. Usa uno solo durante toda una evaluación. |
 
-Sobre el plan gratuito:
-- Tiene **límites por minuto y por día**. Los de tu proyecto aparecen en [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit).
-- Una evaluación completa usa unas 7 llamadas: ficha, 3 lotes de la evaluación, reporte v1, análisis del PDF 2 y reporte v2. Cada pregunta en el chat suma una más.
-- Su latencia varía mucho. La app corta cada intento a los 30 s (120 s en las llamadas con PDF o salidas largas) y reintenta sola los errores temporales (saturación, límite por minuto, timeouts) hasta 4 veces.
+**Consumo y costo.** Una evaluación completa hace unas 8 llamadas:
+- la ficha;
+- 3 lotes de la evaluación;
+- el reporte inicial;
+- el PDF 2 (más una segunda pasada si faltaron decisiones);
+- el reporte actualizado.
+
+Cada pregunta en el chat suma una llamada más. El panel **"Consumo de Claude"** de la barra lateral muestra los tokens y el costo estimado de cada llamada, y qué parte de la entrada salió de la caché.
+
+**Cómo se ahorran tokens sin bajar la calidad:**
+- **Caché de prompts:** los 3 lotes de la evaluación comparten el prompt maestro, el catálogo, el documento y la ficha (unos 32K tokens). Los lotes 2 y 3 los leen de la caché, que cuesta el 5 % del precio normal en Sonnet 5.5. Lo mismo pasa al regenerar la ficha con un ajuste y con preguntas seguidas en el chat. Las llamadas que no se repiten no se cachean, para no pagar la escritura.
+- **Texto en lugar del PDF:** el documento se envía como texto con marcas de página, que es el mismo texto contra el que se verifican las citas. Usa cerca de un tercio de los tokens. Un PDF escaneado sin texto se envía como archivo.
+- **Contexto resumido:** después de la evaluación, la ficha viaja sin las citas de cada hallazgo, porque esas citas ya están en la matriz. Los datos van en JSON compacto.
+- **Límite de salida por etapa** (`max_tokens`), para evitar respuestas desbocadas.
+
+**Reintentos y errores:** la app reintenta sola los errores temporales (saturación, límite por minuto, timeouts) hasta 3 veces. Si el filtro de seguridad de Claude declina una solicitud, Sonnet 5.5 la reintenta en otro modelo del lado del servidor (`fallbacks`).
 
 ---
 
@@ -281,7 +293,7 @@ chatbot/
   state.py              Proyecto, matriz de 56, 5 estados, indicadores, versiones v1/v2, cambios
   prompts.py            Prompt maestro (identidad, alcance, R1–R12, escala) e instrucciones por etapa
   schemas.py            Esquemas JSON de las respuestas estructuradas
-  engine.py             Llamadas a Gemini por etapa, con reintentos, timeout y semilla fija
+  engine.py             Llamadas a Claude por etapa: caché de prompts, salida estructurada, reintentos y consumo
   almacen.py            Guardado automático en evaluaciones/
   exportar.py           Excel y reporte HTML por versión (v1 o v2), CSV, ficha HTML y prompt maestro
   reporte_pdf.py        Reporte ejecutivo inicial/final y ficha de contexto en PDF (fpdf2)
@@ -305,12 +317,15 @@ tests/                  Pruebas sin API ni Excel (reglas, flujo completo, import
 | Un hallazgo o salvaguarda dice "cita no encontrada" | El modelo citó un texto que no está en el PDF; el sistema lo descartó. Si el dato sí está en el documento, regenera la ficha o la evaluación. |
 | `El PDF no tiene texto extraíble` | Es un escaneo sin texto: las citas no podrán verificarse. Usa un PDF con texto seleccionable. |
 | `Se esperaban los controles 1 a 18…` o `Columnas inesperadas` al importar | El Excel no es el de CIS Controls v8.1 o cambió de formato. Descarga la versión 8.1.x oficial. |
-| `Falta GEMINI_API_KEY en el archivo .env` | No existe `.env`, o la variable está mal escrita. Repite el paso 6. |
+| `Falta ANTHROPIC_API_KEY en el archivo .env` | No existe `.env`, o la variable está mal escrita. Repite el paso 6. |
 | `API key inválida` | Revisa que copiaste la key completa, sin comillas ni espacios. |
-| `Gemini está saturado en este momento…` (error 503) | El modelo tiene alta demanda en el plan gratuito. La app ya reintentó sola. Espera un minuto y reenvía el mensaje, o cambia `GEMINI_MODEL` a `gemini-3.1-flash-lite`. |
-| `Gemini tardó más de N s en responder en cada intento` | Saturación temporal de Gemini. Espera un minuto y vuelve a intentarlo. |
-| `Se alcanzó el límite gratuito de Gemini` | Espera un minuto. Si es el límite diario, se reinicia a la medianoche, hora del Pacífico. |
-| `El modelo '...' no existe` | Revisa el valor de `GEMINI_MODEL` en `.env`. |
+| `Tu cuenta de Claude no tiene saldo suficiente` | Recarga créditos en platform.claude.com (Billing). |
+| `Claude está saturado o con fallas…` | La app ya reintentó sola. Espera un minuto y vuelve a intentarlo. |
+| `Claude tardó más de N s en responder` | Vuelve a intentarlo; las etapas largas tienen hasta 7 minutos por intento. |
+| `Se alcanzó el límite de uso por minuto` | Espera un momento. Los límites de tu cuenta están en platform.claude.com. |
+| `Claude declinó esta solicitud por sus filtros de seguridad` | Pasa rara vez con contenido de ciberseguridad. Vuelve a intentarlo; si persiste, revisa el documento. |
+| `La respuesta de Claude se cortó por el límite de longitud` | Vuelve a intentarlo. Si se repite, sube el valor de esa etapa en `MAX_TOKENS` (`chatbot/engine.py`). |
+| `El modelo '...' no existe` | Revisa el valor de `CLAUDE_MODEL` en `.env`. |
 | `command not found: python3.14` | Usa la versión de Python que tengas (3.12 o superior) o instálala (ver Requisitos previos). |
 | Falla `pip install` con errores de compilación | Probablemente usas Python 3.15. Crea el entorno con 3.12–3.14. |
 | `AttributeError: module 'chatbot...' has no attribute ...` tras actualizar el código | Streamlit conservó en memoria la versión anterior de un módulo. Detén el servidor con `Ctrl + C` y vuelve a ejecutarlo. |

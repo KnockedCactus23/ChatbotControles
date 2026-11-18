@@ -1,7 +1,7 @@
 """Prompt maestro del agente "Centinela IG1" e instrucciones de cada etapa.
 
-El prompt maestro (identidad, alcance, reglas R1–R12, escala y criterios) es común a todas las
-llamadas; cada etapa agrega su tarea. El texto oficial de CIS se incluye SIN MODIFICAR (en inglés)
+El prompt maestro (identidad, alcance, reglas R1–R12, escala y criterios) y el catálogo IG1 forman
+`base()`, común a todas las llamadas y cacheado; cada `sistema_*()` devuelve solo la tarea de su etapa. El texto oficial de CIS se incluye SIN MODIFICAR (en inglés)
 como base normativa; las instrucciones están en español.
 """
 
@@ -69,6 +69,13 @@ def prompt_maestro() -> str:
     return "\n\n".join([IDENTIDAD, ALCANCE, REGLAS, ESCALA])
 
 
+@lru_cache(maxsize=1)
+def base() -> str:
+    """Bloque común a TODAS las etapas (prompt maestro + catálogo IG1, ~9K tokens). Es idéntico byte a byte en
+    cada llamada para que la API lo sirva desde la caché de prompts; la tarea de cada etapa va después."""
+    return f"{prompt_maestro()}\n\n{catalogo_ig1()}"
+
+
 def catalogo_ig1() -> str:
     bloques = []
     for c in catalogo().controles:
@@ -120,18 +127,14 @@ DIMENSIONES = [
 
 @lru_cache(maxsize=1)
 def sistema_explicacion() -> str:
-    return f"""{prompt_maestro()}
-
-# Tarea: prueba preliminar
+    return f"""# Tarea: prueba preliminar
 Explica en español, de forma clara y breve (markdown), cuál es tu objetivo, qué salvaguardas CIS evaluarás (cuántas, de qué IG y en qué controles), cuáles son tus criterios para determinar el estado de implementación (los cinco estados y sus valores), cómo se calculan los indicadores y qué harás cuando no tengas suficiente información. Responde en el campo "mensaje"."""
 
 
 @lru_cache(maxsize=1)
 def sistema_ficha() -> str:
     dims = "\n".join(f"- {k} ({n}): {d}" for k, n, d in DIMENSIONES)
-    return f"""{prompt_maestro()}
-
-# Tarea: Etapa 2 — interpretación del contexto empresarial (R1)
+    return f"""# Tarea: Etapa 2 — interpretación del contexto empresarial (R1)
 Lee el documento del caso y genera la ficha de contexto ANTES de evaluar cualquier salvaguarda. Para cada dimensión:
 {dims}
 registra los hallazgos que el documento respalda. Cada hallazgo lleva página, sección y una cita textual exacta del documento. Si una dimensión no tiene información, deja los hallazgos vacíos y explica qué falta en "faltante".
@@ -152,11 +155,7 @@ También devuelve:
 
 @lru_cache(maxsize=1)
 def sistema_evaluacion() -> str:
-    return f"""{prompt_maestro()}
-
-{catalogo_ig1()}
-
-# Tarea: Etapa 3 — evaluación de salvaguardas
+    return f"""# Tarea: Etapa 3 — evaluación de salvaguardas
 Recibirás el documento del caso, la ficha de contexto validada y una lista de salvaguardas IG1 a evaluar. Devuelve EXACTAMENTE una evaluación por cada salvaguarda de la lista, sin omitir ninguna, aunque no haya información (en ese caso: No verificado).
 Para cada una:
 - aplicabilidad y estado según la escala; el CRITERIO es la descripción oficial de la salvaguarda: "Implementado" solo si el documento muestra lo que exige esa descripción.
@@ -168,11 +167,7 @@ Para cada una:
 
 @lru_cache(maxsize=1)
 def sistema_reporte() -> str:
-    return f"""{prompt_maestro()}
-
-{catalogo_ig1()}
-
-# Tarea: Etapas 3.5 y 4 — resumen ejecutivo, riesgos y roadmap
+    return f"""# Tarea: Etapas 3.5 y 4 — resumen ejecutivo, riesgos y roadmap
 Recibirás la ficha de contexto, la matriz de las 56 salvaguardas, los indicadores calculados por el sistema y la lista de controles con mayores brechas (ya ordenada). Usa esos números EXACTOS; no los recalcules ni los contradigas.
 
 Devuelve:
@@ -191,11 +186,7 @@ Adapta todo al tamaño, sector y recursos de la organización.
 
 @lru_cache(maxsize=1)
 def sistema_iniciativas() -> str:
-    return f"""{prompt_maestro()}
-
-{catalogo_ig1()}
-
-# Tarea: Etapa 5 — procesamiento del avance de iniciativas (PDF 2)
+    return f"""# Tarea: Etapa 5 — procesamiento del avance de iniciativas (PDF 2)
 NO generes un diagnóstico nuevo desde cero (R10). Tu punto de partida es: el contexto de la empresa, la matriz inicial de 56 salvaguardas, el diagnóstico inicial, los riesgos y el roadmap original (te llegan en el mensaje).
 
 1. iniciativas: para cada iniciativa reportada en el nuevo documento: qué mejoró, qué salvaguardas IG1 se relacionan, la evidencia (página, sección y cita textual exacta; una por salvaguarda cuando sea posible), si la mejora es completa o parcial, y los pendientes. Cada pendiente indica a qué salvaguardas afecta (las cuyas descripciones oficiales cubren ese activo, área o paso); si no corresponde a ninguna salvaguarda IG1, deja su lista vacía.
@@ -214,11 +205,7 @@ Tus decisiones son propuestas sujetas a la validación del auditor (R12).
 
 @lru_cache(maxsize=1)
 def sistema_reporte_actualizado() -> str:
-    return f"""{prompt_maestro()}
-
-{catalogo_ig1()}
-
-# Tarea: Etapa 5.6 — diagnóstico actualizado
+    return f"""# Tarea: Etapa 5.6 — diagnóstico actualizado
 Recibirás la matriz v2 (fuente de verdad), los indicadores de v1 y v2 calculados por el sistema, el reporte v1 (riesgos y roadmap originales), los cambios APROBADOS, los cambios no aprobados y lo que reportó el nuevo documento.
 Los riesgos, el estado de las iniciativas y el resumen se derivan EXCLUSIVAMENTE de la matriz v2. Las mejoras de cambios rechazados o pendientes NO pueden citarse como mitigación; si las mencionas, es como "pendiente de validación".
 El SISTEMA ya calculó, con reglas fijas sobre la matriz, la situación de cada riesgo original (mitigado / reducido / permanece, con su severidad residual) y el estado de cada iniciativa original (completada / en_progreso / pendiente). No los cambies: tu tarea es explicarlos.
@@ -240,11 +227,7 @@ Devuelve:
 
 @lru_cache(maxsize=1)
 def sistema_consulta() -> str:
-    return f"""{prompt_maestro()}
-
-{catalogo_ig1()}
-
-# Tarea: responder preguntas sobre la evaluación
+    return f"""# Tarea: responder preguntas sobre la evaluación
 El auditor puede preguntarte por qué clasificaste una salvaguarda, de dónde sale una conclusión, qué falta o cómo trabajas. Responde en español (markdown), breve y citando la evidencia registrada en la matriz (página y cita). No cambies estados: si el auditor aporta información nueva, explica qué salvaguardas podría afectar y que el cambio debe documentarse y validarse (R12)."""
 
 

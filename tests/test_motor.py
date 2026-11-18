@@ -12,7 +12,7 @@ from pypdf import PdfReader
 from chatbot import controls, exportar
 from chatbot.documentos import Documento
 from chatbot.engine import ErrorChatbot, Motor
-from chatbot.reporte_pdf import reporte_pdf
+from chatbot.reporte_pdf import ficha_pdf, reporte_pdf
 from chatbot.state import Proyecto
 from tests.conftest import PAGINAS
 
@@ -145,6 +145,14 @@ def test_flujo_completo(motor_simulado):
     texto = " ".join(pg.extract_text() for pg in pdf.pages)
     assert len(pdf.pages) <= 5
     assert "Cinco riesgos principales" in texto and "Cambios derivados del PDF 2" in texto and "Roadmap actualizado" in texto
+
+    # Ficha de contexto exportable: las 10 dimensiones, la evidencia y los ajustes del equipo.
+    p.ajustes.append({"fecha": "2026-11-17 10:00", "texto": "Microsoft 365 es un servicio contratado."})
+    texto = " ".join(pg.extract_text() for pg in PdfReader(io.BytesIO(ficha_pdf(p))).pages)
+    assert "Ficha de contexto" in texto and "Recuperación" in texto and "Restricciones" in texto
+    assert "Todos los equipos cuentan con antivirus Defender" in texto and "Microsoft 365 es un servicio contratado" in texto
+    html = exportar.ficha_html(p)
+    assert "Perfil de riesgo" in html and "Microsoft 365 es un servicio contratado" in html
 
 
 def test_sin_api_key(monkeypatch):

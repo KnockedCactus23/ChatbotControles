@@ -1,4 +1,4 @@
-"""Exportación de entregables: matriz (Excel/CSV), reporte ejecutivo (HTML) y prompt maestro (Markdown).
+"""Exportación de entregables: matriz (Excel/CSV), reporte ejecutivo y ficha de contexto (HTML) y prompt maestro (Markdown).
 
 Los valores salen de la misma matriz e indicadores que muestra la app: no hay cálculos aparte,
 así que matriz, indicadores y reporte no pueden contradecirse.
@@ -127,10 +127,31 @@ def reporte_html(p: Proyecto) -> str:
                        ui.seccion("Riesgos tras las mejoras"), ui.riesgos(riesgos_v1, rep.get("riesgos"))]
         partes += [ui.seccion("Roadmap de cinco iniciativas" + (" (actualizado)" if v is p.v2 else "")),
                    ui.roadmap(roadmap, [r["titulo"] for r in riesgos_v1])]
-    partes.append(ui.atribucion_html(atribucion()))
+    return _pagina_html(f"Reporte {p.nombre}", partes)
+
+
+def ficha_html(p: Proyecto) -> str:
+    """Ficha de contexto (Etapa 2) autocontenida: dimensiones con evidencia, faltantes, ambigüedades,
+    perfil de riesgo y los ajustes registrados por el equipo (Etapa 2.5)."""
+    doc = p.documentos.get("pdf1")
+    estado = "Validada por el equipo" if p.ficha_validada else "Pendiente de validación por el equipo"
+    partes = [f"<h1 class='titular'>Ficha de contexto · {ui.esc(p.nombre)}</h1>",
+              f"<p class='lead'>{ui.esc(prompts.NOMBRE_AGENTE)} · Fuente: {ui.esc(doc.etiqueta + ' · ' + doc.nombre if doc else '—')}"
+              f" · {estado}</p>",
+              ui.ficha(p.ficha or {}, doc.etiqueta if doc else "PDF 1")]
+    if p.ajustes:
+        partes += [ui.seccion("Ajustes registrados por el equipo (Etapa 2.5)"),
+                   "<ul class='ficha-resumen'>" + "".join(f"<li><b>{ui.esc(a['fecha'])}</b> — {ui.esc(a['texto'])}</li>"
+                                                          for a in p.ajustes) + "</ul>"]
+    return _pagina_html(f"Ficha de contexto {p.nombre}", partes)
+
+
+def _pagina_html(titulo: str, partes: list[str]) -> str:
+    """Documento HTML autocontenido con el mismo diseño que la app."""
+    partes = partes + [ui.atribucion_html(atribucion())]
     estilos = ui.CSS.replace("<style>", "<style>body{margin:0;padding:40px;background:#0a0c0f;color:#f0f2f4;"
                                           "font-family:Geist,system-ui,sans-serif}")
-    return (f"<!doctype html><html lang='es'><head><meta charset='utf-8'><title>Reporte {ui.esc(p.nombre)}</title>"
+    return (f"<!doctype html><html lang='es'><head><meta charset='utf-8'><title>{ui.esc(titulo)}</title>"
             f"<link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono&display=swap'>"
             f"{estilos}</head><body><main style='max-width:1100px;margin:0 auto'>{''.join(partes)}</main></body></html>")
 

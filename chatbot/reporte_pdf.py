@@ -13,6 +13,7 @@ from fpdf.fonts import FontFace
 
 from . import prompts
 from .controls import atribucion, control
+from .prompts import DIMENSIONES
 from .state import ESTADOS, ETIQUETA, Proyecto, Version, formato_pct
 
 # Paleta de impresión (RGB). Coherente con los tokens de estado de la app, pero sobre fondo blanco.
@@ -24,6 +25,8 @@ ACENTO = (38, 84, 160)
 COLOR_ESTADO = {"implementado": (34, 139, 84), "parcial": (196, 140, 20), "no_implementado": (196, 60, 52),
                 "no_verificado": (110, 118, 130), "no_aplicable": (150, 156, 166)}
 ESTADO_INICIATIVA = {"completada": "Completada", "en_progreso": "En progreso", "pendiente": "Pendiente"}
+TAMANO = {"micro": "Micro", "pequena": "Pequeña", "mediana": "Mediana", "grande": "Grande"}
+IMPACTO = {"critico": "Crítico", "alto": "Alto", "medio": "Medio"}
 
 _SUSTITUTOS = {"≥": ">=", "≤": "<=", "✓": "Sí", "✗": "No", "\u2192": "->", "←": "<-", "≈": "~", "×": "x", "−": "-",
                " ": " ", " ": " ", "​": ""}
@@ -47,13 +50,14 @@ def _t(texto) -> str:
 
 
 class _Reporte(FPDF):
-    def __init__(self, organizacion: str):
+    def __init__(self, organizacion: str, documento: str = "Reporte ejecutivo"):
         super().__init__(orientation="P", unit="mm", format="A4")
         self.core_fonts_encoding = "windows-1252"  # incluye •, —, comillas tipográficas (latin-1 no)
         self.organizacion = organizacion
+        self.documento = documento
         self.set_margins(15, 16, 15)
         self.set_auto_page_break(True, margin=16)
-        self.set_title(_t(f"Reporte ejecutivo · {organizacion}"))
+        self.set_title(_t(f"{documento} · {organizacion}"))
         self.set_author(_t(prompts.NOMBRE_AGENTE))
         self.set_creator(_t(prompts.NOMBRE_AGENTE))
 
@@ -62,7 +66,7 @@ class _Reporte(FPDF):
             return
         self.set_font("Helvetica", "", 7.5)
         self.set_text_color(*TENUE)
-        self.cell(0, 5, _t(f"{prompts.NOMBRE_AGENTE} · Reporte ejecutivo · {self.organizacion}"), new_x="LMARGIN", new_y="NEXT")
+        self.cell(0, 5, _t(f"{prompts.NOMBRE_AGENTE} · {self.documento} · {self.organizacion}"), new_x="LMARGIN", new_y="NEXT")
         self.set_draw_color(*LINEA)
         self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
         self.ln(4)
@@ -144,12 +148,10 @@ class _Reporte(FPDF):
         """Dashboard: implementación y cobertura destacadas, y el conteo por estado."""
         y = self.get_y()
         ancho_kpi = (self.ancho - 4) / 2
-        for k, (nombre, clave, formula) in enumerate([
-                ("Implementación IG1", "implementacion", "(I + 0.5 x P) / (I + P + NI) x 100"),
-                ("Cobertura IG1", "cobertura", "(I + P + NI) / (56 - NA) x 100")]):
+        for k, (nombre, clave) in enumerate([("Implementación IG1", "implementacion"), ("Cobertura IG1", "cobertura")]):
             x = self.l_margin + k * (ancho_kpi + 4)
             self.set_fill_color(*FONDO)
-            self.rect(x, y, ancho_kpi, 21, style="F")
+            self.rect(x, y, ancho_kpi, 17, style="F")
             self.set_xy(x + 4, y + 2.5)
             self.set_font("Helvetica", "", 8)
             self.set_text_color(*TENUE)
@@ -161,11 +163,7 @@ class _Reporte(FPDF):
             if previo is not None:
                 valor += f"   (v1: {formato_pct(previo[clave])})"
             self.cell(ancho_kpi - 8, 8, _t(valor))
-            self.set_xy(x + 4, y + 15.5)
-            self.set_font("Helvetica", "", 7)
-            self.set_text_color(*TENUE)
-            self.cell(ancho_kpi - 8, 4, _t(formula))
-        self.set_y(y + 24)
+        self.set_y(y + 20)
         ancho_estado = self.ancho / len(ESTADOS)
         y = self.get_y()
         for k, e in enumerate(ESTADOS):
@@ -319,10 +317,23 @@ def _version(pdf: _Reporte, p: Proyecto, v: Version):
 # -------------------------------------------------------------------- API
 def reporte_pdf(p: Proyecto) -> bytes:
     """Reporte ejecutivo completo: contexto, y para v1 (y v2 si existe) dashboard, resumen, riesgos y roadmap."""
-    pdf = _Reporte(p.nombre)
+    versiones = [v for v in (p.v1, p.v2) if v and v.reporte]
+    fuentes = " · ".join(f"{d.etiqueta}: {d.nombre}" for d in p.documentos.values())
+    pdf = _inicio(p, "Reporte ejecutivo",
+                  f"Versiones: {', '.join(v.nombre for v in versiones) or 'sin reporte'}. Fuentes: {fuentes}.")
+    if p.ficha:
+        pdf.titulo_seccion("Contexto de la empresa")
+        pdf.parrafo(p.ficha.get("resumen_ejecutivo"))
+    for v in versiones:
+        _version(pdf, p, v)
+    return bytes(pdf.output())
+
+
+def _inicio(p: Proyecto, documento: str, datos: str) -> _Reporte:
+    """Primera página: franja de color, título y datos clave (sin portada aparte para ahorrar páginas)."""
+    pdf = _Reporte(p.nombre, documento)
     pdf.alias_nb_pages()
     pdf.add_page()
-    # Portada compacta: título y datos clave en la primera página, sin hoja aparte.
     pdf.set_fill_color(*ACENTO)
     pdf.rect(0, 0, pdf.w, 3, style="F")
     pdf.set_font("Helvetica", "", 8.5)
@@ -331,16 +342,73 @@ def reporte_pdf(p: Proyecto) -> bytes:
              new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "B", 19)
     pdf.set_text_color(*TINTA)
-    pdf.multi_cell(0, 9, _t(f"Reporte ejecutivo · {p.nombre}"), new_x="LMARGIN", new_y="NEXT")
-    versiones = [v for v in (p.v1, p.v2) if v and v.reporte]
+    pdf.multi_cell(0, 9, _t(f"{documento} · {p.nombre}"), new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 8.5)
     pdf.set_text_color(*TENUE)
-    fuentes = " · ".join(f"{d.etiqueta}: {d.nombre}" for d in p.documentos.values())
-    pdf.multi_cell(0, 4.4, _t(f"Versiones: {', '.join(v.nombre for v in versiones) or 'sin reporte'}. Fuentes: {fuentes}."),
-                   new_x="LMARGIN", new_y="NEXT")
-    if p.ficha:
-        pdf.titulo_seccion("Contexto de la empresa")
-        pdf.parrafo(p.ficha.get("resumen_ejecutivo"))
-    for v in versiones:
-        _version(pdf, p, v)
+    pdf.multi_cell(0, 4.4, _t(datos), new_x="LMARGIN", new_y="NEXT")
+    return pdf
+
+
+def ficha_pdf(p: Proyecto) -> bytes:
+    """Ficha de contexto (Etapa 2): resumen, 10 dimensiones con evidencia, información faltante,
+    ambigüedades, perfil de riesgo y ajustes registrados por el equipo (Etapa 2.5)."""
+    f = p.ficha or {}
+    doc = p.documentos.get("pdf1")
+    etiqueta = doc.etiqueta if doc else "PDF 1"
+    estado = "validada por el equipo" if p.ficha_validada else "pendiente de validación por el equipo"
+    pdf = _inicio(p, "Ficha de contexto",
+                  f"Fuente: {etiqueta + ' · ' + doc.nombre if doc else '—'}. Ficha {estado}. Generada: {p.creado}.")
+
+    pdf.titulo_seccion("Resumen del contexto")
+    pdf.parrafo(f.get("resumen_ejecutivo"))
+
+    pdf.titulo_seccion("Dimensiones del contexto",
+                       "Cada hallazgo indica la página del documento y si su cita se encontró en el texto (verificación automática).")
+    for clave, nombre, que in DIMENSIONES:
+        d = (f.get("dimensiones") or {}).get(clave, {})
+        if pdf.get_y() > pdf.h - 45:
+            pdf.add_page()
+        pdf.set_font("Helvetica", "B", 9.5)
+        pdf.set_text_color(*TINTA)
+        pdf.cell(pdf.get_string_width(_t(nombre)) + 2, 5.5, _t(nombre))
+        pdf.set_font("Helvetica", "", 7.5)
+        pdf.set_text_color(*TENUE)
+        pdf.cell(0, 5.5, _t(f"· {que}"), new_x="LMARGIN", new_y="NEXT")
+        pdf.parrafo(d.get("resumen") or "Sin información en el documento.", tam=8.6)
+        hallazgos = d.get("hallazgos") or []
+        if hallazgos:
+            filas = []
+            for h in hallazgos:
+                pagina = f"p. {h.get('pagina')}" if h.get("pagina") else "s/p"
+                ev = f"{etiqueta} · {pagina}" + (f"\n{h.get('seccion')}" if h.get("seccion") else "")
+                filas.append([_b(h.get("dato")), _md(f"\u201c{h.get('cita', '')}\u201d"), _md(ev),
+                              _b("Sí") if h.get("verificada") else _md("No encontrada")])
+            pdf.tabla(["Hallazgo", "Cita del documento", "Evidencia", "Verificada"], filas, [42, 92, 30, 16], tam=7)
+        if d.get("faltante"):
+            pdf.set_font("Helvetica", "I", 8)
+            pdf.set_text_color(*TENUE)
+            pdf.multi_cell(0, 4, _t(f"Falta: {d.get('faltante')}"), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+
+    pdf.titulo_seccion("Información faltante")
+    pdf.vinetas(f.get("informacion_faltante") or ["Nada relevante."])
+    pdf.titulo_seccion("Contradicciones o ambigüedades")
+    pdf.vinetas(f.get("ambiguedades") or ["No se detectaron."])
+
+    perfil = f.get("perfil_riesgo") or {}
+    pdf.titulo_seccion("Perfil de riesgo",
+                       f"Sector: {perfil.get('sector', '—')} · Tamaño: {TAMANO.get(perfil.get('tamano'), '—')} · Alcance: IG1")
+    amenazas = perfil.get("amenazas") or []
+    if amenazas:
+        pdf.tabla(["Amenaza prioritaria", "Impacto", "Por qué en este negocio", "Controles CIS"],
+                  [[_b(a.get("amenaza")), _md(IMPACTO.get(a.get("impacto"), a.get("impacto") or "")),
+                    _md(a.get("por_que_en_este_negocio")), _md(", ".join(a.get("controles", [])))] for a in amenazas],
+                  [46, 16, 90, 28], tam=7.4)
+    if perfil.get("prioridad_controles"):
+        pdf.parrafo(f"Orden de prioridad de los controles para este negocio: {', '.join(perfil['prioridad_controles'])}.", tam=8)
+
+    if p.ajustes:
+        pdf.titulo_seccion("Ajustes registrados por el equipo (Etapa 2.5)")
+        pdf.tabla(["Fecha", "Ajuste a la interpretación del agente"],
+                  [[_md(a.get("fecha")), _md(a.get("texto"))] for a in p.ajustes], [30, 150], tam=7.6)
     return bytes(pdf.output())

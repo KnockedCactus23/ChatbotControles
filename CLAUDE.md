@@ -37,8 +37,8 @@ chatbot/
   schemas.py               # JSON Schemas por etapa (minItems/maxItems para 56 por lote, 5 riesgos, 5 iniciativas)
   engine.py                # explain, context_sheet, evaluate, report, analyze_initiatives, updated_report, ask
   almacen.py               # guardar/cargar/listar proyectos en evaluaciones/ (EVALUACIONES_DIR para pruebas)
-  exportar.py              # Excel (todas las hojas), CSV, reporte HTML; prompt_maestro_md() lo usa el script
-  reporte_pdf.py           # Reporte ejecutivo en PDF (Entregable 3). Con v1+v2 debe caber en 5 páginas (lo verifica test_motor)
+  exportar.py              # Excel (todas las hojas), CSV, reporte y ficha en HTML (_pagina_html); prompt_maestro_md() lo usa el script
+  reporte_pdf.py           # reporte_pdf() (Entregable 3; con v1+v2 debe caber en 5 páginas, lo verifica test_motor) y ficha_pdf()
   ui.py                    # Tokens CSS (OKLCH) y piezas HTML
   data/cis_v8_1_2.json     # NO versionado (licencia CC BY-NC-ND): scripts/importar_cis.py
 scripts/importar_cis.py    # Excel oficial CIS v8.1.x → JSON (reconstruye ids como 3.10 que Excel guarda como 3.1)

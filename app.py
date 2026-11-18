@@ -16,7 +16,7 @@ from chatbot.controls import CatalogoNoEncontrado, atribucion, catalogo
 from chatbot.documentos import Documento, leer_pdf
 from chatbot.engine import ErrorChatbot, Motor
 from chatbot.prompts import NOMBRE_AGENTE
-from chatbot.reporte_pdf import reporte_pdf
+from chatbot.reporte_pdf import ficha_pdf, reporte_pdf
 from chatbot.state import Proyecto, ahora, estado_control
 
 load_dotenv()
@@ -113,8 +113,17 @@ if motor is None:
 lugar_progreso = st.empty()  # cada etapa lo reubica junto a su botón principal
 
 
+def descargas_ficha(cols):
+    """Ficha de contexto (Etapa 2) en PDF y HTML; cols: dos columnas donde van los botones."""
+    cols[0].download_button("Ficha de contexto (PDF)", ficha_pdf(p), file_name=f"ficha_contexto_{p.id}.pdf",
+                            mime="application/pdf", icon=":material/picture_as_pdf:", use_container_width=True,
+                            disabled=ocupado)
+    cols[1].download_button("Ficha de contexto (HTML)", exportar.ficha_html(p), file_name=f"ficha_contexto_{p.id}.html",
+                            mime="text/html", icon=":material/article:", use_container_width=True, disabled=ocupado)
+
+
 def exportes():
-    st.html(ui.seccion("Entregables", "Matriz (Excel con todas las hojas o CSV) y reporte ejecutivo en PDF o HTML."))
+    st.html(ui.seccion("Entregables", "Matriz (Excel con todas las hojas o CSV), reporte ejecutivo y ficha de contexto en PDF o HTML."))
     col = st.columns(5)
     col[0].download_button("Excel completo", exportar.excel(p), file_name=f"centinela_ig1_{p.id}.xlsx",
                            icon=":material/table_view:", use_container_width=True)
@@ -128,6 +137,8 @@ def exportes():
                            mime="application/pdf", icon=":material/picture_as_pdf:", use_container_width=True)
     col[4].download_button("Reporte ejecutivo (HTML)", exportar.reporte_html(p), file_name=f"reporte_{p.id}.html",
                            icon=":material/article:", use_container_width=True)
+    if p.ficha:
+        descargas_ficha(st.columns(5))
 
 
 def reporte_v1():
@@ -182,6 +193,7 @@ elif etapa == "contexto":
                        "Antes de evaluar, valida la interpretación del agente (R1). Cada hallazgo indica si su cita se "
                        "encontró en el documento."))
     st.html(ui.ficha(p.ficha, p.documentos["pdf1"].etiqueta))
+    descargas_ficha(st.columns([1, 1, 2]))
     st.html(ui.seccion("Validación del equipo (Etapa 2.4)",
                        "¿Interpretó bien la infraestructura? ¿Identificó los servicios críticos? ¿Confundió servicios cloud con "
                        "infraestructura propia? ¿Supuso herramientas que no aparecen? ¿Identificó la información faltante? "

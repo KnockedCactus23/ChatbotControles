@@ -315,7 +315,6 @@ table.controles td.just { color: var(--text-3); font-size: .8rem; max-width: 36c
 .conteo-estados { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .8rem; color: var(--text-2); margin: 4px 0 8px; }
 .conteo-estados span { display: inline-flex; align-items: center; gap: 7px; }
 .conteo-estados b { color: var(--text-1); font-weight: 520; font-variant-numeric: tabular-nums; }
-.formula { font: 400 .72rem/1.5 var(--mono); color: var(--text-3); margin: 0 0 4px; }
 
 /* Ficha de contexto */
 .ficha { margin: 8px 0 16px; }
@@ -514,9 +513,7 @@ def tablero(ind: dict, riesgos: int | None = None, iniciativas: int | None = Non
             f'<div>{cifra(ind["implementacion"])}<span>Implementación IG1</span><small>Sobre {ind["evaluables"]} salvaguardas evaluables</small>{imp_d}</div>'
             f'<div><b>{riesgos if riesgos is not None else "—"}</b><span>Riesgos prioritarios</span><small>Identificados para revisión</small></div>'
             f'<div><b>{iniciativas if iniciativas is not None else "—"}</b><span>Iniciativas</span><small>Roadmap propuesto</small></div></div>'
-            f'<div class="conteo-estados">Total <b>{ind["total"]}</b>{conteos}</div>'
-            f'<p class="formula">Implementación = (Impl. + 0.5 × Parc.) / (Impl. + Parc. + No impl.) × 100 · '
-            f'Cobertura = (Impl. + Parc. + No impl.) / (56 − No aplicables) × 100</p>')
+            f'<div class="conteo-estados">Total <b>{ind["total"]}</b>{conteos}</div>')
 
 
 # ------------------------------------------------------------------ matriz 56

@@ -123,12 +123,16 @@ Recibirás la ficha de contexto, la matriz de las 56 salvaguardas, los indicador
 
 Devuelve:
 1. resumen_ejecutivo:
+   - titular: UNA oración (máximo 25 palabras) que diga cómo está la postura y por qué; es lo primero que lee la dirección. Sin porcentajes (el tablero ya los muestra).
+   - datos_clave: de 0 a 3 cifras del tipo "X de Y" que expliquen la postura (por ejemplo, equipos cubiertos de un total). Cada una con etiqueta corta (máximo 8 palabras), valor y total enteros, sentido ("favorable" o "desfavorable") y la salvaguarda en cuya justificación o cita de la matriz aparecen AMBOS números. Si la matriz no tiene cifras así, deja la lista vacía; nunca calcules ni inventes cifras.
+   - brechas_clave: de 3 a 6 brechas más graves como etiquetas cortas (máximo 6 palabras, en lenguaje del negocio), cada una con su salvaguarda No implementado o Parcial.
+   - bases: de 0 a 4 prácticas existentes que se pueden aprovechar (etiqueta corta), cada una con su salvaguarda Implementado o Parcial.
    - postura_inicial: la postura de ciberseguridad en 1 o 2 párrafos. Presenta SIEMPRE implementación y cobertura juntas, con los valores dados, y explica que la implementación se calcula solo sobre las salvaguardas evaluables: una cobertura baja significa que el porcentaje de implementación descansa en pocas salvaguardas.
    - controles_mayores_brechas: explica por qué cada control de la lista dada es una brecha relevante para esta organización (usa sus ids tal cual y escribe una explicación no vacía para CADA uno). El sistema ordena esa lista por tamaño de la brecha (No implementado + 0.5 × Parcial, y luego No verificado); es un orden técnico, distinto del orden de importancia de los riesgos para el negocio.
    - informacion_faltante: qué información falta para obtener mayor certeza, relacionada con las salvaguardas que HOY están No verificado.
    - principales_riesgos: síntesis de los riesgos más importantes.
    - resultados_preliminares: qué resultados son preliminares y por qué (No verificados, información faltante, conclusiones sujetas a validación del auditor).
-2. riesgos: EXACTAMENTE 5 (la actividad lo exige), del más al menos importante para este negocio. Cada uno con descripción, activo o proceso afectado, deficiencia asociada, consecuencia probable, severidad (alta/media/baja), justificación y las salvaguardas relacionadas.
+2. riesgos: EXACTAMENTE 5 (la actividad lo exige), del más al menos importante para este negocio. Cada uno con nombre_corto (2 o 3 palabras que lo identifiquen en el roadmap, p. ej. "Cobro en caja"), descripción, activo o proceso afectado, deficiencia asociada, consecuencia probable, severidad (alta/media/baja), justificación y las salvaguardas relacionadas.
 3. iniciativas: EXACTAMENTE 5, priorizadas (prioridad 1 = primero). Cada una con el riesgo que reduce (número del riesgo, 1 a 5), salvaguardas relacionadas, beneficio esperado, esfuerzo (bajo/medio/alto) y tipo ("quick_win" o "proyecto").
 Adapta todo al tamaño, sector y recursos de la organización.
 
@@ -179,8 +183,12 @@ Devuelve:
 - resumen_cambios: qué cambió entre v1 y v2 y por qué (solo cambios aprobados).
 - riesgos: para cada uno de los 5 riesgos originales (mismo orden), una explicación de la situación calculada que mencione SOLO las salvaguardas de ese riesgo y su estado en v2.
 - iniciativas_estado: para cada iniciativa del roadmap original (mismo orden), una explicación del estado calculado basada en SUS salvaguardas.
-- riesgos_v2: EXACTAMENTE 5 riesgos vigentes, construidos sobre la matriz v2 con las mismas reglas de la Etapa 4 (pueden repetirse riesgos originales que sigan vigentes, con la severidad actual).
+- riesgos_v2: EXACTAMENTE 5 riesgos vigentes, con nombre_corto (2 o 3 palabras), construidos sobre la matriz v2 con las mismas reglas de la Etapa 4 (pueden repetirse riesgos originales que sigan vigentes, con la severidad actual).
 - resumen_ejecutivo actualizado, sobre v2, con estas secciones:
+   - titular: UNA oración (máximo 25 palabras) que diga cómo está la postura y por qué; es lo primero que lee la dirección. Sin porcentajes (el tablero ya los muestra).
+   - datos_clave: de 0 a 3 cifras del tipo "X de Y" que expliquen la postura (por ejemplo, equipos cubiertos de un total). Cada una con etiqueta corta (máximo 8 palabras), valor y total enteros, sentido ("favorable" o "desfavorable") y la salvaguarda en cuya justificación o cita de la matriz aparecen AMBOS números. Si la matriz no tiene cifras así, deja la lista vacía; nunca calcules ni inventes cifras.
+   - brechas_clave: de 3 a 6 brechas más graves como etiquetas cortas (máximo 6 palabras, en lenguaje del negocio), cada una con su salvaguarda No implementado o Parcial.
+   - bases: de 0 a 4 prácticas existentes que se pueden aprovechar (etiqueta corta), cada una con su salvaguarda Implementado o Parcial.
    - postura_inicial: la postura de ciberseguridad en 1 o 2 párrafos. Presenta SIEMPRE implementación y cobertura juntas, con los valores dados, y explica que la implementación se calcula solo sobre las salvaguardas evaluables: una cobertura baja significa que el porcentaje de implementación descansa en pocas salvaguardas.
    - controles_mayores_brechas: explica por qué cada control de la lista dada es una brecha relevante para esta organización (usa sus ids tal cual y escribe una explicación no vacía para CADA uno). El sistema ordena esa lista por tamaño de la brecha (No implementado + 0.5 × Parcial, y luego No verificado); es un orden técnico, distinto del orden de importancia de los riesgos para el negocio.
    - informacion_faltante: qué información falta para obtener mayor certeza, relacionada con las salvaguardas que HOY están No verificado.

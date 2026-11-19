@@ -13,18 +13,21 @@ import re
 import streamlit as st
 from dotenv import load_dotenv
 
-from chatbot import almacen, exportar, ui
+from chatbot import almacen, exportar, panel, ui
 from chatbot.controls import CatalogoNoEncontrado, atribucion, catalogo
 from chatbot.documentos import Documento, leer_pdf
 from chatbot.engine import MODELO_POR_DEFECTO, MODELOS, ErrorChatbot, Motor
 from chatbot.prompts import NOMBRE_AGENTE
 from chatbot.reporte_pdf import ficha_pdf, reporte_pdf
-from chatbot.state import Proyecto, ahora, estado_control
+from chatbot.state import Proyecto, ahora
 
 load_dotenv()
 st.set_page_config(page_title=NOMBRE_AGENTE, page_icon=":material/shield:", layout="wide")
 st.html(ui.CSS)
+st.html(panel.CSS)
 st.html(ui.tema_script(), unsafe_allow_javascript=True)  # data-theme según el tema aplicado (Día/Noche)
+# Interacciones del dashboard (resaltado por estado, riesgos ↔ roadmap, índice lateral, entrada): una sola vez.
+st.html(panel.script(), unsafe_allow_javascript=True)
 
 AVATAR = {"assistant": ":material/shield:", "user": ":material/person:"}
 TITULO_TAREA = {
@@ -47,8 +50,6 @@ except CatalogoNoEncontrado as e:
 def nuevo(proyecto: Proyecto | None = None):
     st.session_state.proyecto = proyecto or Proyecto()
     st.session_state.tarea = None
-    st.session_state.impl_previa = 0.0
-    st.session_state.estados_previos = {}
     st.session_state.pop("vista", None)       # al abrir otra evaluación, se muestra su paso actual
     st.session_state.pop("etapa_vista", None)
     st.session_state["vista_mostrada"] = "nueva"  # al abrir otra evaluación también se sube al inicio
@@ -97,15 +98,9 @@ def decir(texto: str, rol: str = "assistant"):
 # ------------------------------------------------------------------ barra lateral
 with st.sidebar:
     st.html(ui.selector_tema(deshabilitado=ocupado), unsafe_allow_javascript=True)
-    ind = p.vigente.indicadores() if p.vigente else None
-    st.html(ui.postura(ind, st.session_state.impl_previa))
-    st.session_state.impl_previa = (ind or {}).get("implementacion") or 0.0
-    if p.vigente:
-        estados = {c.id: estado_control(p.vigente.matriz, c.id) for c in catalogo().controles}
-        previos = st.session_state.estados_previos
-        cambiados = {cid for cid, e in estados.items() if previos and previos.get(cid) != e}
-        st.html(ui.matriz_controles(estados, cambiados))
-        st.session_state.estados_previos = estados
+    st.html(panel.marca_lateral(NOMBRE_AGENTE, p.nombre if p.documentos else ""))
+    # Se llena más abajo, cuando ya se sabe la sección: índice del reporte o resumen compacto de indicadores.
+    lugar_lateral = st.container()
 
     # Modelo de Claude: se elige aquí y se guarda con la evaluación. Queda fijo desde que existe la ficha,
     # para que toda la evaluación use un solo modelo (consistencia); para cambiarlo, nueva evaluación.
@@ -132,9 +127,6 @@ with st.sidebar:
     if p.avisos:
         with st.expander(f"Bitácora de validaciones · {len(p.avisos)}"):
             st.html(ui.avisos(p.avisos))
-    if p.consumo:
-        with st.expander(f"Consumo de Claude · ≈ US$ {sum(c['usd'] for c in p.consumo):.2f}"):
-            st.html(ui.consumo(p.consumo))
 
 # ------------------------------------------------------------------ cuerpo
 st.html(ui.encabezado(p.etapa))
@@ -155,41 +147,56 @@ def descargas_ficha(cols):
                             mime="text/html", icon=":material/article:", use_container_width=True, disabled=ocupado)
 
 
-def exportes(cual: str):
-    """Entregables de UNA versión: "v1" en el reporte inicial y "v2" en el reporte actualizado (nunca se mezclan)."""
+def cabecera_reporte(titulo: str, cual: str, sub: str):
+    """Título del reporte con el menú «Descargar ▾» a la derecha: los entregables de UNA versión ("v1" en el
+    reporte inicial, "v2" en el actualizado; nunca se mezclan)."""
     inicial = cual == "v1"
-    v = p.v1 if inicial else p.v2
     nombre = "inicial" if inicial else "final"
-    st.html(ui.seccion(f"Entregables · {v.nombre}",
-                       "Matriz, Excel y reporte ejecutivo de la evaluación inicial (v1)." if inicial else
-                       "Matriz, Excel y reporte ejecutivo de la evaluación actualizada (v2), con la comparación frente a v1."))
-    col = st.columns(4)
-    col[0].download_button(f"Matriz {cual} (CSV)", exportar.csv_matriz(p, v), file_name=f"matriz_{cual}_{p.id}.csv",
-                           mime="text/csv", icon=":material/csv:", use_container_width=True, key=f"csv_{cual}")
-    col[1].download_button(f"Excel completo {cual}", exportar.excel(p, cual), file_name=f"centinela_ig1_{cual}_{p.id}.xlsx",
-                           icon=":material/table_view:", use_container_width=True, key=f"xlsx_{cual}")
-    col[2].download_button(f"Reporte {nombre} (PDF)", reporte_pdf(p, cual), file_name=f"reporte_{nombre}_{p.id}.pdf",
+    v = p.v1 if inicial else p.v2
+    c1, c2 = st.columns([5, 1.1], vertical_alignment="bottom")
+    c1.html(panel.cabecera(titulo, cual, sub))
+    with c2.popover("Descargar", icon=":material/download:", use_container_width=True, disabled=ocupado):
+        st.download_button(f"Reporte {nombre} · PDF", reporte_pdf(p, cual), file_name=f"reporte_{nombre}_{p.id}.pdf",
                            mime="application/pdf", icon=":material/picture_as_pdf:", use_container_width=True,
                            key=f"pdf_{cual}")
-    col[3].download_button(f"Reporte {nombre} (HTML)", exportar.reporte_html(p, cual),
+        st.download_button(f"Reporte {nombre} · HTML", exportar.reporte_html(p, cual),
                            file_name=f"reporte_{nombre}_{p.id}.html", mime="text/html", icon=":material/article:",
                            use_container_width=True, key=f"html_{cual}")
+        st.download_button(f"Excel completo {cual} · XLSX", exportar.excel(p, cual),
+                           file_name=f"centinela_ig1_{cual}_{p.id}.xlsx", icon=":material/table_view:",
+                           use_container_width=True, key=f"xlsx_{cual}")
+        st.download_button(f"Matriz {cual} · CSV", exportar.csv_matriz(p, v), file_name=f"matriz_{cual}_{p.id}.csv",
+                           mime="text/csv", icon=":material/csv:", use_container_width=True, key=f"csv_{cual}")
 
 
-def reporte_v1():
-    rep = p.v1.reporte
+SUB_CONTROLES = "Cuántas salvaguardas de cada control hay en cada estado. Los cinco con mayores brechas van primero y explican por qué; abre cualquier control para ver sus salvaguardas."
+
+
+def reporte_v1() -> list[tuple]:
+    """Dashboard del reporte inicial (v1). Devuelve las secciones para el índice lateral."""
+    v = p.v1
+    rep = v.reporte
+    res = rep.get("resumen_ejecutivo", {})
+    ind = v.indicadores()
     riesgos = rep.get("riesgos", [])
-    st.html(ui.seccion("Dashboard ejecutivo · v1", "Valores calculados por el sistema a partir de la matriz."))
-    st.html(ui.tablero(p.v1.indicadores(), len(riesgos), len(rep.get("iniciativas", []))))
-    st.html(ui.seccion("Resumen ejecutivo"))
-    st.html(ui.resumen_ejecutivo(rep.get("resumen_ejecutivo", {})))
-    st.html(ui.seccion("Cinco riesgos principales", "Cada riesgo se relaciona solo con salvaguardas que son brecha en la matriz."))
-    st.html(ui.riesgos(riesgos))
-    st.html(ui.seccion("Roadmap de cinco iniciativas"))
-    st.html(ui.roadmap(rep.get("iniciativas", []), [r["titulo"] for r in riesgos]))
-    # Plegada por defecto: con 56 filas alarga mucho la página; se despliega con un clic.
-    with st.expander("Matriz de las 56 salvaguardas · v1 (evaluación inicial)", icon=":material/table_rows:"):
-        st.html(ui.matriz56(p.v1, p.documentos))
+    inis = rep.get("iniciativas", [])
+    st.html(panel.resumen(ind))
+    st.html(panel.seccion("postura", "Postura de ciberseguridad", "", panel.postura(res, v.matriz)))
+    st.html(panel.seccion("controles", "Estado por control", SUB_CONTROLES,
+                          panel.controles(v.matriz, res.get("controles_mayores_brechas", []))))
+    st.html(panel.seccion("riesgos", "Cinco riesgos principales",
+                          "La barra muestra el estado de las salvaguardas que sostienen cada riesgo. Pasa el cursor para "
+                          "ver qué iniciativas lo reducen.", panel.riesgos(riesgos, v.matriz, "a")))
+    st.html(panel.seccion("roadmap", "Roadmap de cinco iniciativas",
+                          "Qué riesgos reduce cada una, cuánto esfuerzo pide y cuántas salvaguardas mueve.",
+                          panel.roadmap(inis, riesgos, "a")))
+    st.html(panel.matriz(v, p.documentos, "Matriz de las 56 salvaguardas",
+                         "Estado, justificación, cita y página de cada salvaguarda (v1).", "matriz"))
+    st.html(panel.seccion("pendientes", "Pendientes", "Lo que falta para dar el resultado por firme.",
+                          panel.pendientes(res, ind)))
+    return [("resumen", "Resumen", None), ("postura", "Postura", None), ("controles", "Controles", 15),
+            ("riesgos", "Riesgos", len(riesgos)), ("roadmap", "Roadmap", len(inis)), ("matriz", "Matriz", ind["total"]),
+            ("pendientes", "Pendientes", ind["no_verificado"])]
 
 
 etapa = p.etapa
@@ -295,24 +302,24 @@ elif vista == "evaluacion":
     st.html(ui.titular("Evaluación inicial de las 56 salvaguardas",
                        "Cada estado se apoya en una cita verificada del documento. Lo que no está documentado queda como "
                        "«No verificado» (nunca como incumplimiento)."))
-    st.html(ui.tablero(ind))
+    st.html(panel.resumen(ind))
     st.html(ui.seccion("Cerrar la evaluación inicial",
                        "Genera el resumen ejecutivo, los cinco riesgos y el roadmap. La versión v1 queda fija como línea base."))
     lugar_progreso = st.empty()
     if st.button("Generar el reporte inicial (cierra la versión v1)", type="primary", icon=":material/description:",
                  disabled=ocupado):
         pedir("reporte")
-    st.html(ui.seccion("Matriz de las 56 salvaguardas · v1", "Incluye todas las salvaguardas, también las no verificadas."))
-    st.html(ui.matriz56(p.v1, p.documentos))
+    st.html(panel.matriz(p.v1, p.documentos, "Matriz de las 56 salvaguardas · v1",
+                         "Incluye todas las salvaguardas, también las no verificadas.", "matriz", abierta=True))
 
 # ------------------------------------------------- Etapas 3.5-4: reporte v1
 elif vista == "reporte":
-    st.html(ui.titular("Reporte inicial", f"{p.nombre} · línea base v1 del {p.v1.fecha}. Esta versión ya no se modifica."))
-    reporte_v1()
-    exportes("v1")
+    cabecera_reporte("Reporte inicial", "v1", f"{p.nombre} · línea base cerrada el {p.v1.fecha}. Esta versión ya no se modifica.")
+    secciones = reporte_v1()
     if etapa == "reporte":  # la carga del PDF 2 solo mientras es el paso en curso
-        st.html(ui.seccion("Etapa 5 · Avance de iniciativas (PDF 2)",
-                           "El agente parte de esta evaluación (no de cero) y propone cambios que tú validas como auditor."))
+        st.html(panel.seccion("pdf2", "Avance de iniciativas (PDF 2)",
+                              "El agente parte de esta evaluación (no de cero) y propone cambios que tú validas como auditor.", ""))
+        secciones.append(("pdf2", "Avance con PDF 2", None))
         archivo2 = st.file_uploader("PDF 2 — Avance de iniciativas", type=["pdf"], disabled=ocupado, label_visibility="collapsed")
         lugar_progreso = st.empty()
         if st.button("Analizar el avance de iniciativas", type="primary", icon=":material/upload_file:",
@@ -370,42 +377,56 @@ elif vista == "iniciativas":
 
 # --------------------------------------------- Etapa 5.6: reporte actualizado
 elif vista == "actualizado":
-    rep = p.v2.reporte
-    riesgos_v1 = p.v1.reporte.get("riesgos", [])
-    aprobados = [c.id for c in p.cambios if c.decision == "aprobado"]
-    st.html(ui.titular("Diagnóstico actualizado",
-                       f"{p.nombre} · v2 del {p.v2.fecha}. Refleja solo las mejoras documentadas y aprobadas; la v1 se conserva."))
-    st.html(ui.seccion("Dashboard ejecutivo · v2 frente a v1"))
-    st.html(ui.tablero(p.v2.indicadores(), len(rep.get("riesgos_v2") or rep.get("riesgos", [])), len(rep.get("roadmap", [])),
-                       p.v1.indicadores()))
-    st.html(ui.comparacion(p.v1.indicadores(), p.v2.indicadores(), aprobados))
-    st.html(ui.seccion("Cambios derivados del PDF 2"))
-    st.html(f"<p class='ficha-resumen'>{ui.esc(rep.get('resumen_cambios'))}</p>")
-    for c in p.cambios:
-        st.html(ui.cambio_fila(c) + f"<p class='aviso' style='margin:0 0 10px 14px'>Decisión del auditor: <b>{c.decision}</b></p>")
-    st.html(ui.seccion("Riesgos originales: mitigados, reducidos o que permanecen",
-                       "Calculado por el sistema con el estado v2 de las salvaguardas de cada riesgo."))
-    st.html(ui.riesgos(riesgos_v1, rep.get("riesgos")))
-    st.html(ui.seccion("Iniciativas del roadmap original: completadas o en progreso",
-                       "Completada si todas sus salvaguardas están implementadas en v2; en progreso si alguna mejoró."))
-    st.html(ui.roadmap(p.v1.reporte.get("iniciativas", []), [r["titulo"] for r in riesgos_v1], rep.get("iniciativas_estado")))
+    v1, v2 = p.v1, p.v2
+    rep = v2.reporte
+    res = rep.get("resumen_ejecutivo", {})
+    ind, ind1 = v2.indicadores(), v1.indicadores()
+    riesgos_v1 = v1.reporte.get("riesgos", [])
     riesgos_v2 = rep.get("riesgos_v2") or riesgos_v1  # evaluaciones anteriores al cambio no tienen riesgos_v2
+    aprobados = [c.id for c in p.cambios if c.decision == "aprobado"]
+    cabecera_reporte("Reporte actualizado", "v2",
+                     f"{p.nombre} · v2 del {v2.fecha}. Refleja solo las mejoras documentadas y aprobadas; la v1 se conserva.")
+    st.html(panel.resumen(ind, ind1))
+    filas = "".join(ui.cambio_fila(c) + f"<p class='aviso' style='margin:0 0 10px 14px'>Decisión del auditor: <b>{c.decision}</b></p>"
+                    for c in p.cambios)
+    st.html(panel.seccion("cambios", "Cambios derivados del PDF 2", "",
+                          f"<div class='d-tarjeta' style='padding:16px 20px'><p class='d-largo d-abierto' style='margin:0 0 12px'>"
+                          f"{ui.esc(rep.get('resumen_cambios'))}</p>{filas}</div>"))
+    st.html(panel.seccion("postura", "Postura de ciberseguridad", "", panel.postura(res, v2.matriz)))
+    st.html(panel.seccion("controles", "Estado por control", SUB_CONTROLES,
+                          panel.controles(v2.matriz, res.get("controles_mayores_brechas", []), set(aprobados))))
+    st.html(panel.seccion("riesgos-v1", "Riesgos originales tras las mejoras",
+                          "Situación calculada por el sistema con el estado v2 de las salvaguardas de cada riesgo.",
+                          panel.riesgos(riesgos_v1, v2.matriz, "a", rep.get("riesgos") or [])))
+    st.html(panel.seccion("roadmap-v1", "Iniciativas del roadmap original",
+                          "Completada si todas sus salvaguardas están implementadas en v2; en progreso si alguna mejoró.",
+                          panel.roadmap(v1.reporte.get("iniciativas", []), riesgos_v1, "a", rep.get("iniciativas_estado") or [])))
+    secciones = [("resumen", "Resumen", None), ("cambios", "Cambios PDF 2", len(p.cambios)), ("postura", "Postura", None),
+                 ("controles", "Controles", 15), ("riesgos-v1", "Riesgos originales", len(riesgos_v1)),
+                 ("roadmap-v1", "Iniciativas originales", len(v1.reporte.get("iniciativas", [])))]
     if rep.get("riesgos_v2"):
-        st.html(ui.seccion("Cinco riesgos vigentes (v2)", "Construidos sobre la matriz v2; el roadmap actualizado apunta a estos."))
-        st.html(ui.riesgos(riesgos_v2))
-    st.html(ui.seccion("Roadmap actualizado"))
-    st.html(ui.roadmap(rep.get("roadmap", []), [r["titulo"] for r in riesgos_v2]))
-    st.html(ui.seccion("Resumen ejecutivo actualizado"))
-    st.html(ui.resumen_ejecutivo(rep.get("resumen_ejecutivo", {})))
-    # Plegadas por defecto, como en el reporte inicial; se despliegan con un clic.
-    with st.expander("Matrices de las 56 salvaguardas · v2 y v1 (las modificadas en v2 aparecen resaltadas)",
-                     icon=":material/table_rows:"):
-        t1, t2 = st.tabs(["v2 · Actualizada", "v1 · Inicial"])
-        with t2:
-            st.html(ui.matriz56(p.v1, p.documentos))
-        with t1:
-            st.html(ui.matriz56(p.v2, p.documentos, set(aprobados)))
-    exportes("v2")
+        st.html(panel.seccion("riesgos", "Cinco riesgos vigentes (v2)",
+                              "Construidos sobre la matriz v2; el roadmap actualizado apunta a estos.",
+                              panel.riesgos(riesgos_v2, v2.matriz, "b")))
+        secciones.append(("riesgos", "Riesgos vigentes", len(riesgos_v2)))
+    st.html(panel.seccion("roadmap", "Roadmap actualizado", "Qué riesgos vigentes reduce cada iniciativa y cuánto esfuerzo pide.",
+                          panel.roadmap(rep.get("roadmap", []), riesgos_v2, "b")))
+    st.html(panel.matriz(v2, p.documentos, "Matriz de las 56 salvaguardas · v2",
+                         "Las modificadas en v2 aparecen resaltadas.", "matriz", set(aprobados)))
+    st.html(panel.matriz(v1, p.documentos, "Matriz v1 · evaluación inicial", "Línea base, sin cambios.", "matriz-v1"))
+    st.html(panel.seccion("pendientes", "Pendientes", "Lo que falta para dar el resultado por firme.", panel.pendientes(res, ind)))
+    secciones += [("roadmap", "Roadmap", len(rep.get("roadmap", []))), ("matriz", "Matriz v2", ind["total"]),
+                  ("matriz-v1", "Matriz v1", ind1["total"]), ("pendientes", "Pendientes", ind["no_verificado"])]
+
+# --------------------------------------------------------------- barra lateral: índice o resumen
+with lugar_lateral:
+    if vista in ("reporte", "actualizado"):
+        st.html(panel.indice(secciones))
+    elif p.vigente:
+        st.html(panel.estado_lateral(p.vigente.indicadores()))
+    else:
+        st.html('<p class="aviso" style="padding:0 8px">Agente consultor de CIS Controls v8.1 IG1. Carga el PDF de contexto '
+                'para comenzar.</p>')
 
 # ------------------------------------------------------- consultas al agente
 mensajes = [m for m in p.chat if m["tipo"] == "texto"]

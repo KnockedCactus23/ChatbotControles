@@ -10,7 +10,8 @@ import pytest
 from chatbot import almacen, controls
 from chatbot.documentos import Documento, verificar_cita
 from chatbot.state import (Proyecto, Resultado, citas_repetidas, estado_iniciativas, indicadores, lotes_por_control,
-                           normalizar_ficha, situacion_riesgos, validar_reporte, validar_resultado)
+                           normalizar_ficha, situacion_riesgos, validar_presentacion, validar_reporte,
+                           validar_resultado)
 from tests.conftest import PAGINAS
 
 
@@ -153,6 +154,44 @@ def test_reporte_no_asocia_riesgos_a_salvaguardas_implementadas(doc):
     assert rep["riesgos"][0]["salvaguardas"] == ["11.1"] and avisos
     assert [i["titulo"] for i in rep["iniciativas"]] == ["A", "B"] and rep["iniciativas"][1]["riesgos"] == [1]
     assert rep["resumen_ejecutivo"]["controles_mayores_brechas"] == [{"control_id": "CIS-11", "explicacion": "Sin respaldo aislado"}]
+
+
+def test_dashboard_solo_con_lo_que_respalda_la_matriz(doc):
+    """Titular, datos clave, brechas y bases (F10): un "X de Y" sin esos números en su salvaguarda o una etiqueta
+    con un estado que no corresponde se descartan."""
+    p = _proyecto(doc)
+    m = p.v1.matriz
+    m["10.1"].estado, m["10.1"].justificacion = "parcial", "El antivirus cubre 74 de los 92 equipos."
+    m["11.1"].estado = "no_implementado"
+    res = {"titular": "  Débil pero aprovechable. ",
+           "datos_clave": [{"etiqueta": "Equipos con antivirus", "valor": 74, "total": 92, "sentido": "favorable", "salvaguarda": "10.1"},
+                           {"etiqueta": "Inventado", "valor": 50, "total": 92, "sentido": "favorable", "salvaguarda": "10.1"},
+                           {"etiqueta": "Al revés", "valor": 92, "total": 74, "sentido": "favorable", "salvaguarda": "10.1"}],
+           "brechas_clave": [{"etiqueta": "Sin respaldos", "salvaguarda": "11.1"}, {"etiqueta": "Antivirus", "salvaguarda": "6.1"}],
+           "bases": [{"etiqueta": "Antivirus gestionado", "salvaguarda": "10.1"}, {"etiqueta": "Respaldos", "salvaguarda": "11.1"}]}
+    avisos = validar_presentacion(res, m)
+    assert res["titular"] == "Débil pero aprovechable."
+    assert [d["etiqueta"] for d in res["datos_clave"]] == ["Equipos con antivirus"]
+    assert [b["salvaguarda"] for b in res["brechas_clave"]] == ["11.1"]   # 6.1 es No verificado: no es brecha confirmada
+    assert [b["salvaguarda"] for b in res["bases"]] == ["10.1"]
+    assert len(avisos) == 4
+
+
+def test_panel_dibuja_el_reporte_sin_campos_nuevos(doc):
+    """Evaluaciones guardadas antes de los campos del dashboard: el panel usa respaldos (sin romperse) y escapa el texto."""
+    from chatbot import panel
+    p = _proyecto(doc)
+    p.v1.matriz["11.1"].estado = "no_implementado"
+    riesgos = [{"titulo": "<b>Ransomware</b>", "activo_proceso": "Cobro en caja (CajaÁgil), sucursales", "severidad": "alta",
+                "salvaguardas": ["11.1"]}]
+    res = {"postura_inicial": "La empresa tiene una postura débil con varias brechas. Segunda oración."}
+    html = (panel.resumen(p.v1.indicadores()) + panel.postura(res, p.v1.matriz) + panel.controles(p.v1.matriz, [])
+            + panel.riesgos(riesgos, p.v1.matriz, "a")
+            + panel.roadmap([{"titulo": "Respaldos", "riesgos": [1], "salvaguardas": ["11.1"], "esfuerzo": "medio"}], riesgos, "a")
+            + panel.matriz(p.v1, p.documentos, "Matriz", "", "matriz") + panel.pendientes(res, p.v1.indicadores()))
+    assert "&lt;b&gt;Ransomware" in html and "<b>Ransomware" not in html
+    assert "Cobro en caja" in html and 'data-riesgos="a1"' in html and 'data-riesgo="a1"' in html
+    assert "La empresa tiene una postura débil con varias brechas." in html
 
 
 # ------------------------------------------------------------ persistencia

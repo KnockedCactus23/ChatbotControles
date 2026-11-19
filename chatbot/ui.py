@@ -29,58 +29,65 @@ def esc(texto) -> str:
 # --------------------------------------------------------------------------- CSS
 CSS = """
 <style>
-/* Identidad "Dictamen técnico" (sistema de diseño Centinela IG1): tokens Día en :root y Noche en
-   [data-theme="dark"]. ui.tema_script() pone data-theme según el tema que Streamlit aplicó; antes de que corra,
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap");
+/* Identidad "Pizarra cálida" (Día, en :root) y "Grafito" (Noche, en [data-theme="dark"]), del mockup aprobado
+   (mockup/resumen.html). ui.tema_script() pone data-theme según el tema que Streamlit aplicó; antes de que corra,
    prefers-color-scheme da la primera pintura correcta. Los nombres antiguos (--bg, --text-1…) son alias. */
 :root {
-  --paper: oklch(0.984 0.004 230); --surface: oklch(1 0 0); --sunken: oklch(0.962 0.006 230);
-  --ink: oklch(0.23 0.03 250); --ink-2: oklch(0.38 0.025 250); --ink-3: oklch(0.50 0.018 250);
-  --rule: oklch(0.905 0.008 235); --rule-strong: oklch(0.83 0.012 235); --line-control: oklch(0.62 0.014 240);
-  --accent: oklch(0.47 0.09 222); --accent-strong: oklch(0.40 0.085 222); --accent-tint: oklch(0.955 0.022 222);
-  --on-accent: oklch(0.99 0.003 222);
-  --st-implementado: oklch(0.53 0.12 152); --st-parcial: oklch(0.66 0.14 72); --st-no_implementado: oklch(0.54 0.17 27);
-  --st-no_verificado: oklch(0.60 0.012 245); --st-no_aplicable: oklch(0.55 0.07 300); --st-sin_ig1: oklch(0.83 0.012 235);
-  --tint-implementado: oklch(0.955 0.03 152); --tint-parcial: oklch(0.965 0.04 85); --tint-no_implementado: oklch(0.955 0.03 27);
-  --tint-no_aplicable: oklch(0.958 0.018 300);
-  --shadow-1: 0 0 0 1px #c0c9ce, 0 1px 2px #121e2b0d;
-  --shadow-2: 0 0 0 1px #c0c9ce, 0 2px 4px #121e2b0a, 0 10px 24px #121e2b12;
-  --highlight: 0 0 #0000;
-  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
-  --font-text: "Public Sans", "Helvetica Neue", Arial, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --paper: oklch(0.945 0.006 85); --surface: oklch(0.972 0.005 85); --sunken: oklch(0.918 0.007 85); --side: oklch(0.928 0.007 85);
+  --ink: oklch(0.27 0.012 255); --ink-2: oklch(0.40 0.011 255); --ink-3: oklch(0.485 0.010 255);
+  --rule: oklch(0.875 0.007 85); --rule-2: oklch(0.78 0.008 85); --rule-strong: var(--rule-2); --line-control: oklch(0.62 0.01 85);
+  --accent: oklch(0.47 0.055 228); --accent-strong: oklch(0.40 0.055 228); --accent-tint: oklch(0.90 0.022 228);
+  --on-accent: oklch(0.98 0.004 85);
+  --st-implementado: oklch(0.58 0.075 158); --st-parcial: oklch(0.71 0.095 78); --st-no_implementado: oklch(0.57 0.105 33);
+  --st-no_verificado: oklch(0.56 0.010 255); --st-no_aplicable: oklch(0.84 0.006 85); --st-sin_ig1: oklch(0.875 0.007 85);
+  --tint-implementado: oklch(0.91 0.03 158); --tint-parcial: oklch(0.92 0.040 80); --tint-no_implementado: oklch(0.90 0.040 33);
+  --tint-no_aplicable: oklch(0.918 0.007 85);
+  --seg-ink: oklch(0.22 0.01 255);
+  --shadow-1: 0 1px 0 oklch(1 0 0 / .6) inset, 0 1px 2px oklch(0.3 0.02 85 / .06), 0 0 0 1px var(--rule);
+  --shadow-2: 0 8px 24px oklch(0.3 0.02 85 / .14), 0 0 0 1px var(--rule);
+  --pop: var(--shadow-2);
+  --highlight: 0 1px 0 oklch(1 0 0 / .6) inset;
+  --font: "Geist", system-ui, sans-serif; --font-display: var(--font); --font-text: var(--font);
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
   --r-sm: 3px; --r-md: 6px; --r-lg: 10px; --r-full: 9999px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --spring-bouncy: linear(0, 0.1, 0.323, 0.577, 0.803, 0.97, 1.073, 1.119, 1.124, 1.105, 1.074, 1.042, 1.016, 0.998, 0.988, 0.984, 0.985, 0.988, 0.992, 0.996, 0.999, 1.001, 1.002, 1.002, 1);
+  color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --paper: oklch(0.165 0.012 245); --surface: oklch(0.205 0.014 245); --sunken: oklch(0.135 0.01 245);
-  --ink: oklch(0.95 0.008 240); --ink-2: oklch(0.81 0.012 240); --ink-3: oklch(0.67 0.014 240);
-  --rule: oklch(0.28 0.014 245); --rule-strong: oklch(0.35 0.016 245); --line-control: oklch(0.55 0.016 240);
-  --accent: oklch(0.74 0.1 215); --accent-strong: oklch(0.83 0.085 215); --accent-tint: oklch(0.285 0.045 220);
-  --on-accent: oklch(0.18 0.03 230);
-  --st-implementado: oklch(0.72 0.14 152); --st-parcial: oklch(0.8 0.14 78); --st-no_implementado: oklch(0.7 0.16 27);
-  --st-no_verificado: oklch(0.6 0.012 245); --st-no_aplicable: oklch(0.72 0.08 300); --st-sin_ig1: oklch(0.35 0.016 245);
-  --tint-implementado: oklch(0.285 0.045 152); --tint-parcial: oklch(0.3 0.045 78); --tint-no_implementado: oklch(0.285 0.05 27);
-  --tint-no_aplicable: oklch(0.285 0.035 300);
-  --shadow-1: inset 0 1px 0 #ffffff0f, 0 0 0 1px #343c42, 0 1px 2px #00000066;
-  --shadow-2: inset 0 1px 0 #ffffff0f, 0 0 0 1px #343c42, 0 2px 4px #00000059, 0 12px 28px #00000080;
-  --highlight: inset 0 1px 0 #ffffff0f;
+  --paper: oklch(0.205 0.005 255); --surface: oklch(0.240 0.006 255); --sunken: oklch(0.180 0.005 255); --side: oklch(0.225 0.006 255);
+  --ink: oklch(0.925 0.005 85); --ink-2: oklch(0.80 0.006 85); --ink-3: oklch(0.68 0.007 85);
+  --rule: oklch(0.300 0.006 255); --rule-2: oklch(0.38 0.007 255); --rule-strong: var(--rule-2); --line-control: oklch(0.50 0.008 255);
+  --accent: oklch(0.74 0.065 222); --accent-strong: oklch(0.82 0.06 222); --accent-tint: oklch(0.32 0.035 225);
+  --on-accent: oklch(0.20 0.01 255);
+  --st-implementado: oklch(0.70 0.085 158); --st-parcial: oklch(0.78 0.095 80); --st-no_implementado: oklch(0.68 0.110 33);
+  --st-no_verificado: oklch(0.62 0.010 255); --st-no_aplicable: oklch(0.40 0.006 255); --st-sin_ig1: oklch(0.30 0.006 255);
+  --tint-implementado: oklch(0.32 0.045 158); --tint-parcial: oklch(0.34 0.050 80); --tint-no_implementado: oklch(0.33 0.055 33);
+  --tint-no_aplicable: oklch(0.28 0.006 255);
+  --seg-ink: oklch(0.20 0.01 255);
+  --shadow-1: 0 1px 0 oklch(1 0 0 / .04) inset, 0 0 0 1px var(--rule);
+  --shadow-2: 0 8px 24px oklch(0 0 0 / .45), 0 0 0 1px var(--rule-2);
+  --pop: var(--shadow-2);
+  --highlight: 0 1px 0 oklch(1 0 0 / .04) inset;
   color-scheme: dark;
 } }
 :root[data-theme="dark"] {
-  --paper: oklch(0.165 0.012 245); --surface: oklch(0.205 0.014 245); --sunken: oklch(0.135 0.01 245);
-  --ink: oklch(0.95 0.008 240); --ink-2: oklch(0.81 0.012 240); --ink-3: oklch(0.67 0.014 240);
-  --rule: oklch(0.28 0.014 245); --rule-strong: oklch(0.35 0.016 245); --line-control: oklch(0.55 0.016 240);
-  --accent: oklch(0.74 0.1 215); --accent-strong: oklch(0.83 0.085 215); --accent-tint: oklch(0.285 0.045 220);
-  --on-accent: oklch(0.18 0.03 230);
-  --st-implementado: oklch(0.72 0.14 152); --st-parcial: oklch(0.8 0.14 78); --st-no_implementado: oklch(0.7 0.16 27);
-  --st-no_verificado: oklch(0.6 0.012 245); --st-no_aplicable: oklch(0.72 0.08 300); --st-sin_ig1: oklch(0.35 0.016 245);
-  --tint-implementado: oklch(0.285 0.045 152); --tint-parcial: oklch(0.3 0.045 78); --tint-no_implementado: oklch(0.285 0.05 27);
-  --tint-no_aplicable: oklch(0.285 0.035 300);
-  --shadow-1: inset 0 1px 0 #ffffff0f, 0 0 0 1px #343c42, 0 1px 2px #00000066;
-  --shadow-2: inset 0 1px 0 #ffffff0f, 0 0 0 1px #343c42, 0 2px 4px #00000059, 0 12px 28px #00000080;
-  --highlight: inset 0 1px 0 #ffffff0f;
+  --paper: oklch(0.205 0.005 255); --surface: oklch(0.240 0.006 255); --sunken: oklch(0.180 0.005 255); --side: oklch(0.225 0.006 255);
+  --ink: oklch(0.925 0.005 85); --ink-2: oklch(0.80 0.006 85); --ink-3: oklch(0.68 0.007 85);
+  --rule: oklch(0.300 0.006 255); --rule-2: oklch(0.38 0.007 255); --rule-strong: var(--rule-2); --line-control: oklch(0.50 0.008 255);
+  --accent: oklch(0.74 0.065 222); --accent-strong: oklch(0.82 0.06 222); --accent-tint: oklch(0.32 0.035 225);
+  --on-accent: oklch(0.20 0.01 255);
+  --st-implementado: oklch(0.70 0.085 158); --st-parcial: oklch(0.78 0.095 80); --st-no_implementado: oklch(0.68 0.110 33);
+  --st-no_verificado: oklch(0.62 0.010 255); --st-no_aplicable: oklch(0.40 0.006 255); --st-sin_ig1: oklch(0.30 0.006 255);
+  --tint-implementado: oklch(0.32 0.045 158); --tint-parcial: oklch(0.34 0.050 80); --tint-no_implementado: oklch(0.33 0.055 33);
+  --tint-no_aplicable: oklch(0.28 0.006 255);
+  --seg-ink: oklch(0.20 0.01 255);
+  --shadow-1: 0 1px 0 oklch(1 0 0 / .04) inset, 0 0 0 1px var(--rule);
+  --shadow-2: 0 8px 24px oklch(0 0 0 / .45), 0 0 0 1px var(--rule-2);
+  --pop: var(--shadow-2);
+  --highlight: 0 1px 0 oklch(1 0 0 / .04) inset;
   color-scheme: dark;
 }
 /* Alias de los nombres anteriores: el resto de la hoja los sigue usando. */
@@ -98,7 +105,7 @@ CSS = """
 [data-testid="stHeader"] { background: transparent; }
 [data-testid="stDecoration"] { display: none; }
 [data-testid="stMainBlockContainer"], [data-testid="stBottomBlockContainer"] {
-  max-width: 980px; padding-left: clamp(16px, 4vw, 40px); padding-right: clamp(16px, 4vw, 40px);
+  max-width: 1100px; padding-left: clamp(16px, 4vw, 40px); padding-right: clamp(16px, 4vw, 40px);
 }
 [data-testid="stMainBlockContainer"] { padding-top: 40px; }
 [data-testid="stSidebar"] { border-right: 1px solid var(--border); }
@@ -142,26 +149,29 @@ p { text-wrap: pretty; }
 [data-testid="stExpander"] summary:hover { background: var(--surface-2); }
 
 /* ---------- Piezas propias ---------- */
-.marca { display: flex; align-items: center; gap: 10px; color: var(--text-1); font-weight: 550; letter-spacing: -0.01em; font-size: .95rem; }
-.marca { font-family: var(--font-display); font-weight: 500; font-size: 1.2rem; letter-spacing: -0.015em;
-  font-variation-settings: 'opsz' 24; }
+.marca { display: flex; align-items: center; gap: 10px; color: var(--text-1); font-weight: 600; letter-spacing: -0.01em; font-size: 15px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--r-full);
   font: 500 .72rem/1 var(--mono); color: var(--text-2); background: var(--surface-1); box-shadow: 0 0 0 1px var(--border); white-space: nowrap; }
 .mono { font-family: var(--mono); font-size: .8em; letter-spacing: 0; }
 .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--c, var(--st-desconocido)); }
 
-/* Encabezado + pasos */
-.encabezado { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 40px; }
-.pasos { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
-.pasos li { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: var(--r-full);
-  font-size: .8rem; color: var(--text-3); box-shadow: 0 0 0 1px var(--border); }
-.pasos li.hecho { color: var(--text-2); }
-.pasos li.actual { color: var(--text-1); background: var(--surface-1); box-shadow: 0 0 0 1px var(--border-strong), var(--highlight); }
-.pasos li.actual .punto { --c: var(--accent); box-shadow: 0 0 0 3px var(--accent-subtle); }
-.pasos li.hecho .punto { --c: var(--text-3); }
-.titular { font-family: var(--font-display); font-size: clamp(2rem, 2.2vw + 1.2rem, 2.75rem); line-height: 1.09;
-  letter-spacing: -0.02em; font-weight: 500; font-variation-settings: 'opsz' 48; color: var(--text-1); margin: 0 0 12px; }
-.lead { font-size: 1.06rem; line-height: 1.6; color: var(--text-2); max-width: 60ch; margin: 0 0 32px; }
+/* Encabezado: etapas como pasos (completado ✓, actual, pendiente) */
+.encabezado { margin-bottom: 24px; }
+.pasos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; list-style: none; margin: 0; padding: 0; font-size: 12px; color: var(--ink-3); }
+.pasos li { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 99px; margin: 0; }
+.pasos li + li::before { content: ""; width: 20px; height: 1px; background: var(--rule-2); margin: 0 6px 0 -4px; }
+.pasos li i { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 10px;
+  font-weight: 600; line-height: 1; text-box: trim-both cap alphabetic; box-shadow: inset 0 0 0 1.5px var(--rule-2); color: var(--ink-3); }
+.pasos li.hecho { color: var(--ink-2); }
+.pasos li.hecho i { background: var(--ink-3); color: var(--paper); box-shadow: none; }
+.pasos li.actual { background: var(--surface); color: var(--ink); font-weight: 500; box-shadow: 0 0 0 1px var(--rule); }
+.pasos li.actual i { background: var(--accent); color: var(--on-accent); box-shadow: none; }
+@media (max-width: 640px) {
+  .pasos { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .pasos li { flex: none; white-space: nowrap; }
+}
+.titular { font-size: 26px; line-height: 32px; letter-spacing: -0.02em; font-weight: 600; color: var(--text-1); margin: 0 0 6px; }
+.lead { font-size: 14px; line-height: 1.6; color: var(--text-2); max-width: 70ch; margin: 0 0 28px; }
 
 /* Guía inicial */
 .guia { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--border);
@@ -332,8 +342,8 @@ table.controles td.just { color: var(--text-3); font-size: .8rem; max-width: 36c
 .tablero { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--border);
   border-radius: var(--r-lg); overflow: hidden; box-shadow: 0 0 0 1px var(--border); margin: 8px 0 12px; }
 .tablero > div { background: var(--surface-1); padding: 18px 20px; }
-.tablero b { display: block; font-family: var(--font-display); font-size: 2.4rem; font-weight: 500; letter-spacing: -0.02em;
-  color: var(--text-1); font-variant-numeric: tabular-nums lining-nums; font-variation-settings: 'opsz' 40; line-height: 1.05; }
+.tablero b { display: block; font-size: 30px; font-weight: 600; letter-spacing: -0.03em;
+  color: var(--text-1); font-variant-numeric: tabular-nums; line-height: 36px; }
 .tablero b.nd { font-size: 1.05rem; letter-spacing: -0.01em; padding-top: 10px; }
 .tablero span { display: block; font-size: .8rem; color: var(--text-2); margin-top: 6px; }
 .tablero small { display: block; font-size: .72rem; color: var(--text-3); margin-top: 4px; line-height: 1.4; }
@@ -397,8 +407,7 @@ table.tabla tr:last-child td { border-bottom: 0; }
 .ini p { margin: 0 0 8px; font-size: .8rem; color: var(--text-2); line-height: 1.55; }
 .ini p b { color: var(--text-3); font-weight: 500; font: 500 .7rem/1 var(--mono); display: block; margin-bottom: 2px; }
 .flecha { color: var(--text-3); margin: 0 6px; }
-.seccion-titulo { font-family: var(--font-display); font-size: 1.6rem; line-height: 1.25; letter-spacing: -0.012em;
-  font-weight: 500; font-variation-settings: 'opsz' 28; color: var(--text-1); margin: 48px 0 6px; }
+.seccion-titulo { font-size: 21px; line-height: 28px; letter-spacing: -0.015em; font-weight: 600; color: var(--text-1); margin: 40px 0 4px; }
 .seccion-sub { color: var(--text-3); font-size: .84rem; margin: 0 0 16px; max-width: 75ch; line-height: 1.55; }
 .aviso { font-size: .76rem; color: var(--text-3); line-height: 1.5; margin: 0 0 4px; }
 .vacio { color: var(--text-3); font-size: .85rem; }
@@ -411,8 +420,8 @@ table.tabla tr:last-child td { border-bottom: 0; }
 .m-parcial { border: 1.5px solid var(--st-parcial); background: linear-gradient(to right, var(--st-parcial) 50%, transparent 50%); }
 .m-no_implementado { border: 1.5px solid var(--st-no_implementado);
   background: linear-gradient(135deg, transparent 42%, var(--st-no_implementado) 42% 58%, transparent 58%); }
-.m-no_verificado { border: 1.5px dashed var(--st-no_verificado); background: var(--sunken); }
-.m-no_aplicable { border-radius: 1px; background: linear-gradient(var(--st-no_aplicable), var(--st-no_aplicable)) center / 100% 2.5px no-repeat; }
+.m-no_verificado { border: 1.5px dashed var(--st-no_verificado); }
+.m-no_aplicable { background: var(--st-no_aplicable); }
 .estado-chip { gap: 7px; padding: 2px 9px 2px 7px; border-radius: var(--r-sm); font-weight: 600; font-size: .74rem; letter-spacing: .01em; color: var(--ink); }
 .estado-chip.e-implementado { background: var(--tint-implementado); }
 .estado-chip.e-parcial { background: var(--tint-parcial); }
@@ -468,19 +477,18 @@ def _estado(e: str) -> str:
 
 ORDEN_ESTADOS = ESTADOS
 ETAPAS = [("contexto", "Contexto"), ("evaluacion", "Evaluación 56"), ("reporte", "Reporte inicial"),
-          ("iniciativas", "Iniciativas (PDF 2)"), ("actualizado", "Reporte actualizado")]
+          ("iniciativas", "Avance con PDF 2"), ("actualizado", "Reporte actualizado")]
 
 
 # --------------------------------------------------------------- encabezado
 def encabezado(etapa: str) -> str:
+    """Etapas como pasos: completadas con ✓, la actual resaltada y las pendientes con su número."""
     idx = [p[0] for p in ETAPAS].index(etapa)
     items = "".join(
-        f'<li class="{"actual" if i == idx else "hecho" if i < idx else ""}"'
-        f'{" aria-current=\"step\"" if i == idx else ""}><span class="punto"></span>{nombre}</li>'
+        f'<li class="{"actual" if i == idx else "hecho" if i < idx else "pendiente"}"'
+        f'{" aria-current=\"step\"" if i == idx else ""}><i>{"✓" if i < idx else i + 1}</i>{nombre}</li>'
         for i, (_, nombre) in enumerate(ETAPAS))
-    return (f'<header class="encabezado"><div class="marca">{NOMBRE_AGENTE}'
-            f'<span class="chip">CIS Controls v8.1 · IG1 · 56 salvaguardas</span></div>'
-            f'<ol class="pasos" aria-label="Etapas">{items}</ol></header>')
+    return f'<header class="encabezado"><ol class="pasos" aria-label="Etapas">{items}</ol></header>'
 
 
 def titular(texto: str, lead: str) -> str:

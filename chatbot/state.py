@@ -10,6 +10,7 @@ Reglas que se hacen cumplir AQUÍ (no se confía solo en el prompt):
 """
 
 import copy
+import re
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -483,6 +484,51 @@ def validar_reporte(rep: dict, matriz: dict[str, Resultado], ids_brechas: list[s
                 texto = _explicacion_brecha(matriz, cid)
                 avisos.append(f"{cid}: el modelo no explicó la brecha; se completó con los datos de la matriz.")
             res["controles_mayores_brechas"].append({"control_id": cid, "explicacion": texto})
+    avisos += validar_presentacion(res, matriz)
+    for i, r in enumerate(rep.get(clave_riesgos, []), 1):
+        corto = " ".join(str(r.get("nombre_corto") or "").split()[:4])
+        if not corto:
+            avisos.append(f"Riesgo {i}: el modelo no dio nombre corto; se usará uno derivado del activo.")
+        r["nombre_corto"] = corto
+    return avisos
+
+
+def validar_presentacion(res: dict, matriz: dict[str, Resultado]) -> list[str]:
+    """Campos del dashboard (titular, datos clave, brechas y bases) contra la matriz, para que la gráfica no diga
+    algo que la matriz no respalda:
+    - un dato "X de Y" solo queda si X <= Y y AMBOS números aparecen en la justificación, cita u observaciones de su
+      salvaguarda (el modelo no calcula cifras: las toma de la evidencia);
+    - una brecha clave debe ser No implementado o Parcial; una base, Implementado o Parcial."""
+    avisos = []
+    if not res:
+        return avisos
+    res["titular"] = str(res.get("titular") or "").strip()
+
+    def numeros(sid: str) -> set[str]:
+        r = matriz.get(sid)
+        texto = " ".join((r.justificacion, r.cita, r.observaciones)) if r else ""
+        return set(re.findall(r"\d+", texto))
+
+    datos = []
+    for d in res.get("datos_clave") or []:
+        valor, total, sid = d.get("valor"), d.get("total"), d.get("salvaguarda")
+        ok = (isinstance(valor, int) and isinstance(total, int) and 0 <= valor <= total and total > 0
+              and {str(valor), str(total)} <= numeros(sid) and str(d.get("etiqueta") or "").strip())
+        if ok:
+            datos.append(d)
+        else:
+            avisos.append(f"Dato clave «{d.get('etiqueta')}» ({valor} de {total}, {sid}) descartado: la matriz no lo respalda.")
+    res["datos_clave"] = datos[:3]
+    for clave, validos, nombre in (("brechas_clave", ("no_implementado", "parcial"), "Brecha clave"),
+                                   ("bases", ("implementado", "parcial"), "Base aprovechable")):
+        quedan = []
+        for x in res.get(clave) or []:
+            sid = x.get("salvaguarda")
+            if sid in matriz and matriz[sid].estado in validos and str(x.get("etiqueta") or "").strip():
+                quedan.append(x)
+            else:
+                avisos.append(f"{nombre} «{x.get('etiqueta')}» ({sid}) descartada: su estado en la matriz no corresponde.")
+        res[clave] = quedan[:6]
     return avisos
 
 

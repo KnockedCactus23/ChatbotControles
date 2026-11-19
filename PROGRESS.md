@@ -105,11 +105,30 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 - **Se eliminaron las preguntas Sí/No / No lo sé al cliente** para apegarse a la actividad. El agente ya no las genera (prompt y esquema), la app no las muestra y no cuentan en la matriz. Las respuestas de evaluaciones guardadas antes del cambio se descartan al abrirlas y la salvaguarda queda No verificado, con registro en la bitácora.
 - README con capacidades, entradas aceptadas y salidas. Este archivo, PROGRESS.md.
 
+### 2026-11-18 — Rediseño visual (mockup aprobado)
+- Mockup en `mockup/resumen.html`, iterado con el equipo; después se implementó en la app.
+- **Identidad nueva:** Día "Pizarra cálida" (menos brillante) y Noche "Grafito". Solo Geist y Geist Mono; texto secundario más oscuro (pensado para ≥ 4.5:1).
+- **Reportes como dashboard (`chatbot/panel.py`)**, con más gráficas y menos texto. El texto completo sigue en los PDF/HTML descargables.
+  - KPIs del mismo tamaño y barra apilada de las 56 salvaguardas.
+  - Postura con titular y cifras «X de Y».
+  - Estado por control con segmentos.
+  - Riesgos plegables y roadmap con chips de riesgo y esfuerzo en bloques.
+  - Matriz plegable con filtros y pendientes.
+  - El reporte actualizado muestra los deltas frente a v1, «Cambió en v2», la situación de cada riesgo y el estado de cada iniciativa.
+- **Interacciones:**
+  - resaltado de un estado en toda la página desde la leyenda;
+  - riesgos ↔ iniciativas al pasar el cursor;
+  - índice lateral que marca la sección;
+  - menú «Descargar»;
+  - etapas como pasos.
+- **Esquema y prompt del reporte:** campos nuevos (`titular`, `datos_clave`, `brechas_clave`, `bases`, `nombre_corto`), validados contra la matriz (`validar_presentacion`). Las evaluaciones guardadas antes se ven con respaldos hasta regenerar su reporte.
+- Dos pruebas nuevas (38 en total). Revisado en el navegador: Día, Noche, 375px y escritorio, sin errores de consola.
+
 ---
 
 ## Verificación
 
-- **36 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
+- **38 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
 - **Prueba real con Gemini** y dos PDF ficticios, de punta a punta:
   - ficha con 20 de 20 citas verificadas;
   - evaluación v1 con implementación 31.6 % y cobertura 33.9 %, idéntica en dos corridas;
@@ -128,8 +147,10 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 - [ ] Preparar la **demo de 8 minutos**: una decisión correcta (cita verificada) y un error o limitación (7.1/7.2 o 1.1 arriba).
 - [ ] Responder las **preguntas de reflexión** de la actividad (dificultad principal, corrección humana, impacto de las iniciativas, etc.).
 - [ ] **Parte 2 de la actividad**, cuando llegue.
+- [ ] Generar un reporte real con Sonnet 5.5 para ver los campos nuevos del dashboard (titular, cifras «X de Y», brechas cortas, nombres cortos de riesgo). Las evaluaciones guardadas usan respaldos. Es una llamada con costo.
+- [ ] Decidir si `mockup/` se versiona o se agrega a `.gitignore`.
 
 ## Limitaciones conocidas
 
-- La API de Claude tiene costo (≈ US$1 por evaluación completa con Sonnet 5.5, según la estimación). El panel "Consumo de Claude" muestra lo real.
+- La API de Claude tiene costo (≈ US$1 por evaluación completa con Sonnet 5.5, según la estimación). El consumo real se guarda en cada evaluación (`consumo` en su JSON); el panel de la app se quitó el 2026-11-19.
 - PDF escaneados sin texto: las citas no se pueden verificar y todo queda No verificado.

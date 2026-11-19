@@ -1,53 +1,53 @@
-# Identidad "Dictamen técnico" (sistema de diseño Centinela IG1): tema Día y tema Noche.
+# Identidad "Pizarra cálida" (Día) y "Grafito" (Noche), del mockup aprobado (mockup/resumen.html).
 # Los hex salen de los tokens OKLCH de chatbot/ui.py. El tema se cambia con el selector Día/Noche de la barra lateral;
 # sin elección, sigue el del sistema operativo.
 [theme]
 baseRadius = "6px"
 buttonRadius = "6px"
-baseFontSize = 15
-font = "Public Sans:https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&display=swap"
-headingFont = "Newsreader:https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap"
-codeFont = "IBM Plex Mono:https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"
-headingFontWeights = [500, 500, 500, 600, 600, 600]
+baseFontSize = 14
+font = "Geist:https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap"
+headingFont = "Geist:https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap"
+codeFont = "Geist Mono:https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap"
+headingFontWeights = [600, 600, 600, 600, 600, 600]
 showWidgetBorder = true
 
 [theme.light]
-primaryColor = "#00657f"          # accent
-backgroundColor = "#f7fafc"       # paper
-secondaryBackgroundColor = "#eff3f6"  # sunken
-textColor = "#121e2b"             # ink
-borderColor = "#c0c9ce"           # rule-strong
-linkColor = "#00657f"
-redColor = "#bd3933"              # st-no_implementado
-orangeColor = "#c68206"           # st-parcial
-greenColor = "#267f47"            # st-implementado
-blueColor = "#00657f"
-violetColor = "#786895"           # st-no_aplicable
-grayColor = "#7a8187"             # st-no_verificado
+primaryColor = "#386173"          # accent
+backgroundColor = "#efece8"       # paper
+secondaryBackgroundColor = "#e6e4df"  # sunken
+textColor = "#23272c"             # ink
+borderColor = "#bab7b2"           # rule-2
+linkColor = "#386173"
+redColor = "#ac5e4e"              # st-no_implementado
+orangeColor = "#c29a5a"           # st-parcial
+greenColor = "#528869"            # st-implementado
+blueColor = "#386173"
+violetColor = "#71757a"
+grayColor = "#71757a"             # st-no_verificado
 
 [theme.light.sidebar]
-backgroundColor = "#ffffff"       # surface
-secondaryBackgroundColor = "#eff3f6"
-borderColor = "#dbe1e4"           # rule
+backgroundColor = "#e9e7e2"       # side
+secondaryBackgroundColor = "#f7f6f2"  # surface
+borderColor = "#d8d5d1"           # rule
 
 [theme.dark]
-primaryColor = "#54bbd2"          # accent (texto oscuro encima: on-accent)
-backgroundColor = "#0a0f13"       # paper
-secondaryBackgroundColor = "#12181d"  # surface
-textColor = "#eaeff3"             # ink
-borderColor = "#343c42"           # rule-strong
-linkColor = "#54bbd2"
-redColor = "#f27166"
-orangeColor = "#efb146"
-greenColor = "#56bd78"
-blueColor = "#54bbd2"
-violetColor = "#ac9ad0"
-grayColor = "#7a8187"
+primaryColor = "#7cb5c8"          # accent (texto oscuro encima: on-accent)
+backgroundColor = "#161719"       # paper
+secondaryBackgroundColor = "#1d1f22"  # surface
+textColor = "#e8e6e2"             # ink
+borderColor = "#404346"           # rule-2
+linkColor = "#7cb5c8"
+redColor = "#d37e6c"
+orangeColor = "#d7b16f"
+greenColor = "#6faf8a"
+blueColor = "#7cb5c8"
+violetColor = "#82878c"
+grayColor = "#82878c"
 
 [theme.dark.sidebar]
-backgroundColor = "#12181d"       # surface
-secondaryBackgroundColor = "#0a0f13"
-borderColor = "#232a2f"           # rule
+backgroundColor = "#1a1c1f"       # side
+secondaryBackgroundColor = "#1d1f22"  # surface
+borderColor = "#2c2e31"           # rule
 
 [client]
 toolbarMode = "minimal"

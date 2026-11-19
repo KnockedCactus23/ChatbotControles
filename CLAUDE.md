@@ -9,7 +9,7 @@ Agente de IA para la actividad **M3.6** (diseño de un agente para la evaluació
 5. **Etapa 5:** lee el **PDF 2**, propone cambios con cita; el auditor aprueba, rechaza o deja pendiente; se crea la **v2** solo con los aprobados y su reporte comparativo.
 6. **Sin preguntas Sí/No al cliente** (decisión del equipo, 2026-11-17: apegarse a la actividad). Solo cuenta la evidencia documental. Al cargar evaluaciones antiguas, `Proyecto._descartar_declaraciones()` devuelve a No verificado las respuestas Sí/No (`fuente == "declaracion"`). No reintroducir preguntas sin preguntar al equipo.
 7. **Chat de consultas** (`engine.ask`, solo lectura, no cambia estados): la entrada solo existe en la ficha de contexto ya generada y en los reportes (`reporte`, `actualizado`) — `CHAT_ACTIVO` en `app.py`. El historial se muestra siempre (ahí salen la prueba preliminar y los errores). Usa la **vista** (no la etapa), así que también funciona al consultar la ficha o el reporte inicial desde etapas posteriores.
-8. **Navegación entre secciones** (`st.segmented_control`, clave `vista`; decisión del equipo, 2026-11-17): siempre Contexto, Reporte inicial y Reporte actualizado (estos dos cuando existen). La Evaluación 56 y la Validación PDF 2 solo aparecen mientras son el paso en curso. Las vistas de etapas pasadas son de **solo lectura**: no se regenera la ficha ni se sube el PDF 2 desde ellas, para no romper R10–R12. Al avanzar de etapa (`etapa_vista`), la vista pasa al paso nuevo. En los reportes las matrices van **plegadas** (`st.expander`) porque alargan mucho la página: la v1 en el reporte inicial, y la v2 y la v1 en pestañas en el actualizado. Solo en la Evaluación 56 en curso la matriz va abierta.
+8. **Navegación entre secciones** (`st.segmented_control`, clave `vista`; decisión del equipo, 2026-11-17): siempre Contexto, Reporte inicial y Reporte actualizado (estos dos cuando existen). La Evaluación 56 y la Validación PDF 2 solo aparecen mientras son el paso en curso. Las vistas de etapas pasadas son de **solo lectura**: no se regenera la ficha ni se sube el PDF 2 desde ellas, para no romper R10–R12. Al avanzar de etapa (`etapa_vista`), la vista pasa al paso nuevo. En los reportes las matrices van **plegadas** (`<details>` de `panel.matriz`, con filtros por estado) porque alargan mucho la página: la v1 en el reporte inicial, y la v2 y la v1 (dos plegables) en el actualizado. Solo en la Evaluación 56 en curso la matriz va abierta (`abierta=True`).
 
 Proyecto académico de equipo. **Decisión del equipo (2026-11-17): usa la API de Claude** con el SDK oficial `anthropic` (antes era Gemini gratuito; se cambió por la calidad del razonamiento). No mezclar otros proveedores ni capas como LangChain. Este archivo se llama CLAUDE.md solo porque es la configuración de Claude Code (asistente de desarrollo).
 
@@ -49,7 +49,8 @@ chatbot/
   almacen.py               # guardar/cargar/listar proyectos en evaluaciones/ (EVALUACIONES_DIR para pruebas)
   exportar.py              # excel(p, "v1"|"v2"), reporte_html(p, "v1"|"v2"), csv_matriz, ficha_html (_pagina_html); prompt_maestro_md()
   reporte_pdf.py           # reporte_pdf(p, "v1"|"v2") (Entregable 3; cada uno debe caber en 5 páginas, lo verifica test_motor) y ficha_pdf()
-  ui.py                    # Tokens CSS (OKLCH) y piezas HTML
+  ui.py                    # Tokens CSS (OKLCH) y piezas HTML (también las de los HTML descargables)
+  panel.py                 # Dashboard de los reportes v1/v2 (mockup aprobado), índice lateral y su script
   data/cis_v8_1_2.json     # NO versionado (licencia CC BY-NC-ND): scripts/importar_cis.py
 scripts/importar_cis.py    # Excel oficial CIS v8.1.x → JSON (reconstruye ids como 3.10 que Excel guarda como 3.1)
 scripts/exportar_prompt.py # Entregable 1 → docs/prompt_maestro_centinela_ig1.md (sin catálogo CIS; sí se versiona)
@@ -97,20 +98,30 @@ tests/                     # conftest (catálogo falso: 18 IG1), test_state (reg
   - **Prefijo de mensajes.** Documento y contexto llevan `cache_control` (5 min) para que los lotes de la evaluación, la segunda pasada de la Etapa 5 y las consultas seguidas los lean de caché. Lo que cambia (lote, pregunta) va al final.
   - **Documento como texto paginado** (`Documento.texto_completo()`), no como PDF; solo un PDF sin texto va como archivo.
   - **Payload compacto.** `ficha_resumida()` sin citas para las etapas posteriores, JSON compacto y `matriz_compacta()` sin nombres (están en el catálogo). `MAX_TOKENS` por etapa.
-  - **Consumo.** `Motor.consumo` → `Proyecto.consumo` (panel de la barra lateral). Verificar `cache_read_input_tokens` > 0 tras cambiar prompts.
+  - **Consumo.** `Motor.consumo` → `Proyecto.consumo` (se guarda con la evaluación; la app ya no lo muestra, 2026-11-19). Verificar `cache_read_input_tokens` > 0 tras cambiar prompts.
 - Tareas lentas en la UI: `pedir(tipo)` → rerun con controles deshabilitados → se ejecutan al final del script con la tarjeta de progreso en `lugar_progreso`.
 
 ## Diseño (UI)
-- **Identidad "Dictamen técnico", modos Día y Noche** (2026-11-18). La fuente es el sistema de diseño Centinela IG1 (artifact) y el cuaderno `docs/identidad_visual_centinela.pdf`.
+- **Identidad "Pizarra cálida" (Día) y "Grafito" (Noche)** (2026-11-18), del mockup aprobado `mockup/resumen.html` (reemplaza a "Dictamen técnico").
   - Tokens en `ui.CSS`: Día en `:root`, Noche en `:root[data-theme="dark"]` (y en `prefers-color-scheme` para la primera pintura). Los nombres antiguos (`--bg`, `--text-1`, `--st-cubierto`…) son alias de los nuevos (`--paper`, `--ink`, `--st-implementado`…). No hex sueltos.
-  - Tipografía: Newsreader (títulos y cifras), Public Sans (interfaz), IBM Plex Mono (IDs y folios).
-  - **El estado es forma:** `_marca(estado)` dibuja lleno, a medias, tachado, punteado o guion. Los colores `st-*` solo pintan marcas y fondos (`tint-*`, `color-mix`); el texto va en `ink`. Nunca texto en color de estado.
+  - Tipografía: **solo Geist** (interfaz, títulos y cifras) y **Geist Mono** con números tabulares (IDs, folios). Títulos de sección 21px > títulos de tarjeta.
+  - **El estado es forma, con una sola codificación:** lleno (Implementado), a medias (Parcial), tachado (No implementado), **siempre punteado** (No verificado) y **gris claro** (No aplicable). Los colores `st-*` solo pintan marcas y fondos (`tint-*`, `color-mix`); el texto va en `ink`. Nunca texto en color de estado.
+- **Dashboard de los reportes: `chatbot/panel.py`** (clases `d-`). Los HTML descargables siguen usando `ui.tablero/riesgos/roadmap/resumen_ejecutivo`, que conservan todo el texto: no mezclarlos.
+  - Piezas: `resumen` (4 KPIs del mismo tamaño, barra apilada y leyenda), `postura`, `controles` (segmentos a escala fija y %; toda fila se abre con sus salvaguardas y solo los 5 de mayor brecha traen además su explicación), `riesgos` (fila plegable con «N salvaguardas»), `roadmap` (chips «R1 nombre corto», esfuerzo en bloques), `matriz`, `pendientes`, `indice` y `estado_lateral`.
+  - Barra lateral: en los reportes, **índice de secciones** que marca la visible; en las demás etapas, un resumen compacto de indicadores. Modelo y evaluaciones guardadas debajo.
+  - Descargas en un menú **«Descargar»** (`st.popover`) junto al título del reporte.
+  - Campos del reporte para el dashboard (`titular`, `datos_clave`, `brechas_clave`, `bases`, `nombre_corto` del riesgo): los valida `state.validar_presentacion()` contra la matriz. Un «X de Y» solo queda si ambos números aparecen en su salvaguarda. Las evaluaciones anteriores usan respaldos calculados en `panel` (oración con «postura», nombre corto desde el activo).
+  - **Interacciones en `panel.script()`**: un solo script con delegación de eventos, instalado una vez con `st.html(..., unsafe_allow_javascript=True)` (corre en la página, sin iframe).
+    - Resaltado cruzado por estado desde la leyenda (`body[data-foco]` atenúa todo `[data-e]` distinto; con clic queda fijo).
+    - Vínculo riesgos ↔ roadmap (`data-riesgo` / `data-riesgos`, con grupo `a` = v1 y `b` = vigentes v2).
+    - «Leer más», filtros de la matriz (`data-filtro` y CSS) e índice con scrollspy.
+    - Entrada animada: cifras de 0 a su valor y barra que se llena (menos de 1 s). No se anima con `prefers-reduced-motion` ni en pestañas ocultas; el HTML ya trae los valores finales.
 - **Temas de Streamlit:** `[theme.light]` y `[theme.dark]` en `.streamlit/config.toml`, con los hex de los tokens. `ui.tema_script()` lee el fondo que Streamlit aplicó y pone `data-theme` en la raíz; no usar `st.context.theme` (puede estar desfasado al cambiar de tema).
 - **Selector Día/Noche** (`ui.selector_tema()` en la barra lateral). Escribe `"Light"`/`"Dark"` en `localStorage["stActiveTheme-<ruta>-v2"]`, que es donde Streamlit lee el tema, y recarga la página.
   - Para volver al mismo lugar, `app.py` mantiene `?evaluacion=<id>&vista=<sección>` en la URL y los restaura al iniciar sesión. Solo acepta ids hexadecimales de 10 caracteres.
   - El selector se deshabilita mientras corre una tarea.
 - Tras cambiar `ui.py`, reiniciar el servidor de Streamlit: conserva en memoria la versión anterior del módulo.
-- `st.html` sanitiza: **elimina `<svg>`** y **descarta un `<style>` completo si contiene `<`** (incluso en comentarios; usar `\3c`).
+- `st.html` sanitiza (DOMPurify, perfil HTML): **elimina `<svg>`** (los chevrons se dibujan con CSS) y **descarta un `<style>` completo si contiene `<`** (incluso en comentarios; usar `\3c`). Conserva `details`, `button`, `data-*` y `aria-*`.
 - Todo texto de Claude o del usuario pasa por `ui.esc()`.
 - **`st.chat_input` nunca en la raíz**, siempre dentro de `st.container(key="chat")`. En la raíz, Streamlit lo fija abajo y activa "pegarse al final" (`stAppScrollToBottomContainer`), que arrastra la página hasta abajo al cambiar de sección o abrir un plegable.
 - Al cambiar de sección se sube al inicio con `ui.subir_al_inicio()` (`st.html(..., unsafe_allow_javascript=True)`), solo cuando cambia `vista_mostrada`.
@@ -123,7 +134,7 @@ pip install -r requirements.txt
 python scripts/importar_cis.py "ruta/CIS_Controls_Version_8.1.2___March_2025.xlsx"   # genera el catálogo local
 cp .env.example .env            # y poner ANTHROPIC_API_KEY (platform.claude.com → API keys)
 streamlit run app.py
-python -m pytest -q             # 36 pruebas sin API
+python -m pytest -q             # 38 pruebas sin API
 python scripts/exportar_prompt.py   # regenera docs/prompt_maestro_centinela_ig1.md
 ```
 

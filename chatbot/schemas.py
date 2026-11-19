@@ -72,7 +72,15 @@ def evaluacion(ids_lote: list[str]) -> dict:
 
 
 def _resumen_ejecutivo() -> dict:
+    # titular, datos_clave, brechas_clave y bases alimentan el dashboard de la app (más gráfica que texto); el
+    # código valida cada uno contra la matriz (state.validar_presentacion) y descarta lo que no cuadre.
+    etiqueta_salvaguarda = _obj({"etiqueta": _TEXTO, "salvaguarda": _ids_ig1()})
     return _obj({
+        "titular": _TEXTO,
+        "datos_clave": _lista(_obj({"etiqueta": _TEXTO, "valor": {"type": "integer"}, "total": {"type": "integer"},
+                                    "sentido": _enum(["favorable", "desfavorable"]), "salvaguarda": _ids_ig1()})),
+        "brechas_clave": _lista(etiqueta_salvaguarda),
+        "bases": _lista(etiqueta_salvaguarda),
         "postura_inicial": _TEXTO,
         "controles_mayores_brechas": _lista(_obj({"control_id": _ids_controles(), "explicacion": _TEXTO})),
         "informacion_faltante": _TEXTOS,
@@ -83,7 +91,7 @@ def _resumen_ejecutivo() -> dict:
 
 def _riesgo() -> dict:
     return _obj({
-        "titulo": _TEXTO, "descripcion": _TEXTO, "activo_proceso": _TEXTO, "deficiencia": _TEXTO,
+        "titulo": _TEXTO, "nombre_corto": _TEXTO, "descripcion": _TEXTO, "activo_proceso": _TEXTO, "deficiencia": _TEXTO,
         "consecuencia": _TEXTO, "severidad": _enum(["alta", "media", "baja"]), "justificacion": _TEXTO,
         "salvaguardas": _lista(_ids_ig1()),
     })

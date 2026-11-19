@@ -171,7 +171,7 @@ p { text-wrap: pretty; }
   .pasos li { flex: none; white-space: nowrap; }
 }
 .titular { font-size: 26px; line-height: 32px; letter-spacing: -0.02em; font-weight: 600; color: var(--text-1); margin: 0 0 6px; }
-.lead { font-size: 14px; line-height: 1.6; color: var(--text-2); max-width: 70ch; margin: 0 0 28px; }
+.lead { font-size: 14px; line-height: 1.6; color: var(--text-2); margin: 0 0 28px; }
 
 /* Guía inicial */
 .guia { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--border);
@@ -355,7 +355,7 @@ table.controles td.just { color: var(--text-3); font-size: .8rem; max-width: 36c
 
 /* Ficha de contexto */
 .ficha { margin: 8px 0 16px; }
-.ficha-resumen { color: var(--text-2); font-size: .94rem; line-height: 1.7; max-width: 72ch; white-space: pre-line; margin: 0 0 24px; }
+.ficha-resumen { color: var(--text-2); font-size: .94rem; line-height: 1.7; white-space: pre-line; margin: 0 0 24px; }
 .dims { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .dim { padding: 16px 18px; border-radius: var(--r-lg); background: var(--surface-1); box-shadow: var(--elev-1); }
 .dim h4 { margin: 0 0 2px; font-size: .92rem; font-weight: 540; color: var(--text-1); letter-spacing: -0.01em; }

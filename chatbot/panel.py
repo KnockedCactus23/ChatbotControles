@@ -96,7 +96,7 @@ body[data-foco="no_aplicable"] [data-e]:not([data-e="no_aplicable"]) { opacity: 
 .d-dato { display: grid; gap: 6px; margin-top: 12px; }
 .d-dato-cab { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--ink-3); }
 .d-dato-cab b { color: var(--ink); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.d-largo { font-size: 13px; line-height: 21px; color: var(--ink-2); max-width: 70ch; margin: 18px 0 0; white-space: pre-line; }
+.d-largo { font-size: 13px; line-height: 21px; color: var(--ink-2); margin: 18px 0 0; white-space: pre-line; }
 .d-largo:not(.d-abierto) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .d-leer { border: 0; background: none; padding: 0; margin-top: 6px; font: 500 12px/18px var(--font); color: var(--accent); cursor: pointer; }
 .d-leer:hover { text-decoration: underline; }

@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Centinela IG1 · Mockup del resumen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ---------- Día "Pizarra cálida" ---------- */
+:root {
+  --paper:   oklch(0.945 0.006 85);
+  --surface: oklch(0.972 0.005 85);
+  --sunken:  oklch(0.918 0.007 85);
+  --side:    oklch(0.928 0.007 85);
+  --ink:     oklch(0.27 0.012 255);
+  --ink-2:   oklch(0.40 0.011 255);
+  --ink-3:   oklch(0.485 0.010 255);   /* un paso más oscuro: ≥ 4.5:1 sobre paper y surface */
+  --rule:    oklch(0.875 0.007 85);
+  --rule-2:  oklch(0.78 0.008 85);
+  --accent:  oklch(0.47 0.055 228);
+  --accent-tint: oklch(0.90 0.022 228);
+  --on-accent: oklch(0.98 0.004 85);
+
+  --st-implementado:    oklch(0.58 0.075 158);
+  --st-parcial:         oklch(0.71 0.095 78);
+  --st-no_implementado: oklch(0.57 0.105 33);
+  --st-no_verificado:   oklch(0.56 0.010 255);   /* solo en trazo punteado */
+  --st-no_aplicable:    oklch(0.84 0.006 85);    /* gris claro: el dato que menos importa */
+  --tint-no_implementado: oklch(0.90 0.040 33);
+  --tint-parcial:         oklch(0.92 0.040 80);
+  --seg-ink: oklch(0.22 0.01 255);
+
+  --shadow: 0 1px 0 oklch(1 0 0 / .6) inset, 0 1px 2px oklch(0.3 0.02 85 / .06);
+  --pop: 0 8px 24px oklch(0.3 0.02 85 / .14), 0 0 0 1px var(--rule);
+  --font: "Geist", system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+/* ---------- Noche "Grafito" ---------- */
+:root[data-theme="dark"] {
+  --paper:   oklch(0.205 0.005 255);
+  --surface: oklch(0.240 0.006 255);
+  --sunken:  oklch(0.180 0.005 255);
+  --side:    oklch(0.225 0.006 255);
+  --ink:     oklch(0.925 0.005 85);
+  --ink-2:   oklch(0.80 0.006 85);
+  --ink-3:   oklch(0.68 0.007 85);
+  --rule:    oklch(0.300 0.006 255);
+  --rule-2:  oklch(0.38 0.007 255);
+  --accent:  oklch(0.74 0.065 222);
+  --accent-tint: oklch(0.32 0.035 225);
+  --on-accent: oklch(0.20 0.01 255);
+
+  --st-implementado:    oklch(0.70 0.085 158);
+  --st-parcial:         oklch(0.78 0.095 80);
+  --st-no_implementado: oklch(0.68 0.110 33);
+  --st-no_verificado:   oklch(0.62 0.010 255);
+  --st-no_aplicable:    oklch(0.40 0.006 255);
+  --tint-no_implementado: oklch(0.33 0.055 33);
+  --tint-parcial:         oklch(0.34 0.050 80);
+  --seg-ink: oklch(0.20 0.01 255);
+
+  --shadow: 0 1px 0 oklch(1 0 0 / .04) inset;
+  --pop: 0 8px 24px oklch(0 0 0 / .45), 0 0 0 1px var(--rule-2);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 56px; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink-2); font: 400 14px/22px var(--font); -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { color: var(--ink); margin: 0; font-weight: 600; }
+.num, .mono { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: -0.01em; }
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* ---------- Barra del mockup ---------- */
+.mock-bar { position: sticky; top: 0; z-index: 20; height: 40px; display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 0 16px; background: oklch(0.25 0.01 255); color: oklch(0.95 0.005 85); font-size: 12px; }
+.mock-bar b { font-weight: 600; }
+.mock-bar .txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 6px; background: oklch(1 0 0 / .12); flex: none; }
+.seg button { border: 0; background: transparent; color: inherit; font: 500 12px/18px var(--font); padding: 3px 10px; border-radius: 4px; cursor: pointer; opacity: .75; }
+.seg button[aria-pressed="true"] { background: oklch(0.95 0.005 85); color: oklch(0.25 0.01 255); opacity: 1; }
+
+/* ---------- Estructura ---------- */
+.app { display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+aside { position: sticky; top: 40px; height: calc(100vh - 40px); background: var(--side); border-right: 1px solid var(--rule); padding: 20px 14px 16px; display: flex; flex-direction: column; gap: 20px; }
+main { padding: 28px clamp(16px, 4vw, 48px) 80px; min-width: 0; }
+.contenido { max-width: 1040px; display: grid; gap: 40px; }
+
+/* ---------- Navegación lateral ---------- */
+.marca { font-size: 15px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; padding: 0 8px; }
+.marca small { display: block; font-weight: 400; font-size: 12px; color: var(--ink-3); letter-spacing: 0; }
+.indice { display: grid; gap: 1px; }
+.indice-titulo { font-size: 11px; font-weight: 500; color: var(--ink-3); padding: 0 8px 6px; }
+.indice a { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 6px 12px; border-radius: 6px; color: var(--ink-2); text-decoration: none; font-size: 13px; transition: background-color 80ms, color 80ms; }
+.indice a:hover { background: color-mix(in oklch, var(--sunken) 70%, transparent); color: var(--ink); }
+.indice a::before { content: ""; position: absolute; left: 2px; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: transparent; transition: background-color 120ms; }
+.indice a[aria-current="true"] { background: var(--surface); color: var(--ink); font-weight: 500; box-shadow: var(--shadow), 0 0 0 1px var(--rule); }
+.indice a[aria-current="true"]::before { background: var(--accent); }
+.indice a .mono { color: var(--ink-3); font-size: 11px; font-weight: 400; }
+.lado-pie { margin-top: auto; display: grid; gap: 12px; }
+.lado-bloque { display: grid; gap: 6px; }
+.lado-titulo { font-size: 11px; font-weight: 500; color: var(--ink-3); }
+.campo { border: 1px solid var(--rule-2); background: var(--surface); border-radius: 6px; padding: 6px 10px; font-size: 13px; color: var(--ink); display: flex; justify-content: space-between; gap: 8px; }
+.campo span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Encabezado ---------- */
+.encabezado { display: grid; gap: 16px; }
+.pasos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+.paso { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 99px; text-decoration: none; color: inherit; }
+.paso i { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 600; line-height: 1; text-box: trim-both cap alphabetic; }
+.paso.hecho { color: var(--ink-2); }
+.paso.hecho:hover { background: var(--sunken); }
+.paso.hecho i { background: var(--ink-3); color: var(--paper); }
+.paso.actual { background: var(--surface); color: var(--ink); font-weight: 500; box-shadow: 0 0 0 1px var(--rule); }
+.paso.actual i { background: var(--accent); color: var(--on-accent); }
+.paso.pendiente i { box-shadow: inset 0 0 0 1.5px var(--rule-2); color: var(--ink-3); }
+.paso-linea { width: 20px; height: 1px; background: var(--rule-2); }
+.titulo-fila { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+h1 { font-size: 26px; line-height: 32px; letter-spacing: -0.02em; }
+h1 span { color: var(--ink-3); font-weight: 400; }
+.sub-h1 { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
+
+/* Descargar ▾ */
+.descargar { position: relative; }
+.descargar > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px 0 12px; border-radius: 6px; border: 1px solid var(--rule-2); background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 500; cursor: pointer; }
+.descargar > summary::-webkit-details-marker { display: none; }
+.descargar > summary:hover { background: var(--sunken); }
+.descargar svg { transition: transform 120ms; }
+.descargar[open] > summary svg { transform: rotate(180deg); }
+.menu { position: absolute; right: 0; top: 38px; z-index: 10; min-width: 240px; padding: 6px; border-radius: 8px; background: var(--surface); box-shadow: var(--pop); display: grid; }
+.menu a { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 7px 10px; border-radius: 5px; color: var(--ink); text-decoration: none; font-size: 13px; }
+.menu a:hover { background: var(--sunken); }
+.menu a .mono { color: var(--ink-3); font-weight: 400; font-size: 11px; }
+.menu hr { border: 0; border-top: 1px solid var(--rule); margin: 4px 6px; }
+
+/* ---------- Tarjetas y secciones ---------- */
+.tarjeta { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; box-shadow: var(--shadow); }
+.seccion { display: grid; gap: 14px; }
+.seccion-cab { display: grid; gap: 2px; }
+h2 { font-size: 21px; line-height: 28px; letter-spacing: -0.015em; }
+h3 { font-size: 14px; line-height: 20px; }
+.sub { font-size: 13px; color: var(--ink-3); }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kpi { padding: 18px 20px; display: grid; gap: 6px; align-content: start; }
+.kpi + .kpi { border-left: 1px solid var(--rule); }
+.kpi-nombre { font-size: 12px; font-weight: 500; color: var(--ink-3); }
+.kpi-cifra { font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: -0.03em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.kpi-cifra small { font-size: .5em; font-weight: 500; color: var(--ink-3); letter-spacing: 0; margin-left: 1px; }
+.kpi-nota { font-size: 12px; line-height: 18px; color: var(--ink-3); }
+.kpi-nota b { color: var(--ink); font-weight: 600; }
+.barra { height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.barra i { display: block; height: 100%; border-radius: 3px; background: var(--accent); transform-origin: left; }
+
+.distribucion { padding: 16px 20px 18px; border-top: 1px solid var(--rule); display: grid; gap: 12px; }
+.apilada { display: flex; gap: 2px; height: 16px; }
+.apilada span { display: block; height: 100%; border-radius: 3px; }
+
+/* Codificación única de estados: lleno, a medias, tachado, punteado, gris claro */
+[data-e="no_verificado"].s { background: transparent !important; border: 1.5px dashed var(--st-no_verificado); }
+.m { width: 12px; height: 12px; border-radius: 2px; display: inline-block; flex: none; }
+.m.implementado { background: var(--st-implementado); }
+.m.parcial { border: 1.5px solid var(--st-parcial); background: linear-gradient(to right, var(--st-parcial) 50%, transparent 50%); }
+.m.no_implementado { border: 1.5px solid var(--st-no_implementado); background: linear-gradient(135deg, transparent 41%, var(--st-no_implementado) 41% 59%, transparent 59%); }
+.m.no_verificado { border: 1.5px dashed var(--st-no_verificado); }
+.m.no_aplicable { background: var(--st-no_aplicable); }
+
+/* Leyenda interactiva (momento firma) */
+.leyenda { display: flex; flex-wrap: wrap; gap: 4px; }
+.leyenda button { display: inline-flex; align-items: center; gap: 7px; border: 0; background: transparent; padding: 4px 9px 4px 6px; border-radius: 6px; font-size: 12px; color: var(--ink-2); cursor: pointer; transition: background-color 80ms, opacity 160ms; }
+.leyenda button:hover, .leyenda button[aria-pressed="true"] { background: var(--sunken); color: var(--ink); }
+.leyenda b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pista { font-size: 11px; color: var(--ink-3); align-self: center; margin-left: 4px; }
+
+[data-e] { transition: opacity 160ms ease-out, filter 160ms ease-out; }
+body[data-foco="implementado"]    [data-e]:not([data-e="implementado"]),
+body[data-foco="parcial"]         [data-e]:not([data-e="parcial"]),
+body[data-foco="no_implementado"] [data-e]:not([data-e="no_implementado"]),
+body[data-foco="no_verificado"]   [data-e]:not([data-e="no_verificado"]),
+body[data-foco="no_aplicable"]    [data-e]:not([data-e="no_aplicable"]) { opacity: .16; filter: saturate(.3); }
+body[data-foco] .fila-sin-foco { opacity: .45; }
+
+/* Postura */
+.postura { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.postura > div { padding: 20px; }
+.postura > div + div { border-left: 1px solid var(--rule); }
+.titular { font-size: 18px; line-height: 27px; color: var(--ink); font-weight: 500; letter-spacing: -0.01em; margin: 0 0 16px; text-wrap: pretty; }
+.dato { display: grid; gap: 6px; margin-top: 12px; }
+.dato-cab { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--ink-3); }
+.dato-cab b { color: var(--ink); font-weight: 600; white-space: nowrap; }
+.texto-largo { font-size: 13px; line-height: 21px; color: var(--ink-2); max-width: 70ch; margin: 18px 0 0; }
+.texto-largo:not(.abierto) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.leer { border: 0; background: none; padding: 0; margin-top: 6px; font-size: 12px; font-weight: 500; color: var(--accent); cursor: pointer; }
+.etiquetas { display: flex; flex-wrap: wrap; gap: 6px; }
+.etiqueta { font-size: 12px; line-height: 18px; padding: 3px 9px; border-radius: 99px; background: var(--sunken); color: var(--ink); border: 1px solid var(--rule); display: inline-flex; gap: 6px; align-items: baseline; }
+.etiqueta.grave { background: var(--tint-no_implementado); border-color: transparent; }
+.etiqueta .mono { color: var(--ink-3); font-size: 11px; font-weight: 400; }
+.mini-titulo { font-size: 12px; font-weight: 500; color: var(--ink-3); margin: 0 0 10px; }
+
+/* Chevron grande compartido */
+.chev { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; color: var(--ink-3); transition: transform 140ms ease-out, background-color 80ms; }
+details[open] > summary .chev { transform: rotate(180deg); }
+summary:hover .chev { background: var(--sunken); color: var(--ink); }
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+
+/* Estado por control */
+.ctabla-cab, .crow { display: grid; grid-template-columns: 330px minmax(0, 1fr) 28px; gap: 16px; align-items: center; padding: 6px 12px 6px 18px; }
+.ctabla-cab { font-size: 11px; font-weight: 500; color: var(--ink-3); border-bottom: 1px solid var(--rule); padding-top: 10px; padding-bottom: 8px; }
+.cnom { display: flex; align-items: center; min-width: 0; font-size: 13px; line-height: 18px; color: var(--ink); }
+.cnom .nombre { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cnom .rank { flex: none; }
+.cnom .mono { margin-right: 8px; color: var(--ink); }
+.rank { display: inline-block; font-size: 10px; line-height: 15px; font-weight: 600; color: var(--ink); background: var(--tint-no_implementado); border-radius: 3px; padding: 0 5px; margin-left: 8px; vertical-align: 1px; }
+.cbarra { display: flex; align-items: center; gap: 10px; }
+.segs { display: flex; gap: 2px; height: 18px; }
+.segs span { display: grid; place-items: center; height: 100%; border-radius: 3px; font-size: 11px; font-weight: 600; color: var(--seg-ink); min-width: 18px; font-variant-numeric: tabular-nums; line-height: 1; text-box: trim-both cap alphabetic; }
+.segs span[data-e="no_verificado"] { color: var(--ink-2); }
+.segs span[data-e="no_aplicable"] { color: var(--ink-2); }
+.cpct { font-size: 12px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cpct.nd { color: var(--ink-3); font-weight: 500; }
+.cd + .cd { border-top: 1px solid var(--rule); }
+details.cd > summary:hover { background: color-mix(in oklch, var(--sunken) 55%, transparent); }
+details.cd[open] { background: var(--sunken); }
+.cdet { padding: 2px 18px 14px 18px; display: grid; gap: 10px; }
+.cdet p { margin: 0; font-size: 13px; line-height: 21px; max-width: 90ch; }
+.lista-sv { display: flex; flex-wrap: wrap; gap: 6px; }
+.sv { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; padding: 2px 8px 2px 6px; border-radius: 4px; background: var(--surface); border: 1px solid var(--rule); color: var(--ink); }
+.sv .mono { font-size: 11px; }
+
+/* Riesgos */
+.riesgo > summary { display: grid; grid-template-columns: 22px minmax(0, 1fr) 64px 220px 28px; gap: 14px; align-items: center; padding: 12px 12px 12px 18px; transition: background-color 80ms; }
+.riesgo + .riesgo { border-top: 1px solid var(--rule); }
+.riesgo > summary:hover { background: color-mix(in oklch, var(--sunken) 55%, transparent); }
+.riesgo[open] { background: var(--sunken); }
+.rnum { font-size: 13px; font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.rtitulo { font-size: 14px; color: var(--ink); font-weight: 500; line-height: 20px; }
+.rtitulo small { display: block; font-size: 12px; color: var(--ink-3); font-weight: 400; }
+.sev { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; color: var(--ink); justify-self: start; display: inline-flex; gap: 6px; align-items: center; }
+.sev::before { content: ""; width: 3px; height: 11px; border-radius: 1px; }
+.sev.alta { background: var(--tint-no_implementado); } .sev.alta::before { background: var(--st-no_implementado); }
+.sev.media { background: var(--tint-parcial); } .sev.media::before { background: var(--st-parcial); }
+.rbarra { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.rbarra .apilada { height: 8px; }
+.rbarra small { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.rdetalle { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 0 18px 18px 54px; }
+.rdetalle h3 { font-size: 11px; font-weight: 500; color: var(--ink-3); margin-bottom: 2px; }
+.rdetalle p { margin: 0; font-size: 13px; line-height: 20px; }
+.rdetalle .lista-sv { grid-column: 1 / -1; }
+
+/* Vínculo riesgos ↔ roadmap */
+.vinculo { transition: opacity 160ms ease-out, background-color 160ms; }
+.con-vinculo .vinculo:not(.activo) { opacity: .35; }
+.con-vinculo .vinculo.activo { background: var(--accent-tint) !important; }
+.chip-r { font-size: 12px; line-height: 18px; padding: 2px 8px; border-radius: 99px; background: var(--sunken); border: 1px solid var(--rule); color: var(--ink); white-space: nowrap; display: inline-flex; gap: 5px; }
+.chip-r .mono { color: var(--ink-3); font-size: 11px; font-weight: 400; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* Roadmap */
+.roadmap { overflow-x: auto; }
+.rm { width: 100%; border-collapse: collapse; min-width: 760px; }
+.rm th { font-size: 11px; font-weight: 500; color: var(--ink-3); text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+.rm td { padding: 12px 14px; border-top: 1px solid var(--rule); vertical-align: middle; font-size: 13px; }
+.rm tbody tr:first-child td { border-top: 0; }
+.prio { font-size: 13px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ini { color: var(--ink); font-weight: 500; line-height: 19px; }
+.ini small { display: block; color: var(--ink-3); font-weight: 400; font-size: 12px; }
+.tipo { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; color: var(--ink); }
+.tipo.qw { background: var(--accent-tint); }
+.tipo.pr { background: var(--sunken); box-shadow: inset 0 0 0 1px var(--rule-2); }
+.esfuerzo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: 72px; }
+.esfuerzo i { height: 8px; border-radius: 2px; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--rule); }
+.esfuerzo i.on { background: var(--ink-3); box-shadow: none; }
+.esf-txt { font-size: 11px; color: var(--ink-3); margin-top: 3px; }
+
+/* Matriz */
+.matriz > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 12px 14px 18px; }
+.matriz > summary:hover { background: color-mix(in oklch, var(--sunken) 55%, transparent); border-radius: 10px; }
+.matriz[open] > summary { border-bottom: 1px solid var(--rule); border-radius: 10px 10px 0 0; }
+.filtros { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 18px; border-bottom: 1px solid var(--rule); }
+.filtro { border: 1px solid var(--rule-2); background: var(--surface); color: var(--ink-2); border-radius: 99px; padding: 3px 10px; font: 500 12px/18px var(--font); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.filtro[aria-pressed="true"] { background: var(--accent-tint); border-color: transparent; color: var(--ink); }
+.filtro b { font-variant-numeric: tabular-nums; }
+.mx-marco { overflow: auto; max-height: 640px; }
+.mx { width: 100%; border-collapse: collapse; min-width: 760px; }
+.mx th { position: sticky; top: 0; background: var(--sunken); font-size: 11px; font-weight: 500; color: var(--ink-3); text-align: left; padding: 8px 12px; z-index: 1; }
+.mx td { padding: 10px 12px; border-top: 1px solid var(--rule); font-size: 13px; line-height: 19px; vertical-align: top; }
+.mx .est { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; font-size: 12px; font-weight: 500; color: var(--ink); }
+.mx .cita { color: var(--ink-3); font-size: 12px; margin-top: 4px; display: block; }
+.mx .pag { font-family: var(--mono); font-size: 11px; white-space: nowrap; padding: 1px 6px; background: var(--sunken); border-radius: 3px; color: var(--ink-2); }
+
+/* Pendientes */
+.dos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.dos .tarjeta { padding: 18px 20px; display: grid; gap: 12px; align-content: start; }
+.faltante { display: grid; gap: 6px; }
+.faltante div { display: grid; grid-template-columns: 38px 1fr; gap: 10px; font-size: 13px; line-height: 19px; color: var(--ink); align-items: baseline; }
+.faltante .mono { color: var(--ink-3); font-weight: 400; }
+.razones { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.razones li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; font-size: 13px; line-height: 19px; color: var(--ink); }
+.razones b { font-size: 15px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.nota { font-size: 12px; color: var(--ink-3); padding: 10px 14px; border: 1px dashed var(--rule-2); border-radius: 8px; }
+
+/* ---------- Entrada (solo con movimiento permitido) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .cargando .apilada.principal span { transform: scaleX(0); }
+  .apilada.principal span { transform-origin: left; transition: transform 380ms cubic-bezier(.2, .8, .2, 1); }
+  .cargando .kpi .barra i { transform: scaleX(0); }
+  .kpi .barra i { transition: transform 700ms cubic-bezier(.2, .8, .2, 1); }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before { transition: none !important; scroll-behavior: auto !important; } }
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 960px) {
+  .app { grid-template-columns: 1fr; }
+  aside { position: sticky; top: 40px; z-index: 9; height: auto; flex-direction: row; padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--rule); overflow-x: auto; }
+  aside .marca, .lado-pie, .indice-titulo { display: none; }
+  .indice { display: flex; gap: 2px; }
+  .indice a { white-space: nowrap; padding: 4px 10px; }
+  .indice a .mono, .indice a::before { display: none; }
+  html { scroll-padding-top: 96px; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi { padding: 14px; }
+  .kpi .kpi-cifra { font-size: 24px; line-height: 30px; }
+  .mock-bar .txt, #repetir { display: none; }
+  .kpi:nth-child(odd) { border-left: 0; }
+  .kpi:nth-child(n+3) { border-top: 1px solid var(--rule); }
+  .postura, .dos { grid-template-columns: 1fr; }
+  .postura > div + div { border-left: 0; border-top: 1px solid var(--rule); }
+  .ctabla-cab { display: none; }
+  .crow { grid-template-columns: minmax(0, 1fr) 28px; gap: 6px 10px; padding: 8px 12px 8px 14px; }
+  .crow .cbarra { grid-column: 1; grid-row: 2; }
+  .crow .chev { grid-row: 1 / span 2; grid-column: 2; }
+  .riesgo > summary { grid-template-columns: 18px minmax(0, 1fr) 28px; padding-left: 14px; }
+  .riesgo .sev, .riesgo .rbarra { grid-column: 2; }
+  .riesgo .chev { grid-column: 3; grid-row: 1 / span 3; }
+  .rdetalle { grid-template-columns: 1fr; padding-left: 46px; }
+}
+</style>
+</head>
+<body class="cargando">
+
+<div class="mock-bar">
+  <span class="txt"><b>Mockup</b> · Reporte inicial · datos de la evaluación FERREMAX. No implementado.</span>
+  <span style="display:flex;gap:8px">
+    <span class="seg" id="tema"><button aria-pressed="true" data-v="light">Día</button><button aria-pressed="false" data-v="dark">Noche</button></span>
+    <span class="seg"><button aria-pressed="false" id="repetir">Repetir entrada</button></span>
+  </span>
+</div>
+
+<div class="app">
+  <aside>
+    <div class="marca">Centinela IG1<small>FERREMAX DEL BAJÍO</small></div>
+    <nav class="indice" aria-label="Secciones del reporte">
+      <div class="indice-titulo">En este reporte</div>
+      <a href="#resumen">Resumen</a>
+      <a href="#postura">Postura</a>
+      <a href="#controles">Controles <span class="mono">15</span></a>
+      <a href="#riesgos">Riesgos <span class="mono">5</span></a>
+      <a href="#roadmap">Roadmap <span class="mono">5</span></a>
+      <a href="#matriz">Matriz <span class="mono">56</span></a>
+      <a href="#pendientes">Pendientes <span class="mono">11</span></a>
+    </nav>
+    <div class="lado-pie">
+      <div class="lado-bloque">
+        <div class="lado-titulo">Modelo de Claude</div>
+        <div class="campo"><span>Sonnet 5.5 · recomendado</span><span>▾</span></div>
+      </div>
+      <div class="lado-bloque">
+        <div class="lado-titulo">Evaluaciones guardadas</div>
+        <div class="campo"><span>FERREMAX DEL BAJÍO · 18 nov</span><span>▾</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="contenido">
+
+      <header class="encabezado">
+        <nav class="pasos" aria-label="Etapas">
+          <a class="paso hecho" href="#"><i>✓</i>Contexto</a><span class="paso-linea"></span>
+          <span class="paso actual" aria-current="step"><i>2</i>Reporte inicial</span><span class="paso-linea"></span>
+          <span class="paso pendiente"><i>3</i>Avance con PDF 2</span>
+        </nav>
+        <div class="titulo-fila">
+          <div>
+            <h1>Reporte inicial <span>· v1</span></h1>
+            <div class="sub-h1">FERREMAX DEL BAJÍO, S.A. de C.V. · cerrada el 18 de noviembre de 2026</div>
+          </div>
+          <details class="descargar">
+            <summary>Descargar <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+            <div class="menu">
+              <a href="#">Reporte inicial <span class="mono">PDF</span></a>
+              <a href="#">Reporte inicial <span class="mono">HTML</span></a>
+              <hr>
+              <a href="#">Excel completo v1 <span class="mono">XLSX</span></a>
+              <a href="#">Matriz v1 <span class="mono">CSV</span></a>
+            </div>
+          </details>
+        </div>
+      </header>
+
+      <!-- Resumen -->
+      <section class="tarjeta" id="resumen" aria-label="Resumen">
+        <div class="kpis">
+          <div class="kpi heroe">
+            <div class="kpi-nombre">Implementación</div>
+            <div class="kpi-cifra"><span data-cuenta="37.5" data-dec="1">37.5</span><small>%</small></div>
+            <div class="barra"><i style="width:37.5%"></i></div>
+            <div class="kpi-nota">Sobre las 44 salvaguardas evaluables</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-nombre">Cobertura</div>
+            <div class="kpi-cifra"><span data-cuenta="80" data-dec="1">80.0</span><small>%</small></div>
+            <div class="kpi-nota">44 de 55 aplicables con evidencia</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-nombre">Por cerrar</div>
+            <div class="kpi-cifra"><span data-cuenta="43">43</span></div>
+            <div class="kpi-nota"><b>12</b> sin implementar · 31 parciales</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-nombre">Sin evidencia</div>
+            <div class="kpi-cifra"><span data-cuenta="11">11</span></div>
+            <div class="kpi-nota">No verificadas; pueden mover el porcentaje</div>
+          </div>
+        </div>
+        <div class="distribucion">
+          <div class="apilada principal" id="apilada" role="img" aria-label="Distribución de las 56 salvaguardas por estado"></div>
+          <div class="leyenda" id="leyenda"></div>
+        </div>
+      </section>
+
+      <!-- Postura -->
+      <section class="seccion" id="postura">
+        <div class="seccion-cab"><h2>Postura de ciberseguridad</h2></div>
+        <div class="tarjeta postura">
+          <div>
+            <p class="titular">Débil pero con bases aprovechables: el MSP sostiene casi todo el avance, y por eso predominan los estados parciales.</p>
+            <div class="dato">
+              <div class="dato-cab"><span>Equipos con agente del MSP (antivirus, parches, configuración)</span><b class="num">74 de 92</b></div>
+              <div class="barra"><i style="width:80.4%"></i></div>
+            </div>
+            <div class="dato">
+              <div class="dato-cab"><span>Cajas con Windows 10 sin soporte</span><b class="num">27 de 27</b></div>
+              <div class="barra"><i style="width:100%;background:var(--st-no_implementado)"></i></div>
+            </div>
+            <p class="texto-largo" id="postura-texto"></p>
+            <button class="leer" id="leer" aria-expanded="false">Leer más ▾</button>
+          </div>
+          <div>
+            <h3 class="mini-titulo">Brechas más graves</h3>
+            <div class="etiquetas">
+              <span class="etiqueta grave">Windows 10 sin soporte en cajas <span class="mono">2.2</span></span>
+              <span class="etiqueta grave">Cuentas compartidas <span class="mono">5.2</span></span>
+              <span class="etiqueta grave">Acceso remoto sin MFA <span class="mono">6.4</span></span>
+              <span class="etiqueta grave">Sin respaldos ni recuperación <span class="mono">11.1</span></span>
+              <span class="etiqueta grave">37 archivos públicos en Drive <span class="mono">3.3</span></span>
+              <span class="etiqueta grave">Sin respuesta a incidentes <span class="mono">17.1</span></span>
+            </div>
+            <h3 class="mini-titulo" style="margin-top:18px">Bases aprovechables (parciales, por el MSP)</h3>
+            <div class="etiquetas">
+              <span class="etiqueta">Antivirus gestionado <span class="mono">10.1</span></span>
+              <span class="etiqueta">Parches automáticos <span class="mono">7.3</span></span>
+              <span class="etiqueta">Estándar de configuración <span class="mono">4.1</span></span>
+              <span class="etiqueta">Escaneos de vulnerabilidades <span class="mono">7.1</span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Controles -->
+      <section class="seccion" id="controles">
+        <div class="seccion-cab">
+          <h2>Estado por control</h2>
+          <span class="sub">Cuántas salvaguardas de cada control hay en cada estado. Los cinco con mayores brechas van primero y se abren para ver por qué.</span>
+        </div>
+        <div class="tarjeta">
+          <div class="ctabla-cab"><span>Control</span><span>Salvaguardas por estado · implementación</span><span></span></div>
+          <div id="filas-controles"></div>
+        </div>
+      </section>
+
+      <!-- Riesgos -->
+      <section class="seccion" id="riesgos">
+        <div class="seccion-cab">
+          <h2>Cinco riesgos principales</h2>
+          <span class="sub">La barra muestra el estado de las salvaguardas que sostienen cada riesgo. Pasa el cursor para ver qué iniciativas lo reducen.</span>
+        </div>
+        <div class="tarjeta" id="lista-riesgos"></div>
+      </section>
+
+      <!-- Roadmap -->
+      <section class="seccion" id="roadmap">
+        <div class="seccion-cab">
+          <h2>Roadmap de cinco iniciativas</h2>
+          <span class="sub">Qué riesgos reduce cada una, cuánto esfuerzo pide y cuántas salvaguardas mueve.</span>
+        </div>
+        <div class="tarjeta roadmap">
+          <table class="rm">
+            <thead><tr><th>#</th><th>Iniciativa</th><th>Reduce</th><th>Tipo</th><th>Esfuerzo</th><th>Salvaguardas</th></tr></thead>
+            <tbody id="filas-roadmap"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Matriz -->
+      <details class="tarjeta matriz" id="matriz">
+        <summary>
+          <div class="seccion-cab"><h2>Matriz de las 56 salvaguardas</h2><span class="sub">Estado, justificación, cita y página de cada salvaguarda (v1).</span></div>
+          <span class="chev"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </summary>
+        <div class="filtros" id="filtros"></div>
+        <div class="mx-marco"><table class="mx"><thead><tr><th>ID</th><th>Control</th><th>Estado</th><th>Justificación y cita</th><th>Evidencia</th></tr></thead><tbody id="filas-matriz"></tbody></table></div>
+      </details>
+
+      <!-- Pendientes -->
+      <section class="seccion" id="pendientes">
+        <div class="seccion-cab"><h2>Pendientes</h2><span class="sub">Lo que falta para dar el resultado por firme.</span></div>
+        <div class="dos">
+          <div class="tarjeta">
+            <h3>Información que falta <span class="sub" style="font-weight:400">· 11 salvaguardas</span></h3>
+            <div class="faltante" id="faltante"></div>
+          </div>
+          <div class="tarjeta">
+            <h3>Por qué es preliminar</h3>
+            <ul class="razones">
+              <li><b>11</b><span>salvaguardas sin evidencia documental (No verificado).</span></li>
+              <li><b>1</b><span>salvaguarda Implementada, apoyada en un solo ejemplo de septiembre de 2026.</span></li>
+              <li><b>4</b><span>estados dependen de una interpretación que el auditor debe validar: 4.2, 11.4, 14.1 y 17.2.</span></li>
+              <li><b>4</b><span>contradicciones entre la Directora General y lo documentado: acceso remoto, trabajo fuera de sucursal, respaldos de Google y monitoreo 24/7.</span></li>
+            </ul>
+            <div class="nota">El reporte descargable (PDF y HTML) conserva la redacción completa de cada sección.</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script>
+var CHEV = '<span class="chev"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+var ESTADOS = {"1.1":"parcial","1.2":"implementado","2.1":"parcial","2.2":"parcial","2.3":"parcial","3.1":"no_implementado","3.2":"no_verificado","3.3":"parcial","3.4":"no_verificado","3.5":"no_verificado","3.6":"parcial","4.1":"parcial","4.2":"no_implementado","4.3":"parcial","4.4":"no_aplicable","4.5":"parcial","4.6":"no_verificado","4.7":"parcial","5.1":"parcial","5.2":"parcial","5.3":"parcial","5.4":"no_implementado","6.1":"no_implementado","6.2":"parcial","6.3":"parcial","6.4":"no_implementado","6.5":"parcial","7.1":"parcial","7.2":"parcial","7.3":"parcial","7.4":"parcial","8.1":"no_implementado","8.2":"parcial","8.3":"no_verificado","9.1":"parcial","9.2":"no_implementado","10.1":"parcial","10.2":"parcial","10.3":"parcial","11.1":"no_implementado","11.2":"parcial","11.3":"no_implementado","11.4":"parcial","12.1":"no_verificado","14.1":"parcial","14.2":"parcial","14.3":"no_verificado","14.4":"no_verificado","14.5":"no_verificado","14.6":"parcial","14.7":"no_verificado","14.8":"no_verificado","15.1":"no_implementado","17.1":"no_implementado","17.2":"parcial","17.3":"no_implementado"};
+var NOMBRES = {1:"Inventario de activos empresariales",2:"Inventario de software",3:"Protección de datos",4:"Configuración segura",5:"Gestión de cuentas",6:"Gestión del control de accesos",7:"Gestión continua de vulnerabilidades",8:"Registros de auditoría",9:"Protección de correo y navegador",10:"Defensas contra malware",11:"Recuperación de datos",12:"Infraestructura de red",14:"Concientización y capacitación",15:"Gestión de proveedores de servicios",17:"Respuesta a incidentes"};
+var ETIQ = {implementado:"Implementado",parcial:"Parcial",no_implementado:"No implementado",no_verificado:"No verificado",no_aplicable:"No aplicable"};
+var ORDEN = ["implementado","parcial","no_implementado","no_verificado","no_aplicable"];
+var TOP = {6:1,4:2,11:3,5:4,17:5};
+var EXPL = {
+  6:"6.1 (altas por WhatsApp sin procedimiento) y 6.4 (acceso remoto del MSP sin MFA) no están implementadas. Dos exgerentes conservaron acceso a CajaÁgil cinco semanas y solo 11 de 55 usuarios usan verificación en dos pasos.",
+  4:"4.2 no está implementada: el estándar de configuración no incluye equipos de red. Las parciales dependen del agente del RMM, que no cubre 18 equipos; el bloqueo de sesión está desactivado en las 27 cajas.",
+  11:"11.1 (sin procedimiento de respaldos) y 11.3 (respaldo en USB sin cifrar) no están implementadas. Solo hay una copia manual semanal de ContaFácil; nada de Workspace ni VentaNube.",
+  5:"5.4 no está implementada: todo el personal de oficina es administrador local. CajaÁgil usa cuentas compartidas con PIN de 4 dígitos y la cuenta de TeamViewer del MSP no cambia desde 2023.",
+  17:"17.1 (sin responsable ni procedimiento) y 17.3 (sin proceso de reporte; el vishing de agosto se reportó por WhatsApp) no están implementadas. 17.2 es parcial: contactos sin verificación anual."
+};
+var RIESGOS = [
+  {corto:"Cobro en caja", t:"Interrupción del cobro en caja por malware y falta de recuperación", a:"Cobro en caja (CajaÁgil y 27 cajas) y operación de las nueve sucursales", s:"alta", sv:["2.2","7.2","7.3","10.1","11.1","11.2","11.4"], d:"Software sin soporte, vulnerabilidades críticas sin corregir y sin proceso de recuperación.", c:"Paro de ventas en una o varias sucursales y pérdida de información no respaldada.", j:"Impacto crítico y probabilidad alta: brecha confirmada con 11.1 No implementada."},
+  {corto:"Credenciales", t:"Compromiso de credenciales y acceso no autorizado a sistemas de venta", a:"CajaÁgil, VentaNube, Google Workspace y altas y bajas", s:"alta", sv:["5.1","5.2","5.3","5.4","6.1","6.2","6.3","6.5"], d:"Cuentas compartidas, PIN débiles, sin inventario de cuentas y MFA parcial.", c:"Fraude o alteración de ventas y pedidos, sin trazabilidad de quién operó.", j:"Impacto alto y probabilidad alta: 5.4 y 6.1 No implementadas; exgerentes con acceso residual."},
+  {corto:"Datos de nómina", t:"Exposición o pérdida de datos de nómina y de clientes de crédito", a:"Nómina, clientes de crédito y contabilidad (Drive, laptop, USB)", s:"alta", sv:["3.1","3.2","3.3","3.6","11.3"], d:"Sin gestión de datos, 37 enlaces públicos, cifrado limitado y respaldo sin proteger.", c:"Divulgación de datos personales y financieros; robo o pérdida de la USB.", j:"Impacto alto y probabilidad alta: 3.1 y 11.3 No implementadas; archivos de nómina públicos hoy."},
+  {corto:"Acceso del MSP", t:"Compromiso a través del acceso remoto del MSP", a:"TeamViewer y RMM de SoporteTI Integral; proveedores de TI", s:"alta", sv:["5.2","6.4","6.5","8.1","8.2","15.1"], d:"Acceso remoto sin MFA, cuenta compartida sin rotar, sin inventario de proveedores ni gestión de registros.", c:"Control remoto de todos los equipos, incluidas las cajas, sin detección.", j:"Impacto alto y probabilidad alta: 6.4, 8.1 y 15.1 No implementadas."},
+  {corto:"Ingeniería social", t:"Fraude por ingeniería social sin capacitación ni respuesta a incidentes", a:"Personal de sucursal, oficina y mayoreo; gestión de incidentes", s:"media", sv:["9.2","14.1","14.2","14.6","17.1","17.2","17.3"], d:"Capacitación puntual, sin responsable ni proceso de reporte y sin filtrado DNS.", c:"Fraudes por llamada o correo y respuesta tardía o desordenada.", j:"Impacto relevante; probabilidad media-alta por falta de proceso de reporte."}
+];
+var INICIATIVAS = [
+  {t:"Respaldos y recuperación con prioridad en el cobro en caja", b:"Recuperar la operación tras una falla y proteger la nómina", tipo:"pr", e:2, r:[1,3], n:4},
+  {t:"Regularizar las cajas con Windows 10 y cerrar vulnerabilidades críticas", b:"Reduce la exposición del equipo más crítico para la venta", tipo:"pr", e:3, r:[1], n:3},
+  {t:"Ordenar accesos y asegurar el acceso remoto del MSP", b:"Evita accesos residuales y protege el control remoto", tipo:"pr", e:2, r:[2,4], n:9},
+  {t:"Cerrar los enlaces públicos de Drive con archivos de nómina", b:"Elimina de inmediato una exposición pública de datos", tipo:"qw", e:1, r:[3], n:1},
+  {t:"Responsables de incidentes, capacitación y reporte", b:"Da un responsable claro y mejora el reporte de fraudes", tipo:"pr", e:2, r:[5], n:7}
+];
+var FALTA = [["3.2","Inventario de datos sensibles y su última revisión"],["3.4","Política de retención con plazos"],["3.5","Eliminación segura de datos y baja de equipos"],["4.6","Protocolos de administración de módems y cámaras"],["8.3","Destino, capacidad y retención de registros"],["12.1","Firmware y responsable de módems y switches"],["14.3","Temario sobre autenticación"],["14.4","Temario sobre manejo de datos"],["14.5","Temario sobre exposición involuntaria"],["14.7","Temario sobre actualizaciones"],["14.8","Temario sobre redes inseguras"]];
+var POSTURA = "FERREMAX DEL BAJÍO es una ferretería mediana de 135 empleados y nueve sucursales, cuyo proceso más crítico es el cobro en caja. Su postura inicial de ciberseguridad es débil pero con bases aprovechables. La implementación es de 37.5% y la cobertura de la evaluación es de 80.0%. La implementación se calcula solo sobre las salvaguardas evaluables (1 implementada, 31 parciales y 12 no implementadas). Hay además 11 salvaguardas No verificadas y 1 No aplicable. Una cobertura de 80.0% indica que la mayoría de las salvaguardas pudo evaluarse, aunque 11 siguen sin evidencia suficiente y cualquier evidencia nueva puede mover el porcentaje.\n\nLa mayor parte del avance viene del MSP SoporteTI Integral (antivirus, parches automáticos, estándar de configuración, escaneos), pero solo alcanza a los 74 de 92 equipos con agente, y por eso predominan los estados parciales. Las brechas más graves son las cajas con Windows 10 sin soporte, las cuentas compartidas y el acceso remoto sin MFA, la falta de respaldos y recuperación documentados, los archivos públicos en Drive y la ausencia de respuesta a incidentes.";
+var MATRIZ = [["1.1", "parcial", "El RMM genera un inventario de equipos, pero solo cubre 74 de los 92 equipos reportados. La salvaguarda exige un inventario de todos los activos empresariales, incluidos dispositivos de red e IoT, y el documento indica que las terminales bancarias, impresoras y cámaras no aparecen en él. Tampoco se evidencian los campos exigidos (dirección MAC, responsable, departamento, aprobación de conexión) ni una revisión semestral.", 2, "El reporte de inventario del RMM de octubre de 2026 muestra 74 equipos con agente instalado."], ["1.2", "implementado", "Existe un proceso operativo: el RMM ejecuta un descubrimiento de red diario y el MSP entrega un reporte mensual de dispositivos desconocidos. En septiembre de 2026 se detectaron tres dispositivos no autorizados, se pusieron en cuarentena el mismo día y se documentó a quién pertenecían. Esto supera la frecuencia semanal exigida y aplica una de las acciones que CIS admite (cuarentena).", 3, "dispositivos no autorizados; los tres se trasladaron a una red de cuarentena el mismo día y se documentó a"], ["2.1", "parcial", "El RMM genera automáticamente un inventario de software con nombre, versión y fecha de instalación, pero solo para los 74 equipos con agente. La descripción exige un inventario de todo el software licenciado en los activos empresariales, con editor y propósito de negocio, y una revisión semestral. El documento no evidencia editor, propósito, ni revisión periódica, y aclara que no hay inventario de los equipos sin agente.", 3, "El RMM genera automáticamente el inventario de software de los 74 equipos con agente, con nombre,"], ["2.2", "parcial", "Las 27 computadoras de caja usan Windows 10 sin soporte desde octubre de 2025. Existe una excepción firmada por la Directora General en diciembre de 2025, pero no describe controles compensatorios, que son parte de lo que exige la salvaguarda. El MSP emite un reporte mensual de soporte, lo que cubre en parte la revisión mensual, pero el inventario autorizado incluye software sin soporte sin la excepción completa.", 3, "La excepción no describe controles compensatorios."], ["2.3", "parcial", "El MSP aplica una lista de aplicaciones prohibidas mediante el RMM. Los reportes mensuales de agosto a octubre de 2026 documentan los programas no autorizados detectados y su desinstalación, lo que cumple la revisión mensual y la remoción. Sin embargo, el control opera solo sobre los 74 equipos con agente; los 18 equipos sin agente no tienen inventario ni control de software.", 3, "octubre de 2026 documentan cada programa no autorizado detectado y su desinstalación."], ["3.1", "no_implementado", "El documento afirma que no existe un proceso documentado de gestión de datos. La organización maneja datos de clientes de crédito, de colaboradores y nómina, por lo que la salvaguarda aplica, y no se abordan sensibilidad, responsables, manejo, retención ni eliminación.", 3, "No existe un proceso documentado de gestión de datos."], ["3.2", "no_verificado", "El documento indica que no se presentó un inventario de información sensible, pero no afirma que no exista. La información de sensibilidad no es concluyente, y la sección de información no disponible lo lista como pendiente. Se sabe que se manejan datos de crédito, nómina y proveedores, por lo que la salvaguarda aplica.", null, ""], ["3.3", "parcial", "Las unidades compartidas de Google Drive de las demás áreas tienen permisos asignados por grupo, lo que muestra una práctica de control de acceso por necesidad de saber. Sin embargo, la revisión de octubre de 2026 encontró 37 archivos compartidos con cualquier persona con el enlace, incluidos dos de nómina. Además, CajaÁgil usa cuentas compartidas por caja. La cobertura es incompleta.", 3, "compartidas de las demás áreas tienen permisos asignados por grupo."], ["3.4", "no_verificado", "La retención de datos debe seguir un proceso documentado con plazos mínimos y máximos. El documento indica que no se presentó una política de retención, pero no confirma de forma explícita que no se retengan datos según un criterio definido. No hay información concluyente sobre cómo se retiene la información.", null, ""], ["3.5", "no_verificado", "La salvaguarda exige eliminación segura de datos según un proceso documentado y acorde a su sensibilidad. El documento no presenta política de eliminación ni describe cómo se eliminan datos o se disponen equipos; solo indica que no se presentó una política de eliminación.", null, ""], ["3.6", "parcial", "El reporte del RMM muestra BitLocker activo en las 7 laptops. Las computadoras de caja no almacenan información, por lo que no requieren cifrado. Sin embargo, no hay evidencia sobre cifrado en las 52 computadoras de oficina y mostrador ni en las 6 tabletas de almacén, que podrían contener datos sensibles, ni sobre dispositivos personales o de terceros.", 3, "El reporte del RMM muestra BitLocker activo en las 7 laptops."], ["4.1", "parcial", "Existe un documento formal de configuración segura (\"Estándar de configuración de equipos v2\"), aprobado en marzo de 2025, con revisión anual, que define Windows, antivirus, firewall local, autorun y bloqueo de sesión, y se aplica mediante el RMM. Sin embargo, no cubre todos los activos: los equipos sin agente no lo reciben y no hay evidencia de que alcance a dispositivos IoT como cámaras, impresoras o terminales. Tampoco se evidencia la revisión de 2026.", 3, "El MSP mantiene el documento \"Estándar de configuración de equipos v2\", aprobado por FERREMAX en"], ["4.2", "no_implementado", "El documento confirma que el estándar de configuración no incluye los equipos de red. No hay otro proceso documentado de configuración segura para módems y switches, y no se entregó evidencia de su configuración ni de su firmware.", 3, "documento no incluye los equipos de red."], ["4.3", "parcial", "En las computadoras de oficina y laptops con agente el bloqueo de sesión es a los 10 minutos, dentro del límite de 15 minutos para sistemas operativos de propósito general. En las 27 computadoras de caja el bloqueo está desactivado por decisión operativa, y los equipos sin agente no reciben el estándar, por lo que la cobertura es incompleta.", 4, "Bloqueo de sesión a los 10 minutos en computadoras de oficina y laptops."], ["4.4", "no_aplicable", "La salvaguarda se refiere a firewalls en servidores, donde se soporten. El documento afirma que la organización no tiene servidores propios ni centro de datos y que sus sistemas son servicios en la nube contratados, por lo que no hay servidores que gestionar.", 2, "FERREMAX no tiene servidores propios ni centro de datos."], ["4.5", "parcial", "El reporte de cumplimiento del RMM muestra el Firewall de Windows habilitado en los 74 equipos con agente. La descripción exige además una regla de denegación por defecto que bloquee todo tráfico salvo lo permitido, y el documento no lo evidencia. Los 18 equipos sin agente no reciben el estándar.", 3, "Firewall de Windows habilitado."], ["4.6", "no_verificado", "El documento no describe qué protocolos se usan para administrar activos y software, ni si hay gestión de configuración versionada. Solo se menciona que el MSP usa TeamViewer con una cuenta compartida; las debilidades de esa cuenta corresponden a otras salvaguardas y no demuestran el uso de protocolos inseguros como Telnet o HTTP.", null, ""], ["4.7", "parcial", "Al inicio del contrato el MSP cambió las contraseñas de fábrica de cámaras, módems administrables e impresoras, con un acta de enero de 2025 con el listado de dispositivos, y el estándar exige cambiar las credenciales predeterminadas de todo dispositivo nuevo. Sin embargo, no se evidencia el manejo de cuentas predeterminadas en Windows (administrador), terminales, switches ni aplicaciones, y no es claro quién gestiona los módems del proveedor de internet.", 4, "Al iniciar el contrato, el MSP cambió las contraseñas de fábrica de las cámaras, los módems administrables y"], ["5.1", "parcial", "Hay información sobre las 58 cuentas de Google Workspace y una revisión trimestral de cuentas sin actividad con actas. Sin embargo, no existe un listado consolidado de cuentas de CajaÁgil ni de VentaNube, ni se evidencian cuentas administrativas y de servicio con nombre, fechas de alta y baja y departamento. La validación trimestral de que todas las cuentas están autorizadas tampoco cubre todos los sistemas.", 4, "Google Workspace tiene 58 cuentas de usuario. El coordinador de TI revisa trimestralmente las cuentas sin"], ["5.2", "parcial", "Google Workspace aplica una longitud mínima de 12 caracteres, que cumple el mínimo de 8 para cuentas con verificación en dos pasos pero no los 14 exigidos para cuentas sin ella (44 de 55 usuarios no administradores no la tienen). Además, CajaÁgil usa usuarios compartidos por caja con PIN de 4 dígitos, y la cuenta de TeamViewer del MSP es compartida con la misma contraseña desde 2023, lo que contradice el uso de contraseñas únicas.", 4, "Google Workspace aplica una longitud mínima de contraseña de 12 caracteres."], ["5.3", "parcial", "El coordinador de TI revisa trimestralmente las cuentas sin actividad de Workspace, con actas de abril, julio y octubre de 2026 y 9 cuentas suspendidas. La salvaguarda exige deshabilitar cuentas tras 45 días de inactividad; una revisión trimestral es menos frecuente, y no se revisan las cuentas inactivas de CajaÁgil ni de VentaNube.", 4, "actividad de Workspace; se entregaron las actas de abril, julio y octubre de 2026, con 9 cuentas suspendidas"], ["5.4", "no_implementado", "El documento afirma que todos los usuarios de las computadoras de oficina trabajan con permisos de administrador local, lo contrario a restringir los privilegios administrativos a cuentas dedicadas y usar cuentas no privilegiadas para actividades generales.", 4, "Todos los usuarios de las computadoras de oficina trabajan con permisos de administrador local."], ["6.1", "no_implementado", "La salvaguarda exige un proceso documentado para otorgar accesos ante altas o cambios de rol. El documento confirma que las altas se piden por WhatsApp y que no hay procedimiento documentado ni registro de autorizaciones.", 4, "No existe un procedimiento documentado ni un registro de autorizaciones."], ["6.2", "parcial", "Existe una práctica ad hoc: las bajas se solicitan al coordinador de TI por WhatsApp. No hay proceso formal y no se cumple la baja inmediata, porque dos exgerentes conservaron acceso a CajaÁgil cinco semanas después de salir. Se trata de una implementación incompleta, no de ausencia total.", 4, "En septiembre de 2026 se detectó que dos exgerentes de sucursal conservaban acceso a CajaÁgil cinco semanas después de su salida."], ["6.3", "parcial", "En Google Workspace la verificación en dos pasos es obligatoria solo para los 3 administradores y opcional para el resto; solo 11 de 55 usuarios no administradores la tienen activa. VentaNube, expuesta a internet, solo pide usuario y contraseña. CajaÁgil no ofrece MFA en el plan contratado. La cobertura es parcial.", 4, "verificación en dos pasos obligatoria para los 3 administradores y opcional para el resto; 11 de 55 usuarios no administradores la tienen activa"], ["6.4", "no_implementado", "Los técnicos del MSP acceden de forma remota a los equipos mediante TeamViewer con una cuenta compartida. El documento afirma expresamente que la cuenta no tiene verificación en dos pasos, por lo que no se exige MFA en el acceso remoto.", 2, "La cuenta no tiene verificación en dos pasos."], ["6.5", "parcial", "La verificación en dos pasos es obligatoria para los 3 administradores de Google Workspace, lo que cubre parte de las cuentas administrativas. En cambio, la cuenta compartida de TeamViewer del MSP no tiene MFA y el panel de VentaNube solo usa contraseña. La cita cubre este requisito porque muestra que los administradores de Workspace sí tienen MFA obligatoria. En 6.3 se usa para el requisito sobre aplicaciones expuestas, donde la misma frase muestra la cobertura limitada de los demás usuarios.", 4, "verificación en dos pasos obligatoria para los 3 administradores y opcional para el resto; 11 de 55 usuarios no administradores la tienen activa"], ["7.1", "parcial", "El MSP tiene un procedimiento que define plazos de corrección y realiza escaneos mensuales. Sin embargo, solo cubre los equipos con agente (74 de 92), y no hay evidencia de que FERREMAX lo haya aprobado ni de su revisión anual.", 4, "El procedimiento del MSP define plazos de corrección: 14 días para vulnerabilidades críticas y 30 días para altas."], ["7.2", "parcial", "Hay plazos de corrección definidos y reportes mensuales de agosto a octubre. Sin embargo, el reporte de octubre muestra seis vulnerabilidades críticas abiertas por más de 45 días, sin justificación documentada, lo que contradice los 14 días definidos. La estrategia no es plenamente efectiva ni basada en riesgo.", 5, "El reporte de octubre muestra seis vulnerabilidades críticas abiertas desde hace más de 45 días en computadoras de caja, sin justificación documentada."], ["7.3", "parcial", "El RMM aplica automáticamente las actualizaciones mensuales de Windows y el 97% de los equipos con agente está al día. Pero la cobertura es parcial: solo cubre los equipos con agente (74 de 92), y las 27 cajas usan Windows 10 sin soporte.", 5, "El RMM aplica de forma automática las actualizaciones mensuales de Windows y de aplicaciones de terceros (navegadores, lectores de PDF) en los equipos con agente."], ["7.4", "parcial", "El RMM aplica automáticamente las actualizaciones de aplicaciones de terceros, como navegadores y lectores de PDF, cada mes. La cobertura es parcial: solo en los equipos con agente, y no está documentado qué otras aplicaciones se actualizan, como ContaFácil. La cita es la misma que en 7.3 porque la frase cubre ambos requisitos.", 5, "El RMM aplica de forma automática las actualizaciones mensuales de Windows y de aplicaciones de terceros (navegadores, lectores de PDF) en los equipos con agente."], ["8.1", "no_implementado", "El documento afirma que no existe un proceso documentado de gestión de registros de auditoría, que es lo que exige la salvaguarda.", 5, "No existe un proceso documentado de gestión de registros de auditoría."], ["8.2", "parcial", "Solo se conservan los registros de auditoría de la consola de Google Workspace, con la configuración predeterminada. No se recopilan registros de equipos, CajaÁgil ni VentaNube, de modo que el registro no está habilitado en todos los activos.", 5, "Google Workspace conserva los registros de auditoría de la consola de administración con la configuración predeterminada."], ["8.3", "no_verificado", "El documento no indica la capacidad de almacenamiento de los destinos de registros ni si cumple lo que exigiría un proceso de gestión de registros, que no existe. No hay información suficiente para establecer el estado.", null, ""], ["9.1", "parcial", "Los 74 equipos con agente usan Chrome en versión soportada con actualización automática, y el correo se consulta desde Gmail en el navegador. No hay información sobre los 18 equipos sin agente, y no se cubre el conjunto de activos.", 5, "El reporte del RMM muestra que los 74 equipos con agente usan Google Chrome en una versión soportada y con actualización automática."], ["9.2", "no_implementado", "El documento afirma que no se utiliza un servicio de filtrado DNS, y el coordinador de TI lo confirmó, por lo que la salvaguarda no se ejecuta.", 5, "No se utiliza un servicio de filtrado DNS."], ["10.1", "parcial", "Bitdefender GravityZone protege los 74 equipos con agente. Los 18 equipos sin agente no tienen antivirus administrado. Terminales, impresoras y cámaras no se mencionan en el alcance, por lo que la cobertura no es total.", 5, "La consola muestra 74 equipos protegidos, todos con actualización automática de firmas. Los equipos sin agente no tienen antivirus administrado."], ["10.2", "parcial", "La consola de Bitdefender muestra actualización automática de firmas en los 74 equipos protegidos. Los equipos sin agente no tienen antivirus administrado, por lo que la configuración no cubre todos los activos.", 5, "todos con actualización automática de firmas"], ["10.3", "parcial", "El reporte de cumplimiento del RMM muestra Autorun y Autoplay deshabilitados en los 74 equipos con agente. Los equipos sin agente no reciben el estándar, por lo que la configuración no está evidenciada en los 18 restantes.", 3, "Ejecución automática (Autorun/Autoplay) deshabilitada."], ["11.1", "no_implementado", "El documento afirma que no existe un procedimiento documentado de respaldos ni de recuperación, que es lo que exige la salvaguarda.", 5, "No existe un procedimiento documentado de respaldos ni de recuperación."], ["11.2", "parcial", "Existe un respaldo semanal de la base de datos de ContaFácil, hecho por la Contadora General a una USB. Es manual, no automatizado, y tiene semanas sin registro. No hay respaldos de Google Workspace ni VentaNube, y no se informa sobre CajaÁgil.", 5, "La Contadora General copia cada viernes la base de datos de ContaFácil a una memoria USB, que se lleva a su domicilio."], ["11.3", "no_implementado", "El único respaldo descrito está en una memoria USB que, según el documento, no está cifrada y se lleva a un domicilio. No hay controles equivalentes a los de los datos originales, que incluyen nómina y contabilidad.", 5, "La memoria no está cifrada."], ["11.4", "parcial", "La USB con el respaldo de ContaFácil se lleva al domicilio de la Contadora, lo que constituye una copia fuera de las instalaciones. Es una práctica ad hoc, no cifrada ni documentada, y no abarca los demás sistemas. Se considera parcial con interpretación sujeta a validación.", 5, "a una memoria USB, que se lleva a su domicilio"], ["12.1", "no_verificado", "No hay evidencia de la versión de firmware ni de la revisión de soporte de los módems y switches. El switch es no administrable y los módems los administra el proveedor de internet, sin que el documento aclare la responsabilidad.", null, ""], ["14.1", "parcial", "Hay una capacitación puntual (video de marzo de 2026) aplicada solo a los 41 cajeros. CIS 14.1 exige un programa para toda la plantilla, con capacitación al ingreso y al menos anual, y revisión anual del contenido. El documento dice que no existe programa anual y que el resto del personal no ha recibido capacitación.", 5, "El resto del personal no ha recibido capacitación en seguridad. No existe un programa anual."], ["14.2", "parcial", "El video de marzo de 2026 trata correos y llamadas fraudulentas y clonación de tarjetas, por lo que cubre parte de la ingeniería social. Solo se aplicó a 41 cajeros, con una sola sesión, y no cubre al resto del personal ni menciona BEC, pretexting o tailgating.", 5, "que trata la detección de billetes falsos, la clonación de tarjetas y los correos y llamadas fraudulentas"], ["14.3", "no_verificado", "El documento no indica que alguna capacitación aborde las buenas prácticas de autenticación (MFA, composición de contraseñas, gestión de credenciales). El video descrito trata billetes falsos, clonación de tarjetas y fraudes por correo y llamadas.", null, ""], ["14.4", "no_verificado", "El documento no menciona capacitación sobre cómo identificar, almacenar, transferir, archivar o destruir datos sensibles, ni sobre prácticas de pantalla y escritorio limpios. El único contenido descrito del video no incluye este tema.", null, ""], ["14.5", "no_verificado", "No hay evidencia de que se capacite sobre causas de exposición involuntaria de datos (envío erróneo, pérdida de dispositivos portátiles, publicación a audiencias no previstas). El video descrito no cubre esos temas.", null, ""], ["14.6", "parcial", "El video indica a los cajeros que cualquier situación sospechosa debe informarse al gerente de la sucursal, lo que cubre reconocer y reportar en parte. Solo alcanza a los 41 cajeros, y no hay un procedimiento formal de reporte; el caso de agosto de 2026 se reportó por WhatsApp y no se registró.", 5, "Al final se indica que cualquier situación sospechosa debe informarse al gerente de la sucursal."], ["14.7", "no_verificado", "El documento no menciona capacitación para identificar y reportar equipos sin actualizaciones de seguridad o fallas en procesos automatizados, ni notificación a TI. Los parches son automáticos por RMM, pero eso no equivale a capacitar al personal.", null, ""], ["14.8", "no_verificado", "No hay evidencia de capacitación sobre los peligros de redes inseguras ni guía para configurar la red doméstica. La salvaguarda es aplicable porque seis vendedores de mayoreo trabajan con laptop en obras, hoteles y cafeterías. El documento dice que el resto del personal no ha recibido capacitación, pero no se confirma qué recibió cada grupo.", null, ""], ["15.1", "no_implementado", "El documento confirma que no existe inventario de proveedores. Compras solo conserva facturas y contratos, sin clasificación ni contacto de seguridad. CIS 15.1 exige un inventario con todos los proveedores, su clasificación y un contacto designado por proveedor.", 2, "No existe un inventario de proveedores."], ["17.1", "no_implementado", "El documento confirma que no hay persona interna designada para manejar incidentes ni procedimiento de respuesta. El MSP atiende incidentes mediante su mesa de ayuda, pero CIS 17.1 exige designar una persona clave con respaldo, y con proveedor externo al menos una persona interna que supervise.", 6, "FERREMAX no tiene un procedimiento de respuesta a incidentes ni una persona interna designada."], ["17.2", "parcial", "Existe un anexo de contactos de emergencia actualizado en junio de 2026 con MSP, banco adquirente, aseguradora, proveedor de internet y policía cibernética estatal, con nombre, teléfono y correo. Cubre bien los contactos externos y la fecha reciente. No se evidencia verificación anual ni contactos internos, y la fecha de actualización por sí sola no demuestra verificación.", 6, "El anexo de contactos de emergencia, actualizado en junio de 2026, incluye la mesa de ayuda del MSP, el banco adquirente, la aseguradora, el proveedor de internet y la policía cibernética estatal, con nombre, teléfono y correo."], ["17.3", "no_implementado", "El documento indica que no hay procedimiento de respuesta a incidentes y que el único reporte (agosto de 2026) se hizo por WhatsApp sin registrarse. CIS 17.3 exige un proceso documentado con plazo de reporte, a quién reportar, el mecanismo y la información mínima, y que esté a disposición de toda la plantilla. No existe ese proceso documentado.", 6, "La gerente lo reportó al coordinador de TI por WhatsApp. No se registró el incidente."]];
+
+function $(s) { return document.querySelector(s); }
+function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function marca(e) { return '<span class="m ' + e + '" data-e="' + e + '" aria-hidden="true"></span>'; }
+function cuenta(ids) { var c = {}; ORDEN.forEach(function (e) { c[e] = 0; }); ids.forEach(function (i) { c[ESTADOS[i]]++; }); return c; }
+function pct(c) { var d = c.implementado + c.parcial + c.no_implementado; return d ? (c.implementado + c.parcial / 2) / d * 100 : null; }
+function segmento(e, n, estilo, texto) { return '<span class="s" data-e="' + e + '" style="background:var(--st-' + e + ');' + estilo + '" title="' + ETIQ[e] + ': ' + n + '">' + (texto ? n : '') + '</span>'; }
+function apilada(c, clase) { return '<div class="apilada ' + (clase || '') + '">' + ORDEN.filter(function (e) { return c[e]; }).map(function (e) { return segmento(e, c[e], 'flex:' + c[e]); }).join('') + '</div>'; }
+function svChip(i) { return '<span class="sv">' + marca(ESTADOS[i]) + '<span class="mono">' + i + '</span>' + ETIQ[ESTADOS[i]] + '</span>'; }
+
+var todos = Object.keys(ESTADOS), total = cuenta(todos);
+
+/* Resumen */
+$('#apilada').innerHTML = ORDEN.filter(function (e) { return total[e]; }).map(function (e) { return segmento(e, total[e], 'flex:' + total[e]); }).join('');
+$('#leyenda').innerHTML = ORDEN.map(function (e) { return '<button type="button" data-foco="' + e + '" aria-pressed="false">' + marca(e) + ETIQ[e] + ' <b>' + total[e] + '</b></button>'; }).join('');
+
+/* Postura */
+$('#postura-texto').textContent = POSTURA;
+$('#leer').addEventListener('click', function () {
+  var t = $('#postura-texto'), abierto = t.classList.toggle('abierto');
+  this.textContent = abierto ? 'Leer menos ▴' : 'Leer más ▾';
+  this.setAttribute('aria-expanded', abierto);
+});
+
+/* Controles */
+var controles = Object.keys(NOMBRES).map(Number).map(function (n) {
+  var ids = todos.filter(function (i) { return +i.split('.')[0] === n; }), c = cuenta(ids);
+  return { n: n, ids: ids, c: c, p: pct(c) };
+}).sort(function (a, b) {
+  if (TOP[a.n] || TOP[b.n]) return (TOP[a.n] || 99) - (TOP[b.n] || 99);
+  return (a.p === null) - (b.p === null) || (a.p - b.p) || a.n - b.n;
+});
+var UNIDAD = 30;   // px por salvaguarda: misma escala en todas las filas
+function filaControl(k, abre) {
+  var segs = ORDEN.filter(function (e) { return k.c[e]; }).map(function (e) { return segmento(e, k.c[e], 'width:' + (k.c[e] * UNIDAD) + 'px', true); }).join('');
+  var p = k.p === null ? '<span class="cpct nd">Sin evidencia</span>' : '<span class="cpct">' + k.p.toFixed(0) + '%</span>';
+  return '<div class="crow"><span class="cnom"><span class="mono">CIS-' + String(k.n).padStart(2, '0') + '</span><span class="nombre" title="' + NOMBRES[k.n] + '">' + NOMBRES[k.n] + '</span>'
+    + (TOP[k.n] ? '<span class="rank">Brecha ' + TOP[k.n] + '</span>' : '') + '</span>'
+    + '<span class="cbarra"><span class="segs">' + segs + '</span>' + p + '</span>' + (abre ? CHEV : '<span></span>') + '</div>';
+}
+$('#filas-controles').innerHTML = controles.map(function (k) {
+  var fila = filaControl(k, !!TOP[k.n]);
+  if (!TOP[k.n]) return '<div class="cd">' + fila + '</div>';
+  return '<details class="cd"><summary>' + fila + '</summary><div class="cdet"><p>' + EXPL[k.n] + '</p><div class="lista-sv">' + k.ids.map(svChip).join('') + '</div></div></details>';
+}).join('');
+
+/* Riesgos */
+$('#lista-riesgos').innerHTML = RIESGOS.map(function (r, i) {
+  return '<details class="riesgo vinculo" data-riesgo="' + (i + 1) + '"><summary>'
+    + '<span class="rnum">' + (i + 1) + '</span>'
+    + '<span class="rtitulo">' + r.t + '<small>' + r.a + '</small></span>'
+    + '<span class="sev ' + r.s + '">' + (r.s === 'alta' ? 'Alta' : 'Media') + '</span>'
+    + '<span class="rbarra">' + apilada(cuenta(r.sv)) + '<small>' + r.sv.length + ' salvaguardas</small></span>'
+    + CHEV + '</summary>'
+    + '<div class="rdetalle"><div><h3>Deficiencia</h3><p>' + r.d + '</p></div><div><h3>Consecuencia probable</h3><p>' + r.c + '</p></div><div><h3>Severidad</h3><p>' + r.j + '</p></div>'
+    + '<div class="lista-sv">' + r.sv.map(svChip).join('') + '</div></div></details>';
+}).join('');
+
+/* Roadmap */
+var ESF = ['', 'Bajo', 'Medio', 'Alto'];
+$('#filas-roadmap').innerHTML = INICIATIVAS.map(function (x, i) {
+  return '<tr class="vinculo" data-riesgos="' + x.r.join(' ') + '"><td class="prio">' + (i + 1) + '</td>'
+    + '<td><div class="ini">' + x.t + '<small>' + x.b + '</small></div></td>'
+    + '<td><div class="chips">' + x.r.map(function (r) { return '<span class="chip-r"><span class="mono">R' + r + '</span>' + RIESGOS[r - 1].corto + '</span>'; }).join('') + '</div></td>'
+    + '<td><span class="tipo ' + x.tipo + '">' + (x.tipo === 'qw' ? 'Quick win' : 'Proyecto') + '</span></td>'
+    + '<td><div class="esfuerzo">' + [1, 2, 3].map(function (k) { return '<i class="' + (k <= x.e ? 'on' : '') + '"></i>'; }).join('') + '</div><div class="esf-txt">' + ESF[x.e] + '</div></td>'
+    + '<td class="mono">' + x.n + '</td></tr>';
+}).join('');
+
+/* Vínculo riesgo ↔ iniciativa */
+function vincular(riesgos) {
+  var cont = document.querySelector('main');
+  if (!riesgos) { cont.classList.remove('con-vinculo'); document.querySelectorAll('.vinculo.activo').forEach(function (e) { e.classList.remove('activo'); }); return; }
+  cont.classList.add('con-vinculo');
+  document.querySelectorAll('[data-riesgo]').forEach(function (e) { e.classList.toggle('activo', riesgos.indexOf(e.dataset.riesgo) > -1); });
+  document.querySelectorAll('[data-riesgos]').forEach(function (e) {
+    var propios = e.dataset.riesgos.split(' ');
+    e.classList.toggle('activo', propios.some(function (r) { return riesgos.indexOf(r) > -1; }));
+  });
+}
+document.querySelectorAll('[data-riesgo]').forEach(function (el) {
+  el.addEventListener('mouseenter', function () { vincular([el.dataset.riesgo]); });
+  el.addEventListener('mouseleave', function () { vincular(null); });
+});
+document.querySelectorAll('[data-riesgos]').forEach(function (el) {
+  el.addEventListener('mouseenter', function () { var r = el.dataset.riesgos.split(' '); vincular(r); document.querySelectorAll('[data-riesgos]').forEach(function (o) { o.classList.toggle('activo', o === el); }); });
+  el.addEventListener('mouseleave', function () { vincular(null); });
+});
+
+/* Matriz */
+function pintarMatriz(f) {
+  $('#filas-matriz').innerHTML = MATRIZ.filter(function (r) { return !f || r[1] === f; }).map(function (r) {
+    var n = +r[0].split('.')[0];
+    return '<tr><td class="mono">' + r[0] + '</td><td>' + NOMBRES[n] + '</td>'
+      + '<td><span class="est">' + marca(r[1]) + ETIQ[r[1]] + '</span></td>'
+      + '<td>' + esc(r[2]) + (r[4] ? '<span class="cita">“' + esc(r[4]) + '”</span>' : '') + '</td>'
+      + '<td>' + (r[3] ? '<span class="pag">PDF 1 · p. ' + esc(r[3]) + '</span>' : '<span class="sub">—</span>') + '</td></tr>';
+  }).join('');
+}
+var fil = $('#filtros');
+fil.innerHTML = '<button class="filtro" aria-pressed="true" data-e-f="">Todas <b>56</b></button>' + ORDEN.map(function (e) {
+  return '<button class="filtro" aria-pressed="false" data-e-f="' + e + '">' + marca(e) + ETIQ[e] + ' <b>' + total[e] + '</b></button>'; }).join('');
+fil.addEventListener('click', function (ev) {
+  var b = ev.target.closest('button'); if (!b) return;
+  fil.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+  pintarMatriz(b.dataset.eF);
+});
+pintarMatriz('');
+
+/* Pendientes */
+$('#faltante').innerHTML = FALTA.map(function (f) { return '<div><span class="mono">' + f[0] + '</span><span>' + f[1] + '</span></div>'; }).join('');
+
+/* Momento firma: resaltado cruzado por estado */
+var fijado = null;
+function enfocar(e) { if (e) document.body.dataset.foco = e; else delete document.body.dataset.foco; }
+document.querySelectorAll('[data-foco]').forEach(function (b) {
+  if (b === document.body) return;
+  b.addEventListener('mouseenter', function () { if (!fijado) enfocar(b.dataset.foco); });
+  b.addEventListener('mouseleave', function () { if (!fijado) enfocar(null); });
+  b.addEventListener('focus', function () { if (!fijado) enfocar(b.dataset.foco); });
+  b.addEventListener('blur', function () { if (!fijado) enfocar(null); });
+  b.addEventListener('click', function () {   // clic fija el resaltado (útil en pantallas táctiles)
+    fijado = fijado === b.dataset.foco ? null : b.dataset.foco;
+    document.querySelectorAll('#leyenda button').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.foco === fijado); });
+    enfocar(fijado);
+  });
+});
+
+/* Navegación lateral que marca la sección actual */
+var enlaces = document.querySelectorAll('.indice a');
+var visibles = {};
+var obs = new IntersectionObserver(function (entradas) {
+  entradas.forEach(function (en) { visibles[en.target.id] = en.isIntersecting; });
+  var actual = null;
+  enlaces.forEach(function (a) { if (!actual && visibles[a.getAttribute('href').slice(1)]) actual = a; });
+  if (actual) enlaces.forEach(function (a) { a.setAttribute('aria-current', a === actual); });
+}, { rootMargin: '-45% 0px -50% 0px' });
+['resumen', 'postura', 'controles', 'riesgos', 'roadmap', 'matriz', 'pendientes'].forEach(function (id) { obs.observe(document.getElementById(id)); });
+enlaces[0].setAttribute('aria-current', 'true');
+
+/* Entrada: cifras de 0 a su valor y barra que se llena por segmentos (< 1 s) */
+function entrada() {
+  var quieto = matchMedia('(prefers-reduced-motion: reduce)').matches || document.visibilityState !== 'visible';
+  if (quieto) return;   // sin animación: el HTML ya trae los valores finales
+  document.body.classList.add('cargando');
+  document.querySelectorAll('[data-cuenta]').forEach(function (el) {
+    var fin = +el.dataset.cuenta, dec = +(el.dataset.dec || 0);
+    if (quieto) { el.textContent = fin.toFixed(dec); return; }
+    var t0 = null;
+    function paso(t) {
+      if (!t0) t0 = t;
+      var k = Math.min(1, (t - t0) / 700), suave = 1 - Math.pow(1 - k, 3);
+      el.textContent = (fin * suave).toFixed(dec);
+      if (k < 1) requestAnimationFrame(paso);
+    }
+    requestAnimationFrame(paso);
+  });
+  document.querySelectorAll('.apilada.principal span').forEach(function (s, i) { s.style.transitionDelay = (i * 90) + 'ms'; });
+  requestAnimationFrame(function () { requestAnimationFrame(function () { document.body.classList.remove('cargando'); }); });
+  setTimeout(function () {   // garantía: si la pestaña estaba en segundo plano, deja los valores finales
+    document.body.classList.remove('cargando');
+    document.querySelectorAll('[data-cuenta]').forEach(function (el) { el.textContent = (+el.dataset.cuenta).toFixed(+(el.dataset.dec || 0)); });
+  }, 900);
+}
+entrada();
+$('#repetir').addEventListener('click', entrada);
+
+/* Cerrar "Descargar" al hacer clic fuera */
+document.addEventListener('click', function (ev) { var d = $('.descargar'); if (d.open && !d.contains(ev.target)) d.open = false; });
+
+/* Tema */
+var tema = $('#tema');
+tema.addEventListener('click', function (ev) {
+  var b = ev.target.closest('button'); if (!b) return;
+  document.documentElement.dataset.theme = b.dataset.v;
+  tema.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+});
+var q = new URLSearchParams(location.search);
+if (q.get('tema')) tema.querySelector('[data-v="' + q.get('tema') + '"]').click();
+</script>
+</body>
+</html>

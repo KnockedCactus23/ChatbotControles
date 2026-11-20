@@ -22,10 +22,10 @@ Proyecto académico de equipo. **Decisión del equipo (2026-11-17): usa la API d
 - Sin botón de descarga del prompt maestro en la UI (2026-11-17); el chat solo en contexto con ficha y en reportes (2026-11-17).
 - **Entregables separados por versión** (2026-11-17), sin mezclarse:
   - Contexto: solo la ficha (PDF/HTML).
-  - Reporte inicial: matriz v1, Excel v1 y reporte inicial.
-  - Reporte actualizado: matriz v2, Excel v2 y reporte final.
+  - Reporte inicial: reporte ejecutivo v1 (PDF), reporte técnico v1 (PDF y HTML, con la matriz v1), Excel v1 y CSV v1.
+  - Reporte actualizado: lo mismo en v2 (el técnico v2 lleva solo la matriz v2).
   - El Excel v2 y el reporte final no repiten la matriz v1 ni el reporte inicial; solo comparan indicadores.
-- **Vista ejecutiva y vista técnica** (2026-11-19; plan por fases, en curso: Fases 1 a 4 listas). Lo que sale de la ejecutiva se queda en la técnica. Decisiones:
+- **Vista ejecutiva y vista técnica** (2026-11-19; plan por fases: las 6 fases están listas). Lo que sale de la ejecutiva se queda en la técnica. Decisiones:
   - Áreas fijas en `controls.AREAS`: 7 grupos de controles; la madurez por área usa la fórmula global (`state.madurez_por_area`).
   - La **severidad la calcula el código**: probabilidad × impacto (1-5 cada uno; ≥15 alta, 8-14 media, <8 baja; `state.severidad_de`). El modelo ya no la escribe.
   - Campos ejecutivos sin IDs ni jerga (`veredicto`, `impactos_negocio`, `peticiones`, `consecuencia_negocio`): `state.validar_ejecutivo` descarta impactos con cifras que no están en la ficha ni en la matriz y señala jerga en la bitácora.
@@ -36,11 +36,17 @@ Proyecto académico de equipo. **Decisión del equipo (2026-11-17): usa la API d
   - **Interacciones (Fase 3, en `panel.script()`):** clic en un estado (leyenda o segmento de barra) = filtro global: `body[data-filtro]` oculta las filas `[data-estados]` sin ese estado, filtra las matrices y muestra «Mostrando N … · Quitar filtro» (conteos de `[data-conteos]`); los estados con 0 se deshabilitan (antes, elegirlos ponía todo en gris). Clic en un riesgo o iniciativa (`[data-abre]`) abre el panel lateral con la ficha oculta `[data-ficha]` de `panel.fichas()` (la ejecutiva sin ids ni salvaguardas); Esc, X o clic fuera lo cierran, el foco queda atrapado y vuelve al origen. En la técnica, el riesgo ya no se despliega: abre el panel. El clic en un área se descartó al quitar «Madurez por área».
   - **Vista técnica (Fase 4):** conserva todo lo anterior (postura completa, ahora sin recorte; estado por control; riesgos; roadmap; matrices; pendientes y «Por qué es preliminar»). La severidad es punto + palabra con «P4 × I5» debajo, y el roadmap tiene columna «Plazo» (estimado en evaluaciones anteriores). El índice lateral muestra las secciones de la vista activa.
   - **El script de `st.html` no puede contener etiquetas HTML** (ni en cadenas ni en comentarios, p. ej. «<details>»): Streamlit lo descarta sin aviso. Se construye el DOM con `createElement`.
-  - Pendientes de fases siguientes: PDF ejecutivo de 2-3 páginas (cumple el límite de 5) y técnico sin límite, visor de evidencia con PyMuPDF.
+  - **Visor de evidencia (Fase 5, `chatbot/visor.py`):** en toda matriz con PDF, la evidencia es un botón (`.d-ev[data-ev="<matriz>:<id>"]`) que divide la pantalla: la página a la derecha con la cita resaltada en amarillo y la matriz a la izquierda (desde 1200 px; ahí la columna de justificación pasa al encabezado del visor). En pantallas menores se superpone y en móvil ocupa toda la pantalla.
+    - Búsqueda: `page.search_for(cita)`; luego la cita normalizada (espacios, saltos, comillas, «…»); luego por fragmentos (separa en «…» y fin de oración, tramo más largo por trozo; acepta con ≥40 % de las palabras). Primero la página citada y luego las demás. Si no aparece, abre la página citada con «No se encontró la cita exacta». Sin PDF (texto pegado o archivo perdido) muestra el texto con la cita marcada.
+    - Las páginas se dibujan una vez (PyMuPDF, zoom 2) en `static/visor/` (ignorada por git), servidas con `server.enableStaticServing`; los rectángulos van normalizados en `[data-evid]` y el script los pinta. Clic en la página = ampliar al 200 %. Botones «Anterior» y «Siguiente evidencia» (respetan el filtro), Esc o X cierran y el foco vuelve a la fila.
+    - Medido el 2026-11-19 en las 6 evaluaciones guardadas: 186 de 188 citas exactas y 2 por fragmentos (celdas de una tabla unidas por el modelo).
+  - **Exportaciones (Fase 6):** el menú «Descargar» tiene tres grupos: Reporte ejecutivo (PDF), Reporte técnico (PDF y HTML) y Datos (Excel y CSV). Los archivos se generan al hacer clic (`download_button` con `data` como función).
+    - `pdf_ejecutivo.reporte_ejecutivo_pdf(p, "v1"|"v2")`: la vista ejecutiva en **2-3 páginas** (cumple el límite de 5 de la actividad; test_motor exige ≤3 y que no haya ids de CIS). Gráficas vectoriales; legibles en gris (luminancias escalonadas de la paleta, «Sin evidencia» rayado y la estimación del plan rayada). `espacio()` evita partir una gráfica o un riesgo entre páginas.
+    - `reporte_pdf.reporte_pdf`: ahora es el **reporte técnico completo, sin límite de páginas**: nivel y veredicto, impactos, peticiones, riesgos con P × I y consecuencia de negocio, roadmap con plazo y la matriz de la versión con justificación, cita y evidencia.
 
 ## Stack
 - Python 3.14 (el `python3` del sistema es 3.15 y algunas dependencias aún no tienen wheels).
-- `anthropic`, `streamlit`, `python-dotenv`, `openpyxl` (importador y Excel), `pypdf` (texto del PDF para verificar citas), `fpdf2` (reporte ejecutivo en PDF; fuentes estándar con cp1252, sin fuentes del sistema).
+- `anthropic`, `streamlit`, `python-dotenv`, `openpyxl` (importador y Excel), `pypdf` (texto del PDF para verificar citas), `fpdf2` (reporte ejecutivo en PDF; fuentes estándar con cp1252, sin fuentes del sistema), `pymupdf` (visor de evidencia: busca la cita y dibuja la página; licencia AGPL, aceptable en un proyecto académico).
 - **Modelo elegido en la UI** (desplegable de la barra lateral, `engine.MODELOS`: Sonnet 5.5 por defecto, Haiku 5.5 para depurar, Opus 5.5); ya no va en `.env` (2026-11-18).
   - Se guarda en `Proyecto.modelo` en la primera llamada y queda fijo desde que existe la ficha: un solo modelo por evaluación (consistencia).
   - `app.py` asigna `motor.modelo = p.modelo` antes de cada tarea.
@@ -60,15 +66,18 @@ chatbot/
   engine.py                # explain, context_sheet, evaluate, report, analyze_initiatives, updated_report, ask; caché y consumo
   almacen.py               # guardar/cargar/listar proyectos en evaluaciones/ (EVALUACIONES_DIR para pruebas)
   exportar.py              # excel(p, "v1"|"v2"), reporte_html(p, "v1"|"v2"), csv_matriz, ficha_html (_pagina_html); prompt_maestro_md()
-  reporte_pdf.py           # reporte_pdf(p, "v1"|"v2") (Entregable 3; cada uno debe caber en 5 páginas, lo verifica test_motor) y ficha_pdf()
+  reporte_pdf.py           # reporte_pdf(p, "v1"|"v2"): reporte técnico completo (sin límite) y ficha_pdf()
+  pdf_ejecutivo.py         # reporte_ejecutivo_pdf(p, "v1"|"v2"): Entregable 3 en 2-3 páginas (≤3, lo verifica test_motor)
   ui.py                    # Tokens CSS (OKLCH) y piezas HTML (también las de los HTML descargables)
   panel.py                 # Dashboard de los reportes v1/v2 (mockup aprobado), índice lateral y su script
+  ejecutiva.py             # Vista ejecutiva de los reportes (clases e-)
+  visor.py                 # Visor de evidencia: ubica la cita en el PDF y dibuja la página en static/visor/
   data/cis_v8_1_2.json     # NO versionado (licencia CC BY-NC-ND): scripts/importar_cis.py
 scripts/importar_cis.py    # Excel oficial CIS v8.1.x → JSON (reconstruye ids como 3.10 que Excel guarda como 3.1)
 scripts/exportar_prompt.py # Entregable 1 → docs/prompt_maestro_centinela_ig1.md (sin catálogo CIS; sí se versiona)
 docs/                      # Prompt maestro generado; regenerarlo si cambia prompts.py
 PROGRESS.md                # Avance del proyecto y pendientes; actualizarlo al cerrar cada bloque de trabajo
-tests/                     # conftest (catálogo falso: 18 IG1), test_state (reglas/penalizaciones), test_motor (flujo), importador, reintentos
+tests/                     # conftest (catálogo falso: 18 IG1), test_state (reglas/penalizaciones), test_motor (flujo), test_visor (búsqueda de citas), importador, reintentos
 ```
 
 ## Reglas que el CÓDIGO hace cumplir (no depender solo del prompt)
@@ -121,7 +130,7 @@ tests/                     # conftest (catálogo falso: 18 IG1), test_state (reg
 - **Dashboard de los reportes: `chatbot/panel.py`** (clases `d-`). Los HTML descargables siguen usando `ui.tablero/riesgos/roadmap/resumen_ejecutivo`, que conservan todo el texto: no mezclarlos.
   - Piezas: `resumen` (4 KPIs del mismo tamaño, barra apilada y leyenda), `postura`, `controles` (segmentos a escala fija y %; toda fila se abre con sus salvaguardas y solo los 5 de mayor brecha traen además su explicación), `riesgos` (fila plegable con «N salvaguardas»), `roadmap` (chips «R1 nombre corto», esfuerzo en bloques), `matriz`, `pendientes`, `indice` y `estado_lateral`.
   - Barra lateral: en los reportes, **índice de secciones** que marca la visible; en las demás etapas, un resumen compacto de indicadores. Modelo y evaluaciones guardadas debajo.
-  - Descargas en un menú **«Descargar»** (`st.popover`) junto al título del reporte.
+  - Descargas en un menú **«Descargar»** (`st.popover`) junto al título del reporte, en tres grupos: ejecutivo, técnico y datos.
   - Campos del reporte para el dashboard (`titular`, `datos_clave`, `brechas_clave`, `bases`, `nombre_corto` del riesgo): los valida `state.validar_presentacion()` contra la matriz. Un «X de Y» solo queda si ambos números aparecen en su salvaguarda. Las evaluaciones anteriores usan respaldos calculados en `panel` (oración con «postura», nombre corto desde el activo).
   - **Interacciones en `panel.script()`**: un solo script con delegación de eventos, instalado una vez con `st.html(..., unsafe_allow_javascript=True)` (corre en la página, sin iframe).
     - Resaltado cruzado por estado desde la leyenda (`body[data-foco]` atenúa todo `[data-e]` distinto; con clic queda fijo).
@@ -146,7 +155,7 @@ pip install -r requirements.txt
 python scripts/importar_cis.py "ruta/CIS_Controls_Version_8.1.2___March_2025.xlsx"   # genera el catálogo local
 cp .env.example .env            # y poner ANTHROPIC_API_KEY (platform.claude.com → API keys)
 streamlit run app.py
-python -m pytest -q             # 46 pruebas sin API
+python -m pytest -q             # 54 pruebas sin API
 python scripts/exportar_prompt.py   # regenera docs/prompt_maestro_centinela_ig1.md
 ```
 

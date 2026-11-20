@@ -1,11 +1,14 @@
-"""Reporte ejecutivo en PDF (Entregable 3), con el mismo contenido que el reporte HTML.
+"""Reporte técnico en PDF (Entregable 3, versión completa) y ficha de contexto en PDF.
+
+El reporte técnico conserva todo: resumen, riesgos con probabilidad × impacto, roadmap con plazo, cambios del PDF 2
+(en v2) y la matriz completa de la versión con justificación, cita y evidencia. No tiene límite de páginas; el que
+cumple el límite de 5 de la actividad es el reporte ejecutivo de 2-3 páginas (``pdf_ejecutivo``).
 
 Usa fpdf2 con las fuentes estándar del PDF: no depende de fuentes del sistema, así que se genera
 igual en macOS, Windows y Linux. Esas fuentes usan cp1252 (cubre el español); los pocos símbolos
 fuera de esa tabla se sustituyen.
 
-Diseño claro y sobrio pensado para imprimir: A4 vertical, tipografía pequeña y tablas compactas
-para acercarse al límite de cinco páginas de la actividad. La matriz completa va en el Excel/CSV.
+Diseño claro y sobrio pensado para imprimir: A4 vertical, tipografía pequeña y tablas compactas.
 """
 
 from fpdf import FPDF
@@ -14,7 +17,9 @@ from fpdf.fonts import FontFace
 from . import prompts
 from .controls import atribucion, control
 from .prompts import DIMENSIONES
-from .state import ESTADOS, ETIQUETA, SITUACION_RIESGO, Proyecto, Version, formato_pct
+from .controls import catalogo
+from .state import (ESTADOS, ETIQUETA, ETIQUETA_APLICABILIDAD, SITUACION_RIESGO, Proyecto, Version, formato_pct,
+                    horizonte_de, nivel_riesgo, severidad_de)
 
 # Paleta de impresión (RGB). Coherente con los tokens de estado de la app, pero sobre fondo blanco.
 TINTA = (24, 28, 34)
@@ -182,7 +187,11 @@ class _Reporte(FPDF):
 
 
 # ------------------------------------------------------------------ bloques
-def _resumen(pdf: _Reporte, res: dict, actualizado: bool = False):
+def _resumen(pdf: _Reporte, res: dict, actualizado: bool = False, riesgos: list[dict] | None = None):
+    nivel, calculado = nivel_riesgo(res, riesgos or [])
+    if nivel:
+        pdf.subtitulo(f"Nivel de riesgo: {nivel}" + (" (calculado con la severidad de los riesgos)" if calculado else ""))
+        pdf.parrafo(res.get("veredicto") or res.get("titular"))
     pdf.subtitulo("Postura actualizada" if actualizado else "Postura inicial")
     pdf.parrafo(res.get("postura_inicial"))
     brechas = res.get("controles_mayores_brechas") or []
@@ -190,6 +199,10 @@ def _resumen(pdf: _Reporte, res: dict, actualizado: bool = False):
         pdf.subtitulo("Controles con mayores brechas")
         pdf.vinetas([f"{b.get('control_id')} · {_nombre_control(b.get('control_id'))}: {b.get('explicacion', '')}"
                      for b in brechas])
+    impactos = res.get("impactos_negocio") or []
+    if impactos:
+        pdf.subtitulo("Qué está en juego para el negocio")
+        pdf.vinetas([f"{x.get('titulo')}: {x.get('linea')}" for x in impactos])
     faltante = res.get("informacion_faltante") or []
     if faltante:
         pdf.subtitulo("Información faltante")
@@ -197,6 +210,9 @@ def _resumen(pdf: _Reporte, res: dict, actualizado: bool = False):
     if res.get("principales_riesgos"):
         pdf.subtitulo("Principales riesgos")
         pdf.parrafo(res.get("principales_riesgos"))
+    if res.get("peticiones"):
+        pdf.subtitulo("Peticiones de información al cliente")
+        pdf.vinetas(res.get("peticiones"))
     if res.get("resultados_preliminares"):
         pdf.subtitulo("Resultados preliminares")
         pdf.parrafo(res.get("resultados_preliminares"))
@@ -212,10 +228,13 @@ def _nombre_control(cid) -> str:
 def _riesgos(pdf: _Reporte, lista: list[dict], situacion: list[dict] | None = None):
     filas = []
     for i, r in enumerate(lista):
-        sev = (r.get("severidad") or "").lower()
+        sev = (severidad_de(r.get("probabilidad"), r.get("impacto")) or r.get("severidad") or "").lower()
+        pxi = f" (P{r['probabilidad']} x I{r['impacto']})" if severidad_de(r.get("probabilidad"), r.get("impacto")) else ""
+        consecuencia = _md(r.get("consecuencia")) + (f"\n{_b('Para el negocio:')} {_md(r['consecuencia_negocio'])}"
+                                                    if r.get("consecuencia_negocio") else "")
         fila = [f"{_b(f'{i + 1}. ' + r.get('titulo', ''))}\n{_md(r.get('descripcion'))}", _md(r.get("activo_proceso")),
-                _md(r.get("deficiencia")), _md(r.get("consecuencia")),
-                f"{_b(sev.capitalize())}\n{_md(r.get('justificacion'))}", _md(", ".join(r.get("salvaguardas", [])))]
+                _md(r.get("deficiencia")), consecuencia,
+                f"{_b(sev.capitalize() + pxi)}\n{_md(r.get('justificacion'))}", _md(", ".join(r.get("salvaguardas", [])))]
         if situacion is not None:
             s = situacion[i] if i < len(situacion) else {}
             fila.append(f"{_b('Reducido' if s.get('situacion') == 'reducido' else 'Permanece')}\n{_md(s.get('explicacion'))}")
@@ -234,17 +253,42 @@ def _roadmap(pdf: _Reporte, lista: list[dict], titulos_riesgos: list[str], estad
         rs = ", ".join(f"{n}. {titulos_riesgos[n - 1]}" for n in ini.get("riesgos", []) if 0 < n <= len(titulos_riesgos))
         fila = [_b(ini.get("prioridad", "")), f"{_b(ini.get('titulo'))}\n{_md(ini.get('descripcion'))}", _md(rs),
                 _md(", ".join(ini.get("salvaguardas", []))), _md(ini.get("beneficio")),
-                _md((ini.get("esfuerzo") or "").capitalize()), _b("Quick win" if ini.get("tipo") == "quick_win" else "Proyecto")]
+                _md((ini.get("esfuerzo") or "").capitalize()), _b("Quick win" if ini.get("tipo") == "quick_win" else "Proyecto"),
+                _md(_plazo(ini))]
         if estados is not None:
             e = estados[i] if i < len(estados) else {}
             fila.append(f"{_b(ESTADO_INICIATIVA.get(e.get('estado'), ''))}\n{_md(e.get('explicacion'))}")
         filas.append(fila)
-    encabezado = ["#", "Iniciativa", "Riesgo que reduce", "IDs CIS", "Beneficio esperado", "Esfuerzo", "Tipo"]
-    anchos = [6, 50, 32, 18, 42, 14, 18]
+    encabezado = ["#", "Iniciativa", "Riesgo que reduce", "IDs CIS", "Beneficio esperado", "Esfuerzo", "Tipo", "Plazo"]
+    anchos = [6, 46, 30, 16, 38, 13, 15, 16]
     if estados is not None:
         encabezado.append("Estado")
-        anchos = [6, 40, 26, 15, 34, 13, 15, 31]
+        anchos = [6, 36, 24, 14, 30, 12, 14, 15, 29]
     pdf.tabla(encabezado, filas, anchos)
+
+
+def _plazo(ini: dict) -> str:
+    h, estimado = horizonte_de(ini)
+    return f"{h} días" + (" (estimado)" if estimado else "")
+
+
+def _matriz(pdf: _Reporte, p: Proyecto, v: Version):
+    """La matriz completa de la versión: las 56 salvaguardas con estado, justificación, cita y evidencia."""
+    filas = []
+    for c in catalogo().controles:
+        for s in c.ig1:
+            r = v.matriz.get(s.id)
+            if r is None:
+                continue
+            estado = _b(ETIQUETA[r.estado]) + (f"\n{_md(ETIQUETA_APLICABILIDAD[r.aplicabilidad])}" if r.aplicabilidad != "aplica" else "")
+            texto = _md(r.justificacion)
+            if r.cita:
+                texto += f"\n{_md(chr(0x201c) + r.cita + chr(0x201d))}"
+            if r.observaciones:
+                texto += f"\n{_md('Obs.: ' + r.observaciones)}"
+            filas.append([_b(s.id), f"{_md(s.titulo)}\n{_md(c.nombre)}", estado, texto, _md(r.evidencia(p.documentos))])
+    pdf.tabla(["ID", "Salvaguarda (CIS v8.1, texto oficial)", "Estado", "Justificación, cita y observaciones", "Evidencia"],
+              filas, [10, 42, 20, 80, 28], tam=6.8)
 
 
 def _riesgos_tras_mejoras(pdf: _Reporte, lista: list[dict], situacion: list[dict]):
@@ -284,7 +328,7 @@ def _version(pdf: _Reporte, p: Proyecto, v: Version):
     riesgos_v1 = p.v1.reporte.get("riesgos", [])
     titulos = [r.get("titulo", "") for r in riesgos_v1]
     pdf.titulo_seccion(f"Dashboard · {v.nombre}", f"Fecha: {v.fecha}. Valores calculados por el sistema a partir de la matriz "
-                                                  "de las 56 salvaguardas (la matriz completa está en el Excel).")
+                                                  "de las 56 salvaguardas (la matriz completa va al final de este reporte).")
     pdf.tarjetas(v.indicadores(), p.v1.indicadores() if es_v2 else None)
     if es_v2:
         aprobados = [c.id for c in p.cambios if c.decision == "aprobado"]
@@ -301,8 +345,8 @@ def _version(pdf: _Reporte, p: Proyecto, v: Version):
                         _md(c.justificacion), _md(f"PDF 2 · p. {c.pagina}" if c.cita_verificada else "Cita no verificada"),
                         _b(c.decision.capitalize())] for c in p.cambios],
                       [12, 46, 70, 26, 26])
-    pdf.titulo_seccion("Resumen ejecutivo" + (" actualizado" if es_v2 else ""))
-    _resumen(pdf, rep.get("resumen_ejecutivo", {}), es_v2)
+    pdf.titulo_seccion("Resumen" + (" actualizado" if es_v2 else ""))
+    _resumen(pdf, rep.get("resumen_ejecutivo", {}), es_v2, (rep.get("riesgos_v2") or riesgos_v1) if es_v2 else riesgos_v1)
     if es_v2:
         pdf.titulo_seccion("Riesgos originales: mitigados, reducidos o que permanecen",
                            "Calculado por el sistema con el estado v2 de las salvaguardas de cada riesgo.")
@@ -321,18 +365,23 @@ def _version(pdf: _Reporte, p: Proyecto, v: Version):
         _riesgos(pdf, riesgos_v1)
         pdf.titulo_seccion("Roadmap de cinco iniciativas")
         _roadmap(pdf, rep.get("iniciativas", []), titulos)
+    ind = v.indicadores()
+    pdf.titulo_seccion(f"Matriz de las 56 salvaguardas · {v.nombre}",
+                       f"{ind['no_verificado']} salvaguardas sin evidencia documental (No verificado): son lo que falta para dar el "
+                       "resultado por firme. Los títulos de las salvaguardas son los oficiales de CIS, sin traducir.")
+    _matriz(pdf, p, v)
 
 
 # -------------------------------------------------------------------- API
 def reporte_pdf(p: Proyecto, cual: str) -> bytes:
-    """Reporte ejecutivo de UNA versión. "v1": reporte inicial (solo PDF 1). "v2": reporte final, con los cambios
-    del PDF 2 y la comparación de indicadores frente a v1 (sin repetir la matriz ni el reporte inicial)."""
+    """Reporte técnico completo de UNA versión. "v1": reporte inicial (solo PDF 1). "v2": reporte final, con los
+    cambios del PDF 2, la comparación de indicadores frente a v1 y la matriz v2 (sin repetir la matriz v1)."""
     v = p.v1 if cual == "v1" else p.v2 if cual == "v2" else None
     if v is None or not v.reporte:
         raise ValueError(f"La versión {cual} aún no tiene reporte.")
     usados = ("pdf1",) if cual == "v1" else ("pdf1", "pdf2")
     fuentes = " · ".join(f"{d.etiqueta}: {d.nombre}" for k, d in p.documentos.items() if k in usados)
-    nombre = "Reporte ejecutivo inicial" if cual == "v1" else "Reporte ejecutivo final"
+    nombre = "Reporte técnico inicial" if cual == "v1" else "Reporte técnico final"
     pdf = _inicio(p, nombre, f"{v.nombre} del {v.fecha}. Fuentes: {fuentes}.")
     if p.ficha:
         pdf.titulo_seccion("Contexto de la empresa")
@@ -341,9 +390,9 @@ def reporte_pdf(p: Proyecto, cual: str) -> bytes:
     return bytes(pdf.output())
 
 
-def _inicio(p: Proyecto, documento: str, datos: str) -> _Reporte:
+def _inicio(p: Proyecto, documento: str, datos: str, clase: type = None) -> _Reporte:
     """Primera página: franja de color, título y datos clave (sin portada aparte para ahorrar páginas)."""
-    pdf = _Reporte(p.nombre, documento)
+    pdf = (clase or _Reporte)(p.nombre, documento)
     pdf.alias_nb_pages()
     pdf.add_page()
     pdf.set_fill_color(*ACENTO)
@@ -357,7 +406,7 @@ def _inicio(p: Proyecto, documento: str, datos: str) -> _Reporte:
     pdf.multi_cell(0, 9, _t(f"{documento} · {p.nombre}"), new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 8.5)
     pdf.set_text_color(*TENUE)
-    pdf.multi_cell(0, 4.4, _t(datos), new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(0, 4.4, _t(datos), align="L", new_x="LMARGIN", new_y="NEXT")
     return pdf
 
 

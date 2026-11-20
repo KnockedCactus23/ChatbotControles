@@ -20,7 +20,7 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 |---|---|---|
 | 1. Agente funcional + prompt maestro + configuración | ✅ | `streamlit run app.py`; prompt en `docs/` (`scripts/exportar_prompt.py`) |
 | 2. Matriz CIS IG1 (v1 y v2, Excel/CSV) | ✅ | Botones "Excel completo" y "Matriz v1/v2 (CSV)" |
-| 3. Reporte ejecutivo (máx. 5 páginas) | ✅ | Botón "Reporte ejecutivo (PDF)": A4, con v1 y v2. Con la evaluación de prueba ocupa 5 páginas; también se puede descargar en HTML |
+| 3. Reporte ejecutivo (máx. 5 páginas) | ✅ | «Descargar → Reporte ejecutivo · PDF»: la vista ejecutiva en 2-3 páginas A4 por versión. El detalle completo va en el reporte técnico (PDF y HTML, sin límite) |
 | 4. Demostración de 8 minutos | ⏳ equipo | Ejemplos sugeridos abajo |
 
 ---
@@ -135,12 +135,14 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 - **Vista ejecutiva, Fase 3 (interacciones), 2026-11-19:** filtro por estado en ambas vistas (controles y matriz, aviso «Mostrando N · Quitar filtro», estados sin medidas deshabilitados) y panel lateral de riesgos e iniciativas (consecuencia, probabilidad e impacto, iniciativas que lo reducen, aporte estimado a la madurez; salvaguardas solo en la técnica). Probado en el navegador con clic, teclado, Esc y clic fuera; móvil a pantalla completa. Prueba nueva (45).
 
 - **Vista ejecutiva, Fase 4 (vista técnica), 2026-11-19:** severidad como punto + palabra con probabilidad × impacto, columna de plazo en el roadmap y postura completa sin «Leer más». Revisado con una v2 de prueba (copia de NEXOPAY en el scratchpad, 3 cambios aprobados): ambas vistas del Reporte actualizado funcionan, con los cambios respecto a la v1. Prueba nueva (46).
+- **Vista ejecutiva, Fase 5 (visor de evidencia), 2026-11-19:** `chatbot/visor.py` con PyMuPDF. La evidencia de la matriz abre la página del PDF a la derecha con la cita resaltada (exacta, normalizada o por fragmentos; si no, «No se encontró la cita exacta»), con anterior/siguiente, ampliar y Esc. En las 6 evaluaciones guardadas se ubicaron las 188 citas: 186 exactas y 2 por fragmentos. Revisado en Día/Noche, 1440 y 375 px. 8 pruebas nuevas (54).
+- **Vista ejecutiva, Fase 6 (exportaciones), 2026-11-19:** menú «Descargar» en tres grupos (ejecutivo, técnico, datos), generados al hacer clic. Nuevo `chatbot/pdf_ejecutivo.py`: la vista ejecutiva en 2-3 páginas con gráficas vectoriales legibles en gris. `reporte_pdf` pasa a ser el reporte técnico completo (con la matriz, P × I, plazo, impactos y peticiones). Revisado con 4 evaluaciones (NEXOPAY, FERREMAX anterior, ACME y la v2 de prueba): ejecutivos de 2-3 páginas y técnicos de 6 a 13; sin texto fuera de margen, sin texto encimado y sin imágenes rasterizadas. 54 pruebas.
 
 ---
 
 ## Verificación
 
-- **46 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
+- **54 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
 - **Prueba real con Gemini** y dos PDF ficticios, de punta a punta:
   - ficha con 20 de 20 citas verificadas;
   - evaluación v1 con implementación 31.6 % y cobertura 33.9 %, idéntica en dos corridas;
@@ -155,12 +157,10 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 
 - [ ] **Commit y push** (lo hace el equipo): `app.py`, `chatbot/`, `tests/`, `requirements.txt`, `README.md`, `CLAUDE.md`, `PROGRESS.md`, `docs/`, `scripts/exportar_prompt.py`.
 - [ ] Probar con los **PDF reales del profesor** (solo se probó con casos ficticios).
-- [ ] Revisar el PDF con el caso real del profesor: los textos del modelo varían y podría pasar de **5 páginas**.
 - [ ] Preparar la **demo de 8 minutos**: una decisión correcta (cita verificada) y un error o limitación (7.1/7.2 o 1.1 arriba).
 - [ ] Responder las **preguntas de reflexión** de la actividad (dificultad principal, corrección humana, impacto de las iniciativas, etc.).
 - [ ] **Parte 2 de la actividad**, cuando llegue.
 - [ ] Generar un reporte real con Sonnet 5.5 para ver los campos nuevos del dashboard (titular, cifras «X de Y», brechas cortas, nombres cortos de riesgo). Las evaluaciones guardadas usan respaldos. Es una llamada con costo.
-- [ ] Vista ejecutiva: Fases 5 y 6 (vista, interacciones, vista técnica, visor de evidencia, exportaciones).
 - [ ] Decidir si `mockup/` se versiona o se agrega a `.gitignore`.
 
 ## Limitaciones conocidas

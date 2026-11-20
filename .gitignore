@@ -11,3 +11,6 @@ chatbot/data/
 # Evaluaciones guardadas (pueden contener los PDF del caso)
 evaluaciones/
 .DS_Store
+
+# Páginas de los PDF del caso dibujadas por el visor de evidencia (se regeneran solas)
+static/

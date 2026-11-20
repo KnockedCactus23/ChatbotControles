@@ -324,6 +324,61 @@ body[data-filtro="no_aplicable"] [data-estados]:not([data-estados~="no_aplicable
 .d-ficha-aporte b { font-size: 26px; line-height: 30px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 .d-cajon .d-lista-sv { display: flex; flex-wrap: wrap; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { .d-cajon, .d-cajon-fondo { transition: none; } }
+/* Visor de evidencia (Fase 5): divide la pantalla; el PDF queda a la derecha y la matriz se reacomoda a la izquierda. */
+:root { --visor-w: min(48vw, 820px); --visor-marca: oklch(0.91 0.17 100 / 0.5); --visor-borde: oklch(0.78 0.16 92); }
+.d-mx .d-ev { display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; cursor: pointer; line-height: 18px; }
+.d-mx .d-ev i { width: 5px; height: 5px; border-top: 1.5px solid currentColor; border-right: 1.5px solid currentColor; transform: rotate(45deg); opacity: .7; }
+.d-mx .d-ev:hover { border-color: var(--rule-2); color: var(--ink); }
+.d-mx .d-ev:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; color: var(--ink); }
+.d-mx tr.d-ev-actual td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.d-mx tr.d-ev-actual .d-ev { border-color: var(--accent); color: var(--ink); }
+@media (min-width: 1200px) { body.d-con-visor [data-testid="stMain"] { padding-right: var(--visor-w); }
+  /* Con la pantalla dividida la matriz queda en ID, salvaguarda, estado y evidencia; la justificación pasa al visor. */
+  body.d-con-visor .d-mx { min-width: 0; }
+  body.d-con-visor .d-mx th, body.d-con-visor .d-mx td { padding-left: 8px; padding-right: 8px; }
+  body.d-con-visor .d-mx .d-pag { padding: 1px 4px; white-space: normal; text-align: left; }
+  body.d-con-visor .d-mx th:nth-child(4), body.d-con-visor .d-mx td:nth-child(4) { display: none; } }
+.d-visor { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1000001; width: var(--visor-w); box-sizing: border-box; display: flex; flex-direction: column;
+  background: var(--surface); color: var(--ink); font-family: var(--font); border-left: 1px solid var(--rule);
+  box-shadow: -12px 0 32px color-mix(in srgb, black 12%, transparent); transform: translateX(100%); transition: transform 220ms cubic-bezier(.2, .8, .2, 1); }
+.d-visor-abierto { transform: none; }
+.d-visor-cab { position: relative; padding: 16px 64px 14px 22px; border-bottom: 1px solid var(--rule); }
+.d-visor-doc { font: 500 12px/16px var(--mono); color: var(--ink-3); margin: 0 0 4px; font-variant-numeric: tabular-nums; }
+.d-visor h2 { font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0; padding: 0; color: var(--ink); }
+.d-visor h2 b { font-family: var(--mono); font-weight: 500; color: var(--ink-3); margin-right: 8px; }
+.d-visor-estado { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 13px; color: var(--ink-2); }
+.d-visor-estado::before { content: ""; width: 14px; height: 10px; border-radius: 2px; background: var(--visor-marca); outline: 1px solid var(--visor-borde); flex: none; }
+.d-visor-estado[data-modo="no_encontrada"]::before { background: transparent; outline: 1px dashed var(--ink-3); }
+.d-visor-estado[data-modo="no_encontrada"] { color: var(--ink); font-weight: 500; }
+.d-visor-cita { margin: 10px 0 0; padding: 0 0 0 12px; border-left: 2px solid var(--rule-2); font-size: 13px; line-height: 19px; color: var(--ink-2);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.d-visor-just { margin: 8px 0 0; font-size: 13px; line-height: 19px; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.d-visor-just b { font-weight: 600; color: var(--ink); }
+.d-visor-cerrar { position: absolute; top: 14px; right: 16px; width: 32px; height: 32px; border: 0; border-radius: 8px; background: var(--sunken);
+  color: var(--ink); font: 400 20px/1 var(--font); cursor: pointer; }
+.d-visor-cerrar:hover, .d-visor-cerrar:focus-visible { background: var(--rule); outline: 2px solid var(--accent); outline-offset: 1px; }
+.d-visor-hoja { flex: 1; overflow: auto; background: var(--sunken); padding: 18px; overscroll-behavior: contain; }
+.d-visor-pagina { position: relative; margin: 0 auto; max-width: 900px; background: white; box-shadow: 0 1px 3px color-mix(in srgb, black 18%, transparent);
+  min-height: 300px; }
+.d-visor-pagina img { display: block; width: 100%; height: auto; }
+.d-visor-pagina { cursor: zoom-in; }
+.d-visor-pagina.d-visor-zoom { width: 200%; max-width: none; cursor: zoom-out; }
+.d-visor-pagina:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.d-visor-marca { position: absolute; background: var(--visor-marca); mix-blend-mode: multiply; border-radius: 2px; box-shadow: 0 0 0 1px var(--visor-borde); pointer-events: none; }
+.d-visor-texto { max-width: 760px; margin: 0 auto; padding: 24px 28px; background: var(--surface); border: 1px solid var(--rule); white-space: pre-wrap;
+  font-size: 13px; line-height: 21px; color: var(--ink-2); }
+.d-visor-texto mark { background: var(--visor-marca); color: var(--ink); box-shadow: 0 0 0 1px var(--visor-borde); border-radius: 2px; }
+.d-visor-pie { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--rule); }
+.d-visor-pie span { font: 500 12px var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.d-visor-pie button { height: 34px; padding: 0 14px; border: 1px solid var(--rule-2); border-radius: 6px; background: var(--surface); color: var(--ink);
+  font: 500 13px var(--font); cursor: pointer; }
+.d-visor-pie button:hover:not(:disabled) { background: var(--sunken); }
+.d-visor-pie button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.d-visor-pie button:disabled { opacity: .45; cursor: default; }
+@media (max-width: 1199px) { :root { --visor-w: min(640px, 100vw); } }
+@media (max-width: 860px) { :root { --visor-w: 100vw; }
+  .d-visor { border-left: 0; } .d-visor-hoja { padding: 10px; } }
+@media (prefers-reduced-motion: reduce) { .d-visor { transition: none; } }
 
 /* Responsivo */
 @media (max-width: 860px) {
@@ -616,11 +671,21 @@ def roadmap(lista: list[dict], riesgos_ref: list[dict], grupo: str, estados: lis
 
 
 # ---------------------------------------------------------------------------------------- matriz
+def _evidencia_visor(clave: str, s, e: dict, r: Resultado) -> str:
+    """Datos ocultos que el script del visor lee al abrir la evidencia ``clave`` (sin HTML: solo atributos)."""
+    rects = ";".join(",".join(f"{v:.4f}" for v in r) for r in e.get("rects") or [])
+    return (f'<div data-evid="{clave}" data-doc="{esc(e["doc"])}" data-pagina="{e["pagina"]}" data-total="{e["total"]}" '
+            f'data-modo="{e["modo"]}" data-img="{esc(e.get("img", ""))}" data-rects="{rects}" data-sid="{s.id}" '
+            f'data-titulo="{esc(s.titulo)}" data-estado="{ETIQUETA_CORTA[r.estado]}" data-just="{esc(r.justificacion)}" data-cita="{esc(e["cita"])}" data-texto="{esc(e.get("texto", ""))}"></div>')
+
+
 def matriz(version, documentos: dict, titulo: str, sub: str, id_: str, resaltar: set[str] = frozenset(),
-           abierta: bool = False) -> str:
-    """Matriz de las 56 salvaguardas plegada, con filtros por estado (el filtro lo aplica el CSS con data-filtro)."""
+           abierta: bool = False, evidencias: dict | None = None) -> str:
+    """Matriz de las 56 salvaguardas plegada, con filtros por estado (el filtro lo aplica el CSS con data-filtro).
+    Con ``evidencias`` (de ``visor.evidencias``), la evidencia es un botón que abre el visor con la cita resaltada."""
     ind = version.indicadores()
-    filas = ""
+    evidencias = evidencias or {}
+    filas, datos_visor = "", ""
     for c in catalogo().controles:
         for s in c.ig1:
             r = version.matriz[s.id]
@@ -628,8 +693,15 @@ def matriz(version, documentos: dict, titulo: str, sub: str, id_: str, resaltar:
                      if r.aplicabilidad != "aplica" else "")
             cita = f'<span class="d-cita">“{esc(r.cita)}”</span>' if r.cita else ""
             obs = f'<span class="d-obs">{esc(r.observaciones)}</span>' if r.observaciones else ""
-            ev = (f'<span class="d-pag">{esc(r.evidencia(documentos))}</span>' if r.fuente
-                  else '<span class="d-sec-sub">—</span>')
+            if s.id in evidencias:
+                clave = f"{id_}:{s.id}"
+                datos_visor += _evidencia_visor(clave, s, evidencias[s.id], r)
+                ev = (f'<button type="button" class="d-pag d-ev" data-ev="{clave}" aria-label="Ver la evidencia de {s.id} '
+                      f'en el documento">{esc(r.evidencia(documentos))}<i aria-hidden="true"></i></button>')
+            elif r.fuente:
+                ev = f'<span class="d-pag">{esc(r.evidencia(documentos))}</span>'
+            else:
+                ev = '<span class="d-sec-sub">—</span>'
             filas += (f'<tr data-e="{r.estado}" class="{"d-cambio" if s.id in resaltar else ""}">'
                       f'<td class="d-sid d-mono">{s.id}</td>'
                       f'<td class="d-sal">{esc(s.titulo)}<small>{esc(c.nombre)}</small></td>'
@@ -642,7 +714,8 @@ def matriz(version, documentos: dict, titulo: str, sub: str, id_: str, resaltar:
             f'<summary><div class="d-sec-cab"><h2>{esc(titulo)}</h2><span class="d-sec-sub">{esc(sub)}</span></div>'
             f'<span class="d-chev"></span></summary><div class="d-filtros">{filtros}</div>'
             f'<div class="d-mx-marco"><table class="d-mx"><thead><tr><th>ID</th><th>Salvaguarda</th><th>Estado</th>'
-            f'<th>Justificación, cita y observaciones</th><th>Evidencia</th></tr></thead><tbody>{filas}</tbody></table></div></details>')
+            f'<th>Justificación, cita y observaciones</th><th>Evidencia</th></tr></thead><tbody>{filas}</tbody></table></div>'
+            f'<div class="d-evs" hidden>{datos_visor}</div></details>')
 
 
 # ------------------------------------------------------------------------------------ pendientes
@@ -800,6 +873,7 @@ const cerrar = () => {
 };
 const abrir = (clave, desde) => {
   const f = d.querySelector('[data-ficha="' + clave + '"]'); if (!f) return;
+  if (visor) cerrarVisor(false);
   if (!cajon) {
     origen = desde || d.activeElement;
     // Sin HTML en cadenas: st.html descarta el script si lleva etiquetas dentro.
@@ -818,8 +892,77 @@ const abrir = (clave, desde) => {
   if (h) { h.id = 'd-cajon-titulo'; panel.setAttribute('aria-labelledby', 'd-cajon-titulo'); }
   panel.scrollTop = 0; cajon.querySelector('.d-cajon-cerrar').focus({preventScroll: true});
 };
+// Visor de evidencia: la página del PDF a la derecha con la cita resaltada (rectángulos de visor.py).
+const MODO_VISOR = {exacta: 'Cita resaltada en la página', fragmentos: 'Se resaltaron los fragmentos de la cita que aparecen en la página',
+  no_encontrada: 'No se encontró la cita exacta; se muestra la página citada', texto: 'Documento sin PDF: se muestra el texto extraído de la página'};
+const nuevo = (tag, clase, attrs) => { const x = d.createElement(tag); if (clase) x.className = clase;
+  Object.entries(attrs || {}).forEach(([k, v]) => x.setAttribute(k, v)); return x; };
+let visor = null, evClave = null;
+const botonEv = c => c && d.querySelector('.d-ev[data-ev="' + c + '"]');
+const visibles = b => { const m = b && b.closest('.d-matriz'); return m ? [...m.querySelectorAll('.d-ev[data-ev]')].filter(x => x.offsetParent !== null) : []; };
+const marcarFila = b => { d.querySelectorAll('tr.d-ev-actual').forEach(t => t.classList.remove('d-ev-actual')); if (b) b.closest('tr').classList.add('d-ev-actual'); };
+const cerrarVisor = (devolver = true) => {
+  if (!visor) return; const v = visor; visor = null; v.classList.remove('d-visor-abierto'); d.body.classList.remove('d-con-visor');
+  setTimeout(() => v.remove(), quieto() ? 0 : 230);
+  const b = botonEv(evClave); marcarFila(null); evClave = null; if (devolver && b) b.focus({preventScroll: true});
+};
+const moverVisor = paso => { const b = botonEv(evClave); const l = visibles(b); const i = l.indexOf(b);
+  if (i >= 0 && l[i + paso]) abrirVisor(l[i + paso], true); };
+const abrirVisor = (b, navegando) => {
+  const info = d.querySelector('[data-evid="' + b.dataset.ev + '"]'); if (!info) return;
+  if (cajon) cerrar();
+  const g = info.dataset;
+  if (!visor) {
+    visor = nuevo('aside', 'd-visor', {role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'd-visor-titulo', tabindex: '-1'});
+    const cab = nuevo('div', 'd-visor-cab');
+    cab.append(nuevo('p', 'd-visor-doc'), nuevo('h2', '', {id: 'd-visor-titulo'}), nuevo('p', 'd-visor-just'), nuevo('p', 'd-visor-estado', {role: 'status'}), nuevo('blockquote', 'd-visor-cita'));
+    const x = nuevo('button', 'd-visor-cerrar', {type: 'button', 'aria-label': 'Cerrar el visor'}); x.textContent = '×'; cab.append(x);
+    const pie = nuevo('div', 'd-visor-pie');
+    const ant = nuevo('button', 'd-visor-ant', {type: 'button'}); ant.textContent = '‹ Anterior';
+    const sig = nuevo('button', 'd-visor-sig', {type: 'button'}); sig.textContent = 'Siguiente evidencia ›';
+    pie.append(ant, nuevo('span'), sig);
+    visor.append(cab, nuevo('div', 'd-visor-hoja'), pie); d.body.appendChild(visor);
+    x.addEventListener('click', () => cerrarVisor()); ant.addEventListener('click', () => moverVisor(-1)); sig.addEventListener('click', () => moverVisor(1));
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (visor) { visor.classList.add('d-visor-abierto'); d.body.classList.add('d-con-visor'); } }));
+  }
+  evClave = b.dataset.ev; marcarFila(b);
+  // La matriz se reacomoda al dividirse la pantalla: se centra la fila cuando termina la transición.
+  setTimeout(() => { if (d.contains(b)) b.closest('tr').scrollIntoView({block: 'center', behavior: quieto() ? 'auto' : 'smooth'}); }, navegando ? 0 : 260);
+  visor.querySelector('.d-visor-doc').textContent = g.doc + ' · página ' + g.pagina + ' de ' + g.total;
+  const h = visor.querySelector('h2'); h.textContent = ''; const id = d.createElement('b'); id.textContent = g.sid; h.append(id, ' ', g.titulo);
+  const j = visor.querySelector('.d-visor-just'); j.textContent = ''; const je = d.createElement('b'); je.textContent = g.estado + '. ';
+  j.append(je, g.just || ''); j.title = g.just || '';
+  const est = visor.querySelector('.d-visor-estado'); est.dataset.modo = g.modo; est.textContent = MODO_VISOR[g.modo] || '';
+  visor.querySelector('.d-visor-cita').textContent = '“' + g.cita + '”';
+  const hoja = visor.querySelector('.d-visor-hoja'); hoja.innerHTML = ''; hoja.scrollTop = 0;
+  if (g.modo === 'texto') {
+    const t = nuevo('div', 'd-visor-texto'); const txt = g.texto || ''; const cita = (g.cita || '').trim();
+    const i = cita ? txt.toLowerCase().indexOf(cita.toLowerCase()) : -1;
+    if (i >= 0) { const m = d.createElement('mark'); m.textContent = txt.slice(i, i + cita.length); t.append(txt.slice(0, i), m, txt.slice(i + cita.length));
+      est.textContent = MODO_VISOR.texto + '; la cita está marcada'; }
+    else t.textContent = txt;
+    hoja.append(t); const m = t.querySelector('mark'); if (m) requestAnimationFrame(() => { hoja.scrollTop = Math.max(0, m.offsetTop - 80); });
+  } else {
+    const pag = nuevo('div', 'd-visor-pagina', {role: 'button', tabindex: '0', 'aria-pressed': 'false', title: 'Clic para ampliar o reducir la página'}); const img = nuevo('img', '', {alt: 'Página ' + g.pagina + ' de ' + g.doc, decoding: 'async'});
+    pag.append(img);
+    const marcas = (g.rects || '').split(';').filter(Boolean).map(r => { const [x0, y0, x1, y1] = r.split(',').map(Number);
+      const m = nuevo('div', 'd-visor-marca'); Object.assign(m.style, {left: x0 * 100 + '%', top: y0 * 100 + '%', width: (x1 - x0) * 100 + '%', height: (y1 - y0) * 100 + '%'});
+      pag.append(m); return y0; });
+    const centrar = () => { if (marcas.length) hoja.scrollTop = Math.max(0, Math.min(...marcas) * img.clientHeight - 90); };
+    img.addEventListener('load', centrar);
+    const ampliar = () => { const z = pag.classList.toggle('d-visor-zoom'); pag.setAttribute('aria-pressed', String(z)); centrar();
+      const xs = (g.rects || '').split(';').filter(Boolean).map(r => +r.split(',')[0]); hoja.scrollLeft = z && xs.length ? Math.max(0, Math.min(...xs) * pag.clientWidth - 40) : 0; };
+    pag.addEventListener('click', ampliar);
+    pag.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ampliar(); } });
+    img.src = g.img; hoja.append(pag);
+  }
+  const l = visibles(b), i = l.indexOf(b);
+  visor.querySelector('.d-visor-pie span').textContent = (i + 1) + ' de ' + l.length;
+  visor.querySelector('.d-visor-ant').disabled = i <= 0; visor.querySelector('.d-visor-sig').disabled = i >= l.length - 1;
+  if (!navegando) visor.querySelector('.d-visor-cerrar').focus({preventScroll: true});
+};
 d.addEventListener('keydown', ev => {
-  if (ev.key === 'Escape') { if (cajon) { cerrar(); ev.preventDefault(); } else if (fijado) filtrar(null); return; }
+  if (ev.key === 'Escape') { if (cajon) { cerrar(); ev.preventDefault(); } else if (visor) { cerrarVisor(); ev.preventDefault(); } else if (fijado) filtrar(null); return; }
   if (cajon && ev.key === 'Tab') {
     const foc = [...cajon.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')];
     if (!foc.length) return; const pri = foc[0], ult = foc[foc.length - 1];
@@ -849,6 +992,8 @@ d.addEventListener('mouseout', ev => {
 d.addEventListener('focusin', ev => { const f = ev.target.closest('.d-leyenda [data-foco]'); if (f && !fijado) enfocar(f.dataset.foco); });
 d.addEventListener('focusout', ev => { const f = ev.target.closest('.d-leyenda [data-foco]'); if (f && !fijado) enfocar(null); });
 d.addEventListener('click', ev => {
+  const evb = ev.target.closest('.d-ev[data-ev]');
+  if (evb) { ev.preventDefault(); abrirVisor(evb); return; }
   const f = ev.target.closest('.d-leyenda [data-foco]');
   if (f) { filtrar(fijado === f.dataset.foco ? null : f.dataset.foco); return; }
   const sg = ev.target.closest('.d-principal .d-s[data-e], .e-pila .d-s[data-e], .d-segs .d-s[data-e]');
@@ -897,6 +1042,7 @@ const revisar = () => {
   entrar(); espiar();
   if (!d.querySelector('.d-leyenda') && (fijado || d.body.dataset.foco)) filtrar(null);
   if (cajon && !d.querySelector('.d-fichas')) cerrar();
+  if (visor) { const b = botonEv(evClave); if (!b) cerrarVisor(false); else if (!b.closest('tr').classList.contains('d-ev-actual')) marcarFila(b); }
   if (!d.querySelector('[data-riesgo]')) d.body.classList.remove('d-con-vinculo');
 };
 new MutationObserver(revisar).observe(d.body, {childList: true, subtree: true});

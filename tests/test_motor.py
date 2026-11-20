@@ -2,6 +2,7 @@
 
 import csv
 import io
+import re
 import json
 from types import SimpleNamespace
 
@@ -12,6 +13,7 @@ from pypdf import PdfReader
 from chatbot import controls, engine, exportar
 from chatbot.documentos import Documento
 from chatbot.engine import ErrorChatbot, Motor
+from chatbot.pdf_ejecutivo import reporte_ejecutivo_pdf
 from chatbot.reporte_pdf import ficha_pdf, reporte_pdf
 from chatbot.state import Proyecto, lotes_por_control
 from tests.conftest import PAGINAS
@@ -185,17 +187,29 @@ def test_flujo_completo(motor_simulado):
     filas = list(csv.reader(io.StringIO(exportar.csv_matriz(p, p.v2).decode("utf-8-sig"))))
     assert len(filas) == len(ids) + 1 and filas[0][0] == "ID CIS"
     html_v1, html_v2 = exportar.reporte_html(p, "v1"), exportar.reporte_html(p, "v2")
-    assert "Reporte ejecutivo inicial" in html_v1 and "Cambios derivados del PDF 2" not in html_v1
-    assert "Reporte ejecutivo final" in html_v2 and "Cambios derivados del PDF 2" in html_v2 and "Roadmap actualizado" in html_v2
+    assert "Reporte técnico inicial" in html_v1 and "Cambios derivados del PDF 2" not in html_v1
+    assert "Reporte técnico final" in html_v2 and "Cambios derivados del PDF 2" in html_v2 and "Roadmap actualizado" in html_v2
     assert "R12." in exportar.prompt_maestro_md()
 
-    # Reportes ejecutivos en PDF: uno por versión, cada uno dentro del límite de 5 páginas de la actividad.
+    # Reportes técnicos en PDF: uno por versión, completos (con su matriz) y sin límite de páginas.
     pdf_v1, pdf_v2 = (PdfReader(io.BytesIO(reporte_pdf(p, v))) for v in ("v1", "v2"))
     t1, t2 = (" ".join(pg.extract_text() for pg in d.pages) for d in (pdf_v1, pdf_v2))
-    assert len(pdf_v1.pages) <= 5 and len(pdf_v2.pages) <= 5
-    assert "Reporte ejecutivo inicial" in t1 and "Cinco riesgos principales" in t1 and "Cambios derivados del PDF 2" not in t1
-    assert "Reporte ejecutivo final" in t2 and "Cambios derivados del PDF 2" in t2 and "Roadmap actualizado" in t2
+    assert "Reporte técnico inicial" in t1 and "Cinco riesgos principales" in t1 and "Cambios derivados del PDF 2" not in t1
+    assert "Reporte técnico final" in t2 and "Cambios derivados del PDF 2" in t2 and "Roadmap actualizado" in t2
     assert "Cinco riesgos principales" not in t2
+    assert "Matriz de las 56 salvaguardas · v1" in t1 and "Matriz de las 56 salvaguardas · v2" in t2
+    assert "Matriz de las 56 salvaguardas · v1" not in t2  # la v2 no repite la matriz v1
+
+    # Reportes ejecutivos en PDF: 2-3 páginas (cumplen el límite de 5 de la actividad), sin ids de CIS.
+    for cual in ("v1", "v2"):
+        lector = PdfReader(io.BytesIO(reporte_ejecutivo_pdf(p, cual)))
+        texto = " ".join(pg.extract_text() for pg in lector.pages)
+        assert len(lector.pages) <= 3
+        assert ("Reporte ejecutivo inicial" if cual == "v1" else "Reporte ejecutivo final") in texto
+        assert "Estado por control" in texto and "Plan" in texto and "Lo que necesitamos de ustedes" in texto
+        assert "estimación" in texto or "Esta evaluación se generó antes" in texto
+        assert not re.search(r"(?<![\d.])\d{1,2}\.\d{1,2}(?![\d%])", texto.replace("v8.1", "")), "ids de CIS en el ejecutivo"
+    assert "desde la evaluación inicial" in " ".join(pg.extract_text() for pg in PdfReader(io.BytesIO(reporte_ejecutivo_pdf(p, "v2"))).pages)
 
     # Ficha de contexto exportable: las 10 dimensiones, la evidencia y los ajustes del equipo.
     p.ajustes.append({"fecha": "2026-11-17 10:00", "texto": "Microsoft 365 es un servicio contratado."})

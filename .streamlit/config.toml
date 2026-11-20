@@ -52,5 +52,9 @@ borderColor = "#2c2e31"           # rule
 [client]
 toolbarMode = "minimal"
 
+# Visor de evidencia: sirve las páginas de los PDF dibujadas por chatbot/visor.py (static/visor/, ignorada por git).
+[server]
+enableStaticServing = true
+
 [browser]
 gatherUsageStats = false

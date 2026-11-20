@@ -1,4 +1,4 @@
-"""Exportación de entregables: matriz (Excel/CSV), reporte ejecutivo y ficha de contexto (HTML) y prompt maestro (Markdown).
+"""Exportación de entregables: matriz (Excel/CSV), reporte técnico y ficha de contexto (HTML) y prompt maestro (Markdown).
 
 Los valores salen de la misma matriz e indicadores que muestra la app: no hay cálculos aparte,
 así que matriz, indicadores y reporte no pueden contradecirse.
@@ -129,10 +129,10 @@ def excel(p: Proyecto, cual: str) -> bytes:
 
 
 def reporte_html(p: Proyecto, cual: str) -> str:
-    """Reporte ejecutivo de UNA versión: "v1" (inicial) o "v2" (final, con la comparación frente a v1)."""
+    """Reporte técnico de UNA versión en HTML: "v1" (inicial) o "v2" (final, con la comparación frente a v1)."""
     v = _version(p, cual)
     rep = v.reporte or {}
-    nombre = "Reporte ejecutivo inicial" if cual == "v1" else "Reporte ejecutivo final"
+    nombre = "Reporte técnico inicial" if cual == "v1" else "Reporte técnico final"
     partes = [f"<h1 class='titular'>{nombre} · {ui.esc(p.nombre)}</h1>",
               f"<p class='lead'>{ui.esc(prompts.NOMBRE_AGENTE)} · CIS Controls v8.1 IG1 · 56 salvaguardas · "
               f"{ui.esc(v.nombre)} del {ui.esc(v.fecha)}</p>"]

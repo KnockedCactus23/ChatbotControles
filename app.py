@@ -13,11 +13,12 @@ import re
 import streamlit as st
 from dotenv import load_dotenv
 
-from chatbot import almacen, ejecutiva, exportar, panel, ui
+from chatbot import almacen, ejecutiva, exportar, panel, ui, visor
 from chatbot.controls import CatalogoNoEncontrado, atribucion, catalogo
 from chatbot.documentos import Documento, leer_pdf
 from chatbot.engine import MODELO_POR_DEFECTO, MODELOS, ErrorChatbot, Motor
 from chatbot.prompts import NOMBRE_AGENTE
+from chatbot.pdf_ejecutivo import reporte_ejecutivo_pdf
 from chatbot.reporte_pdf import ficha_pdf, reporte_pdf
 from chatbot.state import Proyecto, ahora, proyeccion
 
@@ -162,21 +163,36 @@ def cabecera_reporte(titulo: str, cual: str, sub: str):
     c1.html(panel.cabecera(titulo, cual, sub))
     c0.segmented_control("Vista del reporte", list(MODOS), format_func=MODOS.get, key="modo", required=True,
                          disabled=ocupado, label_visibility="collapsed")
+    # Los archivos se generan al hacer clic (data como función): abrir el menú no cuesta nada.
     with c2.popover("Descargar", icon=":material/download:", use_container_width=True, disabled=ocupado):
-        st.download_button(f"Reporte {nombre} · PDF", reporte_pdf(p, cual), file_name=f"reporte_{nombre}_{p.id}.pdf",
-                           mime="application/pdf", icon=":material/picture_as_pdf:", use_container_width=True,
-                           key=f"pdf_{cual}")
-        st.download_button(f"Reporte {nombre} · HTML", exportar.reporte_html(p, cual),
-                           file_name=f"reporte_{nombre}_{p.id}.html", mime="text/html", icon=":material/article:",
+        st.caption("Reporte ejecutivo · 2-3 páginas, para la dirección")
+        st.download_button(f"Reporte ejecutivo {nombre} · PDF", lambda: reporte_ejecutivo_pdf(p, cual),
+                           file_name=f"reporte_ejecutivo_{nombre}_{p.id}.pdf", mime="application/pdf",
+                           icon=":material/picture_as_pdf:", use_container_width=True, key=f"pdf_ej_{cual}")
+        st.caption("Reporte técnico · completo, con la matriz")
+        st.download_button(f"Reporte técnico {nombre} · PDF", lambda: reporte_pdf(p, cual),
+                           file_name=f"reporte_tecnico_{nombre}_{p.id}.pdf", mime="application/pdf",
+                           icon=":material/picture_as_pdf:", use_container_width=True, key=f"pdf_{cual}")
+        st.download_button(f"Reporte técnico {nombre} · HTML", lambda: exportar.reporte_html(p, cual),
+                           file_name=f"reporte_tecnico_{nombre}_{p.id}.html", mime="text/html", icon=":material/article:",
                            use_container_width=True, key=f"html_{cual}")
-        st.download_button(f"Excel completo {cual} · XLSX", exportar.excel(p, cual),
+        st.caption("Datos")
+        st.download_button(f"Excel completo {cual} · XLSX", lambda: exportar.excel(p, cual),
                            file_name=f"centinela_ig1_{cual}_{p.id}.xlsx", icon=":material/table_view:",
                            use_container_width=True, key=f"xlsx_{cual}")
-        st.download_button(f"Matriz {cual} · CSV", exportar.csv_matriz(p, v), file_name=f"matriz_{cual}_{p.id}.csv",
+        st.download_button(f"Matriz {cual} · CSV", lambda: exportar.csv_matriz(p, v), file_name=f"matriz_{cual}_{p.id}.csv",
                            mime="text/csv", icon=":material/csv:", use_container_width=True, key=f"csv_{cual}")
 
 
 SUB_CONTROLES = "Cuántas salvaguardas de cada control hay en cada estado. Los cinco con mayores brechas van primero y explican por qué; abre cualquier control para ver sus salvaguardas."
+
+
+def evidencias(version) -> dict:
+    """Datos del visor de evidencia (cita ubicada en su PDF). Si algo falla, la matriz se muestra sin visor."""
+    try:
+        return visor.evidencias(version.matriz, p.documentos, p.id, almacen.CARPETA)
+    except Exception:  # el visor es una ayuda: nunca debe impedir ver la matriz
+        return {}
 
 
 def reporte_v1() -> list[tuple]:
@@ -199,7 +215,7 @@ def reporte_v1() -> list[tuple]:
                           panel.roadmap(inis, riesgos, "a")
                           + panel.fichas(riesgos, inis, "a", v.matriz, True, proyeccion(v.matriz, inis)["aportes"])))
     st.html(panel.matriz(v, p.documentos, "Matriz de las 56 salvaguardas",
-                         "Estado, justificación, cita y página de cada salvaguarda (v1).", "matriz"))
+                         "Estado, justificación, cita y página de cada salvaguarda (v1).", "matriz", evidencias=evidencias(v)))
     st.html(panel.seccion("pendientes", "Pendientes", "Lo que falta para dar el resultado por firme.",
                           panel.pendientes(res, ind)))
     return [("resumen", "Resumen", None), ("postura", "Postura", None), ("controles", "Controles", 15),
@@ -321,7 +337,8 @@ elif vista == "evaluacion":
                  disabled=ocupado):
         pedir("reporte")
     st.html(panel.matriz(p.v1, p.documentos, "Matriz de las 56 salvaguardas · v1",
-                         "Incluye todas las salvaguardas, también las no verificadas.", "matriz", abierta=True))
+                         "Incluye todas las salvaguardas, también las no verificadas.", "matriz", abierta=True,
+                         evidencias=evidencias(p.v1)))
 
 # ------------------------------------------------- Etapas 3.5-4: reporte v1
 elif vista == "reporte":
@@ -436,8 +453,10 @@ elif vista == "actualizado":
                               + panel.fichas(riesgos_v2, rep.get("roadmap", []), "b", v2.matriz, True,
                                              proyeccion(v2.matriz, rep.get("roadmap", []))["aportes"])))
         st.html(panel.matriz(v2, p.documentos, "Matriz de las 56 salvaguardas · v2",
-                             "Las modificadas en v2 aparecen resaltadas.", "matriz", set(aprobados)))
-        st.html(panel.matriz(v1, p.documentos, "Matriz v1 · evaluación inicial", "Línea base, sin cambios.", "matriz-v1"))
+                             "Las modificadas en v2 aparecen resaltadas.", "matriz", set(aprobados),
+                             evidencias=evidencias(v2)))
+        st.html(panel.matriz(v1, p.documentos, "Matriz v1 · evaluación inicial", "Línea base, sin cambios.", "matriz-v1",
+                             evidencias=evidencias(v1)))
         st.html(panel.seccion("pendientes", "Pendientes", "Lo que falta para dar el resultado por firme.", panel.pendientes(res, ind)))
         secciones += [("roadmap", "Roadmap", len(rep.get("roadmap", []))), ("matriz", "Matriz v2", ind["total"]),
                       ("matriz-v1", "Matriz v1", ind1["total"]), ("pendientes", "Pendientes", ind["no_verificado"])]

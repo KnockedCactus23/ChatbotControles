@@ -160,8 +160,10 @@ def reporte_actualizado() -> dict:
     el modelo solo redacta su explicación. riesgos_v2 es la lista vigente a la que apunta el roadmap (F7)."""
     return _obj({
         "resumen_cambios": _TEXTO,
-        "riesgos": _lista(_obj({"titulo": _TEXTO, "explicacion": _TEXTO}), exactos=5),
-        "iniciativas_estado": _lista(_obj({"titulo": _TEXTO, "explicacion": _TEXTO}), exactos=5),
+        # Solo la explicación de cada riesgo e iniciativa original, en el mismo orden: el título y la situación los pone
+        # el código. Con objetos {titulo, explicacion} la API rechazaba el esquema («The compiled grammar is too large»).
+        "riesgos": _lista(_TEXTO, exactos=5),
+        "iniciativas_estado": _lista(_TEXTO, exactos=5),
         "riesgos_v2": _lista(_riesgo(), exactos=5),
         "resumen_ejecutivo": _resumen_ejecutivo(),
         "roadmap": _lista(_iniciativa(), exactos=5),

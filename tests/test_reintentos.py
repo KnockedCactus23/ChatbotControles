@@ -20,7 +20,8 @@ RESPUESTA_OK = {
 TIPO_ERROR = {529: "overloaded_error", 500: "api_error", 400: "invalid_request_error", 429: "rate_limit_error"}
 
 
-def _servidor(fallos: int, codigo: int = 529, demoras: tuple[float, ...] = (), respuesta: dict | None = None):
+def _servidor(fallos: int, codigo: int = 529, demoras: tuple[float, ...] = (), respuesta: dict | None = None,
+             mensaje: str = "Overloaded"):
     """Responde `codigo` las primeras `fallos` veces y luego 200; la llamada i tarda demoras[i] s.
     Devuelve (url, llamadas, cerrar). `llamadas` guarda el cuerpo JSON de cada solicitud."""
     llamadas = []
@@ -32,7 +33,7 @@ def _servidor(fallos: int, codigo: int = 529, demoras: tuple[float, ...] = (), r
                 time.sleep(demoras[len(llamadas) - 1])
             if len(llamadas) <= fallos:
                 cuerpo, estado = {"type": "error", "error": {"type": TIPO_ERROR.get(codigo, "api_error"),
-                                                             "message": "Overloaded"}}, codigo
+                                                             "message": mensaje}}, codigo
             else:
                 cuerpo, estado = respuesta or RESPUESTA_OK, 200
             datos = json.dumps(cuerpo).encode()
@@ -204,3 +205,34 @@ def test_esquemas_compactados_conservan_todas_las_restricciones():
         assert _resolver(compacto, compacto.get("$defs", {})) == _sin_restricciones_de_arreglo(esquema)
     ficha = _esquema_para_api(schemas.ficha())
     assert len(json.dumps(ficha)) < 0.5 * len(json.dumps(schemas.ficha()))   # las 10 dimensiones, definidas una vez
+
+
+def test_topes_de_salida_por_modelo():
+    # Sonnet y Opus conservan los topes de siempre; Haiku tiene los suyos (razona y escribe más).
+    for modelo in ("claude-sonnet-5-5", "claude-opus-5-5"):
+        assert all(engine.tope_salida(modelo, e) == v for e, v in engine.MAX_TOKENS.items())
+    assert engine.tope_salida("claude-haiku-5-5", "pdf2") == 64000
+    assert all(engine.tope_salida("claude-haiku-5-5", e) >= v for e, v in engine.MAX_TOKENS.items())
+    assert all(v <= 128000 for t in engine.MAX_TOKENS_POR_MODELO.values() for v in t.values())  # máximo de Haiku 5.5
+
+
+GRAMATICA = "The compiled grammar is too large, which would cause performance issues."
+
+
+def test_reporte_v2_pide_explicaciones_como_texto():
+    """Con {titulo, explicacion} el esquema v2 excedía el límite de gramática de la API (medido el 2026-11-20)."""
+    from chatbot import schemas
+    from chatbot.engine import _explicacion
+    props = schemas.reporte_actualizado()["properties"]
+    assert props["riesgos"]["items"] == {"type": "string"} and props["iniciativas_estado"]["items"] == {"type": "string"}
+    assert _explicacion(["a", "b"], 1) == "b" and _explicacion([{"explicacion": "c"}], 0) == "c" and _explicacion([], 3) == ""
+
+
+def test_gramatica_grande_da_mensaje_claro(reintentos_rapidos):
+    url, llamadas, cerrar = _servidor(fallos=5, codigo=400, mensaje=GRAMATICA)
+    try:
+        with pytest.raises(ErrorChatbot, match="demasiado grande"):
+            _llamada(_motor(url))
+    finally:
+        cerrar()
+    assert len(llamadas) == 1  # un 400 no se reintenta

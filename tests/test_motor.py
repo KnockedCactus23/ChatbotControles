@@ -93,8 +93,8 @@ def motor_simulado(monkeypatch):
         elif "Etapa 5.6" in sistema:
             base = _reporte()
             # El modelo "afirma" que los riesgos se redujeron: el sistema debe ignorarlo (F4, F5).
-            datos = {"resumen_cambios": "MFA", "riesgos": [{"titulo": "R", "situacion": "reducido", "explicacion": ""}] * 5,
-                     "iniciativas_estado": [{"titulo": "I", "estado": "completada", "explicacion": "x"}] * 5,
+            datos = {"resumen_cambios": "MFA", "riesgos": [""] * 5,
+                     "iniciativas_estado": ["x"] * 5,
                      "riesgos_v2": [dict(base["riesgos"][0], titulo=f"Riesgo vigente {n}") for n in range(1, 6)],
                      "resumen_ejecutivo": base["resumen_ejecutivo"], "roadmap": base["iniciativas"]}
         elif "Etapas 3.5 y 4" in sistema:

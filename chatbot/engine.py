@@ -49,6 +49,19 @@ TIMEOUT_LARGO_S = 420                      # evaluación y reportes: salidas lar
 # Tope de salida por tarea (incluye el razonamiento). Holgado: cortarse obliga a repetir la llamada completa.
 MAX_TOKENS = {"explicar": 6000, "ficha": 32000, "evaluar": 32000, "reporte": 24000, "pdf2": 32000,
               "faltantes": 16000, "v2": 32000, "consulta": 8000}
+# Topes propios por modelo; los que no aparecen aquí (Sonnet y Opus) usan MAX_TOKENS sin cambios.
+# Haiku 5.5 razona y escribe más para la misma tarea: en NEXOPAY usó 20.9K de 24K en el reporte inicial y agotó los
+# 32K del PDF 2 dos veces (con 51K de entrada, 5 % de su ventana de 1M: el límite era la salida, no el contexto).
+# Haiku admite hasta 128K de salida y cuesta 0.50 US$ por millón, así que el doble de tope cuesta centavos.
+MAX_TOKENS_POR_MODELO = {
+    "claude-haiku-5-5": {"explicar": 12000, "ficha": 64000, "evaluar": 64000, "reporte": 48000, "pdf2": 64000,
+                         "faltantes": 32000, "v2": 64000, "consulta": 16000},
+}
+
+
+def tope_salida(modelo: str, etapa: str) -> int:
+    """Tope de salida (incluye el razonamiento) de una etapa para el modelo elegido."""
+    return MAX_TOKENS_POR_MODELO.get(modelo, {}).get(etapa, MAX_TOKENS[etapa])
 # Modelos con reintento del lado del servidor si el clasificador de seguridad declina (p. ej. categoría "cyber",
 # posible en una evaluación de ciberseguridad). Haiku 5.5 no lo admite.
 CON_FALLBACK = ("claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-2", "claude-fable-5-1")
@@ -92,6 +105,16 @@ def _sin_restricciones_de_arreglo(schema):
     if isinstance(schema, list):
         return [_sin_restricciones_de_arreglo(v) for v in schema]
     return schema
+
+
+def _explicacion(lista: list, n: int) -> str:
+    """Explicación n-ésima del reporte v2: texto (esquema actual) u objeto {titulo, explicacion} (respuestas antiguas)."""
+    x = lista[n] if n < len(lista) else ""
+    return str(x.get("explicacion", "") if isinstance(x, dict) else x or "")
+
+
+def _gramatica_grande(e: Exception) -> bool:
+    return "grammar is too large" in str(e).lower()
 
 
 def _esquema_para_api(schema: dict) -> dict:
@@ -159,6 +182,10 @@ class Motor:
         MISMA etapa (lotes de la evaluación, ficha regenerada, consultas seguidas). Solo esas llevan `cachear=True`;
         en las llamadas únicas, escribir en caché costaría 25 % más sin volver a leerse."""
         timeout_s = timeout_s or TIMEOUT_S
+        # Más tope de salida = más tiempo de generación: el tiempo límite crece en proporción por encima de 32K
+        # (hoy solo pasa con Haiku; Sonnet y Opus no superan 32K y conservan sus tiempos).
+        if max_tokens > 32000:
+            timeout_s *= max_tokens / 32000
         sistema = [{"type": "text", "text": prompts.base()}, {"type": "text", "text": tarea}]
         if cachear:
             sistema[-1] = _cache(sistema[-1])
@@ -167,16 +194,19 @@ class Motor:
         extra = {}
         if self.modelo in CON_FALLBACK:
             extra = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
-        try:
-            resp = self.client.with_options(timeout=timeout_s).beta.messages.create(
+        def crear(esquema: dict):
+            return self.client.with_options(timeout=timeout_s).beta.messages.create(
                 model=self.modelo,
                 max_tokens=max_tokens,
                 system=sistema,
                 messages=[{"role": "user", "content": contenido}],
                 output_config={"effort": ESFUERZO.get(self.modelo, ESFUERZO_POR_DEFECTO),
-                               "format": {"type": "json_schema", "schema": _esquema_para_api(schema)}},
+                               "format": {"type": "json_schema", "schema": _esquema_para_api(esquema)}},
                 **extra,
             )
+
+        try:
+            resp = crear(schema)
         except anthropic.APITimeoutError as e:
             raise ErrorChatbot(f"Claude tardó más de {timeout_s:.0f} s en responder en cada intento. "
                                "Vuelve a intentarlo en un minuto.") from e
@@ -194,6 +224,9 @@ class Motor:
             if "credit balance" in str(e).lower():
                 raise ErrorChatbot("Tu cuenta de Claude no tiene saldo suficiente. Recarga créditos en "
                                    "platform.claude.com.") from e
+            if _gramatica_grande(e):
+                raise ErrorChatbot("El formato de respuesta de esta etapa es demasiado grande para la API (límite de "
+                                   "su gramática). Hay que reducir el esquema en chatbot/schemas.py.") from e
             raise ErrorChatbot(f"Claude rechazó la solicitud: {e.message}") from e
         except anthropic.APIStatusError as e:
             if e.status_code >= 500:
@@ -212,7 +245,8 @@ class Motor:
             sin_texto = not any(b.type == "text" for b in resp.content)
             raise ErrorChatbot("La respuesta de Claude se cortó por el límite de longitud de esta etapa"
                                + (" (lo gastó todo en razonar, sin llegar a responder)" if sin_texto else "")
-                               + ". Vuelve a intentarlo; si se repite, sube el límite en MAX_TOKENS (chatbot/engine.py).")
+                               + ". Vuelve a intentarlo; si se repite, sube el tope de esta etapa para "
+                               f"{self.modelo} en MAX_TOKENS_POR_MODELO (chatbot/engine.py).")
         texto = next((b.text for b in resp.content if b.type == "text"), "")
         try:
             return json.loads(texto)
@@ -255,7 +289,7 @@ class Motor:
         datos = self._llamar(prompts.sistema_explicacion(),
                              [self._texto("Explica tu objetivo, alcance, criterios y qué harás cuando no tengas "
                                           "suficiente información.")],
-                             schemas.MENSAJE, max_tokens=MAX_TOKENS["explicar"], etapa="Prueba preliminar")
+                             schemas.MENSAJE, max_tokens=tope_salida(self.modelo, "explicar"), etapa="Prueba preliminar")
         return datos.get("mensaje", "")
 
     # --------------------------------------------------------------- Etapa 2
@@ -268,7 +302,7 @@ class Motor:
         else:
             contenido.append(self._texto("Genera la ficha de contexto de este documento."))
         ficha = normalizar_ficha(self._llamar(prompts.sistema_ficha(), contenido, schemas.ficha(), TIMEOUT_LARGO_S,
-                                              MAX_TOKENS["ficha"], "Ficha de contexto", cachear=True))
+                                              tope_salida(self.modelo, "ficha"), "Ficha de contexto", cachear=True))
         # Verificación de citas (R3, R6): cada hallazgo queda marcado como verificado o no.
         for dim in ficha.get("dimensiones", {}).values():
             for h in dim.get("hallazgos", []):
@@ -301,7 +335,7 @@ class Motor:
             # Mismo esquema (los 56 ids) en todos los lotes: el esquema es parte del prefijo cacheado y uno por lote
             # anulaba la caché (medido: 0 tokens leídos). El código acepta solo los ids del lote.
             datos = self._llamar(prompts.sistema_evaluacion(), fijo + [pedido], esquema, TIMEOUT_LARGO_S,
-                                 MAX_TOKENS["evaluar"], f"Evaluación lote {i}", cachear=True)
+                                 tope_salida(self.modelo, "evaluar"), f"Evaluación lote {i}", cachear=True)
             ajenas = [e.get("id") for e in datos.get("evaluaciones", []) if e.get("id") not in lote]
             if ajenas:
                 proyecto.avisos.append(f"Lote {i}: se ignoraron {', '.join(map(str, ajenas))}, que no eran de este lote.")
@@ -327,7 +361,7 @@ class Motor:
     def report(self, proyecto: Proyecto) -> dict:
         texto, ids = self._contexto_reporte(proyecto, proyecto.v1)
         rep = self._llamar(prompts.sistema_reporte(), [self._texto(texto)], schemas.reporte(), TIMEOUT_LARGO_S,
-                           MAX_TOKENS["reporte"], "Reporte inicial")
+                           tope_salida(self.modelo, "reporte"), "Reporte inicial")
         proyecto.avisos.extend(validar_reporte(rep, proyecto.v1.matriz, ids, texto_fuente=_json(proyecto.ficha)))
         proyecto.cerrar_v1(rep)
         return rep
@@ -341,7 +375,7 @@ class Motor:
             f"Matriz inicial v1 de las 56 salvaguardas:\n{_json(matriz_compacta(proyecto, proyecto.v1))}\n\n"
             f"Diagnóstico inicial, riesgos y roadmap original:\n{_json(proyecto.v1.reporte)}", cachear=True)]
         datos = self._llamar(prompts.sistema_iniciativas(), fijo + [self._texto("Procesa el nuevo documento.")],
-                             schemas.iniciativas_pdf2(), TIMEOUT_LARGO_S, MAX_TOKENS["pdf2"], "PDF 2")
+                             schemas.iniciativas_pdf2(), TIMEOUT_LARGO_S, tope_salida(self.modelo, "pdf2"), "PDF 2")
         relacionadas = []
         for ini in datos.get("iniciativas", []):
             relacionadas += ini.get("salvaguardas", [])
@@ -362,7 +396,7 @@ class Motor:
                 f"Emite UNA decisión para CADA una de estas salvaguardas relacionadas, que quedaron sin decisión: "
                 f"{', '.join(faltan)}. Revisa el nuevo documento para cada una por separado.")
             extra = self._llamar(prompts.sistema_iniciativas(), fijo + [pedido], schemas.decisiones_faltantes(faltan),
-                                 TIMEOUT_LARGO_S, MAX_TOKENS["faltantes"], "PDF 2 (segunda pasada)")
+                                 TIMEOUT_LARGO_S, tope_salida(self.modelo, "faltantes"), "PDF 2 (segunda pasada)")
             decisiones += extra.get("decisiones", [])
         proyecto.iniciativas = datos.get("iniciativas", [])
         proyecto.alertas = [a for a in datos.get("alertas", []) if a.strip()]
@@ -398,16 +432,16 @@ class Motor:
                   f"Situación de los riesgos originales CALCULADA por el sistema (no la cambies):\n{_json(calculado_r)}\n\n"
                   f"Estado de las iniciativas originales CALCULADO por el sistema (no lo cambies):\n{_json(calculado_i)}")
         rep = self._llamar(prompts.sistema_reporte_actualizado(), [self._texto(texto)], schemas.reporte_actualizado(),
-                           TIMEOUT_LARGO_S, MAX_TOKENS["v2"], "Reporte actualizado")
+                           TIMEOUT_LARGO_S, tope_salida(self.modelo, "v2"), "Reporte actualizado")
         # Lo calculado manda sobre lo que el modelo haya escrito; el modelo solo aporta las explicaciones.
         explic = rep.get("riesgos") or []
         rep["riesgos"] = [{"titulo": r.get("titulo", ""), "salvaguardas": r.get("salvaguardas", []),
                            "severidad": r.get("severidad", ""), **s,
-                           "explicacion": explic[n].get("explicacion", "") if n < len(explic) else ""}
+                           "explicacion": _explicacion(explic, n)}
                           for n, (r, s) in enumerate(zip(riesgos_v1, sit))]
         explic = rep.get("iniciativas_estado") or []
         rep["iniciativas_estado"] = [{"titulo": x.get("titulo", ""), **e,
-                                      "explicacion": explic[n].get("explicacion", "") if n < len(explic) else ""}
+                                      "explicacion": _explicacion(explic, n)}
                                      for n, (x, e) in enumerate(zip(roadmap_v1, est))]
         for n, r in enumerate(rep["riesgos"], 1):
             if not r["explicacion"].strip():
@@ -427,4 +461,4 @@ class Motor:
                 + (f"\n\nMatriz vigente ({proyecto.vigente.nombre}):\n{_json(matriz_compacta(proyecto))}" if proyecto.vigente else ""))
         return self._llamar(prompts.sistema_consulta(), [self._texto(fijo, cachear=True),
                                                          self._texto(f"Pregunta del auditor: {pregunta}")],
-                            schemas.MENSAJE, TIMEOUT_LARGO_S, MAX_TOKENS["consulta"], "Consulta", cachear=True).get("mensaje", "")
+                            schemas.MENSAJE, TIMEOUT_LARGO_S, tope_salida(self.modelo, "consulta"), "Consulta", cachear=True).get("mensaje", "")

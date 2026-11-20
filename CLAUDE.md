@@ -115,7 +115,9 @@ tests/                     # conftest (catálogo falso: 18 IG1), test_state (reg
 - **Ahorro de tokens (no romperlo):**
   - **Caché de prompts (5 min) solo donde hay reutilización**, con `_llamar(..., cachear=True)`: lotes de la evaluación, ficha regenerada y consultas. **El esquema de salida es parte del prefijo cacheado:** dos llamadas con esquemas distintos no comparten caché. Por eso los 3 lotes usan el MISMO esquema (los 56 ids) y el código filtra los de cada lote; con un esquema por lote se midieron 0 tokens leídos. Las llamadas únicas (reportes, PDF 2) no se cachean: pagarían la escritura (1.25x) sin leerla. `prompts.base()` va primero e idéntico; nada variable antes de los puntos de caché.
   - **Esquemas compactos:** `_esquema_para_api()` quita `minItems`/`maxItems` y mueve subesquemas repetidos a `$defs`. Sin esto, la ficha da 400 "compiled grammar is too large".
+  - **Límite de gramática de la API** («The compiled grammar is too large»): depende del tamaño total del esquema (propiedades y objetos más que enums), igual en Haiku, Sonnet y Opus. El reporte v2 lo rebasó tras añadir los campos ejecutivos; se resolvió pidiendo `riesgos` e `iniciativas_estado` como listas de texto (el código pone título y situación, `engine._explicacion`). Antes de añadir campos a `reporte_actualizado()` o `reporte()`, comprobar que compilen (una llamada mínima con `max_tokens` pequeño; el 400 no se cobra).
   - **Esfuerzo por modelo:** `ESFUERZO` = el valor por defecto de cada uno (Sonnet 5.5 "high", Haiku 5.5 "medium"). Haiku en "high" gastó los 24K tokens de la ficha razonando, sin responder.
+  - **Tope de salida por modelo:** `MAX_TOKENS` vale para Sonnet y Opus; `MAX_TOKENS_POR_MODELO` sube los de Haiku 5.5 (p. ej. PDF 2: 32K → 64K), que razona y escribe más: agotó los 32K del PDF 2 con 51K de entrada (el límite era la salida, no la ventana de 1M). Usar siempre `tope_salida(modelo, etapa)`. Por encima de 32K el tiempo límite crece en proporción.
   - **Prefijo de mensajes.** Documento y contexto llevan `cache_control` (5 min) para que los lotes de la evaluación, la segunda pasada de la Etapa 5 y las consultas seguidas los lean de caché. Lo que cambia (lote, pregunta) va al final.
   - **Documento como texto paginado** (`Documento.texto_completo()`), no como PDF; solo un PDF sin texto va como archivo.
   - **Payload compacto.** `ficha_resumida()` sin citas para las etapas posteriores, JSON compacto y `matriz_compacta()` sin nombres (están en el catálogo). `MAX_TOKENS` por etapa.
@@ -155,7 +157,7 @@ pip install -r requirements.txt
 python scripts/importar_cis.py "ruta/CIS_Controls_Version_8.1.2___March_2025.xlsx"   # genera el catálogo local
 cp .env.example .env            # y poner ANTHROPIC_API_KEY (platform.claude.com → API keys)
 streamlit run app.py
-python -m pytest -q             # 54 pruebas sin API
+python -m pytest -q             # 57 pruebas sin API
 python scripts/exportar_prompt.py   # regenera docs/prompt_maestro_centinela_ig1.md
 ```
 

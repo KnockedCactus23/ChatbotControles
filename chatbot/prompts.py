@@ -231,8 +231,8 @@ El SISTEMA ya calculó, con reglas fijas sobre la matriz, la situación de cada 
 
 Devuelve:
 - resumen_cambios: qué cambió entre v1 y v2 y por qué (solo cambios aprobados).
-- riesgos: para cada uno de los 5 riesgos originales (mismo orden), una explicación de la situación calculada que mencione SOLO las salvaguardas de ese riesgo y su estado en v2.
-- iniciativas_estado: para cada iniciativa del roadmap original (mismo orden), una explicación del estado calculado basada en SUS salvaguardas.
+- riesgos: lista de 5 textos; para cada uno de los 5 riesgos originales (mismo orden), una explicación de la situación calculada que mencione SOLO las salvaguardas de ese riesgo y su estado en v2.
+- iniciativas_estado: lista de textos; para cada iniciativa del roadmap original (mismo orden), una explicación del estado calculado basada en SUS salvaguardas.
 - riesgos_v2: EXACTAMENTE 5 riesgos vigentes, con nombre_corto (2 o 3 palabras), consecuencia_negocio y probabilidad e impacto actuales, construidos sobre la matriz v2 con las mismas reglas de la Etapa 4 (pueden repetirse riesgos originales que sigan vigentes).
 - resumen_ejecutivo actualizado, sobre v2, con estas secciones:
 {SECCIONES_RESUMEN}

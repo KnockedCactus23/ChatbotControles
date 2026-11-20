@@ -137,12 +137,13 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 - **Vista ejecutiva, Fase 4 (vista técnica), 2026-11-19:** severidad como punto + palabra con probabilidad × impacto, columna de plazo en el roadmap y postura completa sin «Leer más». Revisado con una v2 de prueba (copia de NEXOPAY en el scratchpad, 3 cambios aprobados): ambas vistas del Reporte actualizado funcionan, con los cambios respecto a la v1. Prueba nueva (46).
 - **Vista ejecutiva, Fase 5 (visor de evidencia), 2026-11-19:** `chatbot/visor.py` con PyMuPDF. La evidencia de la matriz abre la página del PDF a la derecha con la cita resaltada (exacta, normalizada o por fragmentos; si no, «No se encontró la cita exacta»), con anterior/siguiente, ampliar y Esc. En las 6 evaluaciones guardadas se ubicaron las 188 citas: 186 exactas y 2 por fragmentos. Revisado en Día/Noche, 1440 y 375 px. 8 pruebas nuevas (54).
 - **Vista ejecutiva, Fase 6 (exportaciones), 2026-11-19:** menú «Descargar» en tres grupos (ejecutivo, técnico, datos), generados al hacer clic. Nuevo `chatbot/pdf_ejecutivo.py`: la vista ejecutiva en 2-3 páginas con gráficas vectoriales legibles en gris. `reporte_pdf` pasa a ser el reporte técnico completo (con la matriz, P × I, plazo, impactos y peticiones). Revisado con 4 evaluaciones (NEXOPAY, FERREMAX anterior, ACME y la v2 de prueba): ejecutivos de 2-3 páginas y técnicos de 6 a 13; sin texto fuera de margen, sin texto encimado y sin imágenes rasterizadas. 54 pruebas.
+- **Topes de salida por modelo, 2026-11-20:** con Haiku 5.5 el análisis del PDF 2 se cortaba («se cortó por el límite de longitud»): agotó los 32K de salida dos veces con solo 51K de entrada. `engine.MAX_TOKENS_POR_MODELO` duplica los topes de Haiku (PDF 2, ficha, evaluación y v2 a 64K; reporte 48K) y el tiempo límite crece en proporción; Sonnet y Opus no cambian. Prueba nueva (55).
 
 ---
 
 ## Verificación
 
-- **54 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
+- **55 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
 - **Prueba real con Gemini** y dos PDF ficticios, de punta a punta:
   - ficha con 20 de 20 citas verificadas;
   - evaluación v1 con implementación 31.6 % y cobertura 33.9 %, idéntica en dos corridas;
@@ -167,3 +168,8 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 
 - La API de Claude tiene costo (≈ US$1 por evaluación completa con Sonnet 5.5, según la estimación). El consumo real se guarda en cada evaluación (`consumo` en su JSON); el panel de la app se quitó el 2026-11-19.
 - PDF escaneados sin texto: las citas no se pueden verificar y todo queda No verificado.
+
+
+## Reporte actualizado: «compiled grammar is too large», 2026-11-20
+- El esquema del reporte v2 creció con los campos de la vista ejecutiva y la API ya no compilaba su gramática, con Haiku, Sonnet y Opus. Medido contra la API: quitar cualquier bloque lo hacía compilar; volver texto libre los ids IG1 no bastaba.
+- Arreglo: `riesgos` e `iniciativas_estado` del v2 son ahora listas de texto (antes objetos `{titulo, explicacion}`); el código ya ponía título y situación. `engine._explicacion` acepta ambos formatos. Verificado: el esquema nuevo compila en los tres modelos.

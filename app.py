@@ -13,22 +13,25 @@ import re
 import streamlit as st
 from dotenv import load_dotenv
 
-from chatbot import almacen, exportar, panel, ui
+from chatbot import almacen, ejecutiva, exportar, panel, ui
 from chatbot.controls import CatalogoNoEncontrado, atribucion, catalogo
 from chatbot.documentos import Documento, leer_pdf
 from chatbot.engine import MODELO_POR_DEFECTO, MODELOS, ErrorChatbot, Motor
 from chatbot.prompts import NOMBRE_AGENTE
 from chatbot.reporte_pdf import ficha_pdf, reporte_pdf
-from chatbot.state import Proyecto, ahora
+from chatbot.state import Proyecto, ahora, proyeccion
 
 load_dotenv()
 st.set_page_config(page_title=NOMBRE_AGENTE, page_icon=":material/shield:", layout="wide")
 st.html(ui.CSS)
 st.html(panel.CSS)
+st.html(ejecutiva.CSS)
 st.html(ui.tema_script(), unsafe_allow_javascript=True)  # data-theme según el tema aplicado (Día/Noche)
 # Interacciones del dashboard (resaltado por estado, riesgos ↔ roadmap, índice lateral, entrada): una sola vez.
 st.html(panel.script(), unsafe_allow_javascript=True)
 
+# Vista de los reportes: Ejecutiva por defecto (para la dirección) y Técnica (todo el detalle). 2026-11-19.
+MODOS = {"ejecutiva": "Ejecutivo", "tecnica": "Técnico"}
 AVATAR = {"assistant": ":material/shield:", "user": ":material/person:"}
 TITULO_TAREA = {
     "explicar": ("Preparando la explicación", "El agente describe su objetivo, alcance y criterios…"),
@@ -65,6 +68,8 @@ if "proyecto" not in st.session_state or not hasattr(st.session_state.proyecto, 
             nuevo(almacen.cargar(pid))
             if st.query_params.get("vista"):
                 st.session_state.vista = st.query_params["vista"]
+            if st.query_params.get("modo") in MODOS:
+                st.session_state.modo = st.query_params["modo"]
                 st.session_state.etapa_vista = st.session_state.proyecto.etapa
     except (FileNotFoundError, KeyError, ValueError):
         st.query_params.clear()
@@ -153,8 +158,10 @@ def cabecera_reporte(titulo: str, cual: str, sub: str):
     inicial = cual == "v1"
     nombre = "inicial" if inicial else "final"
     v = p.v1 if inicial else p.v2
-    c1, c2 = st.columns([5, 1.1], vertical_alignment="bottom")
+    c1, c0, c2 = st.columns([4, 1.5, 1.1], vertical_alignment="bottom")
     c1.html(panel.cabecera(titulo, cual, sub))
+    c0.segmented_control("Vista del reporte", list(MODOS), format_func=MODOS.get, key="modo", required=True,
+                         disabled=ocupado, label_visibility="collapsed")
     with c2.popover("Descargar", icon=":material/download:", use_container_width=True, disabled=ocupado):
         st.download_button(f"Reporte {nombre} · PDF", reporte_pdf(p, cual), file_name=f"reporte_{nombre}_{p.id}.pdf",
                            mime="application/pdf", icon=":material/picture_as_pdf:", use_container_width=True,
@@ -189,7 +196,8 @@ def reporte_v1() -> list[tuple]:
                           "ver qué iniciativas lo reducen.", panel.riesgos(riesgos, v.matriz, "a")))
     st.html(panel.seccion("roadmap", "Roadmap de cinco iniciativas",
                           "Qué riesgos reduce cada una, cuánto esfuerzo pide y cuántas salvaguardas mueve.",
-                          panel.roadmap(inis, riesgos, "a")))
+                          panel.roadmap(inis, riesgos, "a")
+                          + panel.fichas(riesgos, inis, "a", v.matriz, True, proyeccion(v.matriz, inis)["aportes"])))
     st.html(panel.matriz(v, p.documentos, "Matriz de las 56 salvaguardas",
                          "Estado, justificación, cita y página de cada salvaguarda (v1).", "matriz"))
     st.html(panel.seccion("pendientes", "Pendientes", "Lo que falta para dar el resultado por firme.",
@@ -216,13 +224,16 @@ if len(opciones) > 1:
     st.segmented_control("Sección del análisis", opciones, format_func=VISTAS.get, key="vista", required=True,
                          disabled=ocupado, label_visibility="collapsed")
 vista = st.session_state.vista or etapa
+if st.session_state.get("modo") not in MODOS:
+    st.session_state.modo = "ejecutiva"
+modo = st.session_state.modo
 if st.session_state.get("vista_mostrada") not in (None, vista):
     st.html(ui.subir_al_inicio(), unsafe_allow_javascript=True)  # sección nueva: empezar desde arriba
 st.session_state.vista_mostrada = vista
 # La URL guarda la evaluación y la sección abiertas: al recargar (cambio de tema) se vuelve al mismo lugar.
 if p.documentos:
-    if st.query_params.get("evaluacion") != p.id or st.query_params.get("vista") != vista:
-        st.query_params.update({"evaluacion": p.id, "vista": vista})
+    if (st.query_params.get("evaluacion"), st.query_params.get("vista"), st.query_params.get("modo")) != (p.id, vista, modo):
+        st.query_params.update({"evaluacion": p.id, "vista": vista, "modo": modo})
 elif st.query_params:
     st.query_params.clear()
 
@@ -315,7 +326,11 @@ elif vista == "evaluacion":
 # ------------------------------------------------- Etapas 3.5-4: reporte v1
 elif vista == "reporte":
     cabecera_reporte("Reporte inicial", "v1", f"{p.nombre} · línea base cerrada el {p.v1.fecha}. Esta versión ya no se modifica.")
-    secciones = reporte_v1()
+    if modo == "ejecutiva":
+        html, secciones = ejecutiva.vista(p.v1.reporte, p.v1.matriz)
+        st.html(html)
+    else:
+        secciones = reporte_v1()
     if etapa == "reporte":  # la carga del PDF 2 solo mientras es el paso en curso
         st.html(panel.seccion("pdf2", "Avance de iniciativas (PDF 2)",
                               "El agente parte de esta evaluación (no de cero) y propone cambios que tú validas como auditor.", ""))
@@ -386,37 +401,46 @@ elif vista == "actualizado":
     aprobados = [c.id for c in p.cambios if c.decision == "aprobado"]
     cabecera_reporte("Reporte actualizado", "v2",
                      f"{p.nombre} · v2 del {v2.fecha}. Refleja solo las mejoras documentadas y aprobadas; la v1 se conserva.")
-    st.html(panel.resumen(ind, ind1))
-    filas = "".join(ui.cambio_fila(c) + f"<p class='aviso' style='margin:0 0 10px 14px'>Decisión del auditor: <b>{c.decision}</b></p>"
-                    for c in p.cambios)
-    st.html(panel.seccion("cambios", "Cambios derivados del PDF 2", "",
-                          f"<div class='d-tarjeta' style='padding:16px 20px'><p class='d-largo d-abierto' style='margin:0 0 12px'>"
-                          f"{ui.esc(rep.get('resumen_cambios'))}</p>{filas}</div>"))
-    st.html(panel.seccion("postura", "Postura de ciberseguridad", "", panel.postura(res, v2.matriz)))
-    st.html(panel.seccion("controles", "Estado por control", SUB_CONTROLES,
-                          panel.controles(v2.matriz, res.get("controles_mayores_brechas", []), set(aprobados))))
-    st.html(panel.seccion("riesgos-v1", "Riesgos originales tras las mejoras",
-                          "Situación calculada por el sistema con el estado v2 de las salvaguardas de cada riesgo.",
-                          panel.riesgos(riesgos_v1, v2.matriz, "a", rep.get("riesgos") or [])))
-    st.html(panel.seccion("roadmap-v1", "Iniciativas del roadmap original",
-                          "Completada si todas sus salvaguardas están implementadas en v2; en progreso si alguna mejoró.",
-                          panel.roadmap(v1.reporte.get("iniciativas", []), riesgos_v1, "a", rep.get("iniciativas_estado") or [])))
-    secciones = [("resumen", "Resumen", None), ("cambios", "Cambios PDF 2", len(p.cambios)), ("postura", "Postura", None),
-                 ("controles", "Controles", 15), ("riesgos-v1", "Riesgos originales", len(riesgos_v1)),
-                 ("roadmap-v1", "Iniciativas originales", len(v1.reporte.get("iniciativas", [])))]
-    if rep.get("riesgos_v2"):
-        st.html(panel.seccion("riesgos", "Cinco riesgos vigentes (v2)",
-                              "Construidos sobre la matriz v2; el roadmap actualizado apunta a estos.",
-                              panel.riesgos(riesgos_v2, v2.matriz, "b")))
-        secciones.append(("riesgos", "Riesgos vigentes", len(riesgos_v2)))
-    st.html(panel.seccion("roadmap", "Roadmap actualizado", "Qué riesgos vigentes reduce cada iniciativa y cuánto esfuerzo pide.",
-                          panel.roadmap(rep.get("roadmap", []), riesgos_v2, "b")))
-    st.html(panel.matriz(v2, p.documentos, "Matriz de las 56 salvaguardas · v2",
-                         "Las modificadas en v2 aparecen resaltadas.", "matriz", set(aprobados)))
-    st.html(panel.matriz(v1, p.documentos, "Matriz v1 · evaluación inicial", "Línea base, sin cambios.", "matriz-v1"))
-    st.html(panel.seccion("pendientes", "Pendientes", "Lo que falta para dar el resultado por firme.", panel.pendientes(res, ind)))
-    secciones += [("roadmap", "Roadmap", len(rep.get("roadmap", []))), ("matriz", "Matriz v2", ind["total"]),
-                  ("matriz-v1", "Matriz v1", ind1["total"]), ("pendientes", "Pendientes", ind["no_verificado"])]
+    if modo == "ejecutiva":
+        html, secciones = ejecutiva.vista({**rep, "riesgos_v2": riesgos_v2}, v2.matriz, "riesgos_v2", "roadmap",
+                                          ind1, riesgos_v1)
+        st.html(html)
+    else:
+        st.html(panel.resumen(ind, ind1))
+        filas = "".join(ui.cambio_fila(c) + f"<p class='aviso' style='margin:0 0 10px 14px'>Decisión del auditor: <b>{c.decision}</b></p>"
+                        for c in p.cambios)
+        st.html(panel.seccion("cambios", "Cambios derivados del PDF 2", "",
+                              f"<div class='d-tarjeta' style='padding:16px 20px'><p class='d-largo d-abierto' style='margin:0 0 12px'>"
+                              f"{ui.esc(rep.get('resumen_cambios'))}</p>{filas}</div>"))
+        st.html(panel.seccion("postura", "Postura de ciberseguridad", "", panel.postura(res, v2.matriz)))
+        st.html(panel.seccion("controles", "Estado por control", SUB_CONTROLES,
+                              panel.controles(v2.matriz, res.get("controles_mayores_brechas", []), set(aprobados))))
+        st.html(panel.seccion("riesgos-v1", "Riesgos originales tras las mejoras",
+                              "Situación calculada por el sistema con el estado v2 de las salvaguardas de cada riesgo.",
+                              panel.riesgos(riesgos_v1, v2.matriz, "a", rep.get("riesgos") or [])))
+        st.html(panel.seccion("roadmap-v1", "Iniciativas del roadmap original",
+                              "Completada si todas sus salvaguardas están implementadas en v2; en progreso si alguna mejoró.",
+                              panel.roadmap(v1.reporte.get("iniciativas", []), riesgos_v1, "a", rep.get("iniciativas_estado") or [])
+                              + panel.fichas(riesgos_v1, v1.reporte.get("iniciativas", []), "a", v2.matriz, True,
+                                             situacion=rep.get("riesgos") or [], estados=rep.get("iniciativas_estado") or [])))
+        secciones = [("resumen", "Resumen", None), ("cambios", "Cambios PDF 2", len(p.cambios)), ("postura", "Postura", None),
+                     ("controles", "Controles", 15), ("riesgos-v1", "Riesgos originales", len(riesgos_v1)),
+                     ("roadmap-v1", "Iniciativas originales", len(v1.reporte.get("iniciativas", [])))]
+        if rep.get("riesgos_v2"):
+            st.html(panel.seccion("riesgos", "Cinco riesgos vigentes (v2)",
+                                  "Construidos sobre la matriz v2; el roadmap actualizado apunta a estos.",
+                                  panel.riesgos(riesgos_v2, v2.matriz, "b")))
+            secciones.append(("riesgos", "Riesgos vigentes", len(riesgos_v2)))
+        st.html(panel.seccion("roadmap", "Roadmap actualizado", "Qué riesgos vigentes reduce cada iniciativa y cuánto esfuerzo pide.",
+                              panel.roadmap(rep.get("roadmap", []), riesgos_v2, "b")
+                              + panel.fichas(riesgos_v2, rep.get("roadmap", []), "b", v2.matriz, True,
+                                             proyeccion(v2.matriz, rep.get("roadmap", []))["aportes"])))
+        st.html(panel.matriz(v2, p.documentos, "Matriz de las 56 salvaguardas · v2",
+                             "Las modificadas en v2 aparecen resaltadas.", "matriz", set(aprobados)))
+        st.html(panel.matriz(v1, p.documentos, "Matriz v1 · evaluación inicial", "Línea base, sin cambios.", "matriz-v1"))
+        st.html(panel.seccion("pendientes", "Pendientes", "Lo que falta para dar el resultado por firme.", panel.pendientes(res, ind)))
+        secciones += [("roadmap", "Roadmap", len(rep.get("roadmap", []))), ("matriz", "Matriz v2", ind["total"]),
+                      ("matriz-v1", "Matriz v1", ind1["total"]), ("pendientes", "Pendientes", ind["no_verificado"])]
 
 # --------------------------------------------------------------- barra lateral: índice o resumen
 with lugar_lateral:

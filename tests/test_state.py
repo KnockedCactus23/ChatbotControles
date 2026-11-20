@@ -9,9 +9,9 @@ import pytest
 
 from chatbot import almacen, controls
 from chatbot.documentos import Documento, verificar_cita
-from chatbot.state import (Proyecto, Resultado, citas_repetidas, estado_iniciativas, indicadores, lotes_por_control,
-                           normalizar_ficha, situacion_riesgos, validar_presentacion, validar_reporte,
-                           validar_resultado)
+from chatbot.state import (Proyecto, Resultado, citas_repetidas, estado_iniciativas, horizonte_de, indicadores,
+                           lotes_por_control, madurez_por_area, nivel_riesgo, normalizar_ficha, proyeccion,
+                           severidad_de, situacion_riesgos, validar_presentacion, validar_reporte, validar_resultado)
 from tests.conftest import PAGINAS
 
 
@@ -300,3 +300,108 @@ def test_cita_repetida_entre_salvaguardas_se_senala():
 
 def test_ficha_antigua_se_normaliza():
     assert normalizar_ficha({"resumen_ejecutivo": "x"}) == {"resumen_contexto": "x"}
+
+
+# ------------------------------------------------------- vista ejecutiva
+def test_severidad_la_calcula_el_codigo_con_probabilidad_por_impacto(doc):
+    assert [severidad_de(5, 3), severidad_de(4, 3), severidad_de(2, 3), severidad_de(0, 3)] == ["alta", "media", "baja", None]
+    p = _proyecto(doc)
+    p.v1.matriz["11.1"].estado = "no_implementado"
+    rep = {"riesgos": [{"titulo": "Pérdida de datos", "descripcion": "d", "consecuencia": "c", "salvaguardas": ["11.1"],
+                        "probabilidad": 4, "justificacion_probabilidad": "Sin respaldos.", "impacto": 5,
+                        "justificacion_impacto": "Detiene la facturación.", "consecuencia_negocio": "No podrían facturar."}]}
+    validar_reporte(rep, p.v1.matriz, [])
+    r = rep["riesgos"][0]
+    assert r["severidad"] == "alta" and r["justificacion"].startswith("Probabilidad 4/5: Sin respaldos.")
+
+
+def test_madurez_por_area_usa_la_formula_global_y_va_de_peor_a_mejor(doc):
+    p = _proyecto(doc)
+    m = p.v1.matriz
+    m["1.1"].estado, m["2.1"].estado = "implementado", "parcial"      # Activos y software: 75 %
+    m["3.1"].estado = "no_implementado"                                # Protección de datos: 0 %
+    areas = madurez_por_area(m)
+    assert len(areas) == 7 and areas[0]["nombre"] == "Protección de datos" and areas[0]["madurez"] == 0
+    assert next(a for a in areas if a["clave"] == "activos")["madurez"] == 75.0
+    assert areas[-1]["madurez"] is None  # sin salvaguardas evaluables: al final, "No determinable"
+
+
+def test_proyeccion_es_estimacion_con_la_misma_formula(doc):
+    p = _proyecto(doc)
+    m = p.v1.matriz
+    m["1.1"].estado, m["2.1"].estado, m["3.1"].estado = "implementado", "no_implementado", "parcial"
+    pr = proyeccion(m, [{"salvaguardas": ["2.1"]}, {"salvaguardas": ["3.1", "4.1"]}])
+    assert pr["hoy"] == 50.0 and pr["estimado"] == 100.0       # 4.1 (no verificada) también cuenta al implementarse
+    assert pr["aportes"] == [33.3, 25.0]
+
+
+def test_evaluaciones_anteriores_tienen_valores_por_defecto():
+    assert horizonte_de({"tipo": "quick_win"}) == ("0-30", True) and horizonte_de({"horizonte": "30-90"}) == ("30-90", False)
+    assert nivel_riesgo({}, [{"severidad": "media"}, {"severidad": "alta"}]) == ("Alto", True)
+    assert nivel_riesgo({"nivel_riesgo": "Bajo"}, []) == ("Bajo", False)
+
+
+def test_vista_ejecutiva_sin_cifras_inventadas_ni_jerga(doc):
+    p = _proyecto(doc)
+    p.v1.matriz["6.1"].justificacion = "Solo 11 de 55 usuarios tienen verificación en dos pasos."
+    rep = {"resumen_ejecutivo": {
+        "veredicto": "El cobro en caja puede detenerse por un ataque.",
+        "impactos_negocio": [{"titulo": "Cuentas expuestas", "linea": "44 de 55 usuarios entran solo con contraseña."},
+                             {"titulo": "Ventas en riesgo", "linea": "Se perderían 2 millones al día."},
+                             {"titulo": "Accesos", "linea": "Falta MFA en 6.1."}],
+        "peticiones": ["Compártanos el inventario de equipos.", "", "Envíenos la política de respaldos."]}}
+    avisos = validar_reporte(rep, p.v1.matriz, [], texto_fuente="La empresa tiene 55 usuarios y 44 sin protección.")
+    res = rep["resumen_ejecutivo"]
+    assert [x["titulo"] for x in res["impactos_negocio"]] == ["Cuentas expuestas", "Accesos"]   # "2 millones" no existe
+    assert res["peticiones"] == ["Compártanos el inventario de equipos.", "Envíenos la política de respaldos."]
+    assert any("MFA" in a and "6.1" in a for a in avisos) and any("2 peticiones" in a for a in avisos)
+
+
+def test_vista_ejecutiva_sin_ids_y_con_avisos_en_evaluaciones_anteriores(doc):
+    from chatbot import ejecutiva
+    p = _proyecto(doc)
+    p.v1.matriz["1.1"].estado, p.v1.matriz["2.1"].estado = "implementado", "no_implementado"
+    nuevo = {"resumen_ejecutivo": {"nivel_riesgo": "Medio", "veredicto": "El cobro en caja puede detenerse.",
+                                   "impactos_negocio": [{"titulo": "Ventas", "linea": "Nueve sucursales sin cobro."}],
+                                   "peticiones": ["Compártanos el inventario."]},
+             "riesgos": [{"nombre_corto": "Cobro en caja", "probabilidad": 4, "impacto": 4, "salvaguardas": ["2.1"],
+                          "consecuencia_negocio": "Ventas detenidas."}],
+             "iniciativas": [{"titulo": "Inventario", "salvaguardas": ["2.1"], "riesgos": [1], "horizonte": "30-90"}]}
+    html, secciones = ejecutiva.vista(nuevo, p.v1.matriz)
+    assert "Medio" in html and "Ventas detenidas." in html and "De 30 a 90 días" in html and "estimación" in html
+    assert "CIS-" not in html and "2.1" not in html and "No verificado" not in html
+    assert [s[0] for s in secciones][:2] == ["veredicto", "en-juego"]
+    viejo = {"resumen_ejecutivo": {"postura_inicial": "La empresa vende. La postura es débil por falta de respaldos."},
+             "riesgos": [{"titulo": "R", "severidad": "alta", "salvaguardas": ["2.1"]}],
+             "iniciativas": [{"titulo": "I", "tipo": "quick_win", "salvaguardas": ["2.1"], "riesgos": [1]}]}
+    html, _ = ejecutiva.vista(viejo, p.v1.matriz)
+    assert "Alto" in html and "postura es débil" in html and "plazo estimado" in html
+    assert html.count("Esta evaluación se generó antes de la vista ejecutiva") == 3  # impactos, mapa y peticiones
+
+
+def test_fichas_del_panel_lateral(doc):
+    """Fase 3: una ficha por riesgo e iniciativa, enlazadas entre sí; la ejecutiva sin ids ni salvaguardas."""
+    from chatbot import panel
+    p = _proyecto(doc)
+    p.v1.matriz["2.1"].estado = "no_implementado"
+    riesgos = [{"nombre_corto": "Cobro en caja", "titulo": "Caída del cobro", "probabilidad": 4, "impacto": 5,
+                "consecuencia_negocio": "Ventas detenidas.", "salvaguardas": ["2.1"]}]
+    inis = [{"titulo": "Inventario", "riesgos": [1], "salvaguardas": ["2.1"], "tipo": "quick_win"}]
+    ej = panel.fichas(riesgos, inis, "x", p.v1.matriz, tecnica=False, aportes=[5.6])
+    assert 'data-ficha="r-x1"' in ej and 'data-abre="i-x1"' in ej and 'data-abre="r-x1"' in ej
+    assert "Severidad alta" in ej and "+5.6" in ej and "plazo estimado" in ej
+    assert "2.1" not in ej and "alvaguarda" not in ej
+    tec = panel.fichas(riesgos, inis, "a", p.v1.matriz, tecnica=True)
+    assert "Salvaguardas que lo sostienen · 1" in tec and "2.1" in tec
+
+
+def test_vista_tecnica_muestra_escalas_y_plazo(doc):
+    """Fase 4: la técnica conserva todo y añade probabilidad × impacto y el plazo (estimado en evaluaciones viejas)."""
+    from chatbot import panel
+    p = _proyecto(doc)
+    riesgos = [{"titulo": "Cobro", "probabilidad": 4, "impacto": 5, "severidad": "alta", "salvaguardas": []},
+               {"titulo": "Viejo", "severidad": "media", "salvaguardas": []}]
+    html = panel.riesgos(riesgos, p.v1.matriz, "a")
+    assert "P4 × I5" in html and html.count("d-sev d-") == 2
+    rm = panel.roadmap([{"titulo": "A", "horizonte": "30-90"}, {"titulo": "B", "tipo": "quick_win"}], riesgos, "a")
+    assert "30-90 días" in rm and "0-30 días<small>estimado</small>" in rm

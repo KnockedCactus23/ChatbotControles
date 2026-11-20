@@ -11,12 +11,13 @@ se dibujan con CSS.
 """
 
 from .controls import catalogo, control, salvaguarda
-from .state import ESTADOS, ETIQUETA_APLICABILIDAD, SITUACION_RIESGO, Resultado
+from .state import ESTADOS, ETIQUETA_APLICABILIDAD, SITUACION_RIESGO, Resultado, horizonte_de, severidad_de
 from .ui import ETIQUETA_CORTA, ESTADO_INICIATIVA, esc
 
 UNIDAD = 30          # px por salvaguarda en "Estado por control": la misma escala en todas las filas
 TOP_BRECHAS = 5      # controles con mayores brechas que se abren para ver por qué
 ESFUERZO = {"bajo": 1, "medio": 2, "alto": 3}
+HORIZONTE = {"0-30": "Primeros 30 días", "30-90": "De 30 a 90 días", "90-180": "De 90 a 180 días"}
 
 # ------------------------------------------------------------------------------------------- CSS
 # Sin el carácter de menor que en ninguna parte (st.html descarta el <style> completo).
@@ -43,16 +44,14 @@ summary:hover .d-chev { background: var(--sunken); color: var(--ink); }
 .d-cab h1 span { color: var(--ink-3); font-weight: 400; }
 .d-cab-sub { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
 
-/* Marcas de estado: una sola codificación (lleno, a medias, tachado, punteado, gris claro) */
-.d-m { width: 12px; height: 12px; border-radius: 2px; display: inline-block; flex: none; box-sizing: border-box; }
+/* Marcas de estado: un punto de color junto a la palabra (paleta segura para daltonismo y escala de grises) */
+.d-m { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
 .d-m-implementado { background: var(--st-implementado); }
-.d-m-parcial { border: 1.5px solid var(--st-parcial); background: linear-gradient(to right, var(--st-parcial) 50%, transparent 50%); }
-.d-m-no_implementado { border: 1.5px solid var(--st-no_implementado);
-  background: linear-gradient(135deg, transparent 41%, var(--st-no_implementado) 41% 59%, transparent 59%); }
-.d-m-no_verificado { border: 1.5px dashed var(--st-no_verificado); }
+.d-m-parcial { background: var(--st-parcial); }
+.d-m-no_implementado { background: var(--st-no_implementado); }
+.d-m-no_verificado { background: var(--st-no_verificado); }
 .d-m-no_aplicable { background: var(--st-no_aplicable); }
 .d-s { display: block; height: 100%; border-radius: 3px; box-sizing: border-box; }
-.d-s[data-e="no_verificado"] { background: transparent !important; border: 1.5px dashed var(--st-no_verificado); }
 
 /* Resaltado cruzado por estado (momento firma) */
 [data-e] { transition: opacity 160ms ease-out, filter 160ms ease-out; }
@@ -121,7 +120,8 @@ body[data-foco="no_aplicable"] [data-e]:not([data-e="no_aplicable"]) { opacity: 
 .d-segs { display: flex; gap: 2px; height: 18px; flex: none; }
 .d-segs .d-s { display: grid; place-items: center; font-size: 11px; font-weight: 600; color: var(--seg-ink); min-width: 18px;
   font-variant-numeric: tabular-nums; line-height: 1; text-box: trim-both cap alphabetic; }
-.d-segs .d-s[data-e="no_verificado"], .d-segs .d-s[data-e="no_aplicable"] { color: var(--ink-2); }
+.d-segs .d-s[data-e="implementado"], .d-segs .d-s[data-e="no_implementado"] { color: var(--seg-ink-fuerte); }
+.d-segs .d-s[data-e="no_aplicable"] { color: var(--ink-2); }
 .d-cpct { font-size: 12px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .d-cpct.d-nd { color: var(--ink-3); font-weight: 500; }
 .d-cd + .d-cd { border-top: 1px solid var(--rule); }
@@ -135,21 +135,25 @@ details.d-cd[open] { background: var(--sunken); }
 .d-sv .d-mono { font-size: 11px; }
 
 /* Riesgos */
-.d-riesgo > summary { display: grid; grid-template-columns: 22px minmax(0, 1fr) 64px 220px 28px; gap: 14px; align-items: center;
+.d-riesgo > summary { display: grid; grid-template-columns: 22px minmax(0, 1fr) 84px 220px 28px; gap: 14px; align-items: center;
   padding: 12px 12px 12px 18px; transition: background-color 80ms; }
-.d-riesgos.d-con-sit .d-riesgo > summary { grid-template-columns: 22px minmax(0, 1fr) 64px 150px 190px 28px; }
+.d-riesgos.d-con-sit .d-riesgo > summary { grid-template-columns: 22px minmax(0, 1fr) 84px 150px 190px 28px; }
 .d-riesgo + .d-riesgo { border-top: 1px solid var(--rule); }
 .d-riesgo > summary:hover { background: color-mix(in oklch, var(--sunken) 55%, transparent); }
 .d-riesgo[open] { background: var(--sunken); }
 .d-rnum { font-size: 13px; font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .d-rtitulo { font-size: 14px; color: var(--ink); font-weight: 500; line-height: 20px; min-width: 0; }
 .d-rtitulo small { display: block; font-size: 12px; color: var(--ink-3); font-weight: 400; line-height: 18px; }
-.d-sev { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; color: var(--ink); justify-self: start;
-  display: inline-flex; gap: 6px; align-items: center; background: var(--sunken); white-space: nowrap; }
-.d-sev::before { content: ""; width: 3px; height: 11px; border-radius: 1px; background: var(--ink-3); }
-.d-sev.d-alta { background: var(--tint-no_implementado); } .d-sev.d-alta::before { background: var(--st-no_implementado); }
-.d-sev.d-media { background: var(--tint-parcial); } .d-sev.d-media::before { background: var(--st-parcial); }
-.d-sev.d-baja { background: var(--tint-implementado); } .d-sev.d-baja::before { background: var(--st-implementado); }
+/* Severidad: punto de color + palabra, como los estados */
+.d-sevp { display: grid; gap: 1px; justify-items: start; }
+.d-sevp small { font: 500 11px/14px var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.d-sev { font-size: 12px; font-weight: 500; color: var(--ink); justify-self: start; display: inline-flex; gap: 7px; align-items: center; white-space: nowrap; }
+.d-sev::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--st-no_verificado); }
+.d-sev.d-alta::before { background: var(--st-no_implementado); }
+.d-sev.d-media::before { background: var(--st-parcial); }
+.d-sev.d-baja::before { background: var(--st-implementado); }
+.d-plazo { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.d-plazo small { display: block; font-size: 11px; color: var(--ink-3); font-style: italic; }
 .d-sit { display: grid; gap: 3px; justify-items: start; }
 .d-sit small { font-size: 11px; color: var(--ink-3); }
 .d-rbarra { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
@@ -262,6 +266,65 @@ body.d-con-vinculo .d-vinculo.d-activo { background: var(--accent-tint) !importa
 }
 @media (prefers-reduced-motion: reduce) { .d-chev, [data-e], .d-vinculo { transition: none !important; } }
 
+/* Filtro por estado (Fase 3): las filas que no tienen el estado elegido se ocultan; el aviso flota abajo */
+body[data-filtro="implementado"] [data-estados]:not([data-estados~="implementado"]),
+body[data-filtro="parcial"] [data-estados]:not([data-estados~="parcial"]),
+body[data-filtro="no_implementado"] [data-estados]:not([data-estados~="no_implementado"]),
+body[data-filtro="no_verificado"] [data-estados]:not([data-estados~="no_verificado"]),
+body[data-filtro="no_aplicable"] [data-estados]:not([data-estados~="no_aplicable"]) { display: none !important; }
+.d-leyenda button:disabled { opacity: .45; cursor: default; background: transparent; }
+.d-principal .d-s[data-e], .e-pila .d-s[data-e], .d-segs .d-s[data-e] { cursor: pointer; }
+.d-filtro-aviso { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 1000001; display: flex; align-items: center;
+  gap: 10px; padding: 8px 8px 8px 14px; border-radius: 999px; background: var(--ink); color: var(--paper); font: 400 13px/18px var(--font);
+  box-shadow: 0 8px 24px color-mix(in srgb, black 25%, transparent); white-space: nowrap; }
+.d-filtro-aviso b { font-weight: 600; }
+.d-filtro-aviso .d-m { box-shadow: 0 0 0 1.5px var(--paper); }
+.d-filtro-aviso button { border: 0; border-radius: 999px; padding: 4px 12px; background: color-mix(in srgb, var(--paper) 18%, transparent);
+  color: var(--paper); font: 500 12px/18px var(--font); cursor: pointer; }
+.d-filtro-aviso button:hover, .d-filtro-aviso button:focus-visible { background: color-mix(in srgb, var(--paper) 30%, transparent); outline: none; }
+
+/* Panel lateral de riesgos e iniciativas (Fase 3). Las fichas viajan ocultas en la página; el script las copia al panel. */
+.d-fichas { display: none; }
+[data-abre] { cursor: pointer; }
+[data-abre]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.d-riesgo[data-abre] .d-chev::before { transform: translateX(-2px) rotate(-45deg); }
+.d-rm tr[data-abre]:hover td { background: color-mix(in oklch, var(--sunken) 55%, transparent); }
+.d-cajon-fondo { position: fixed; inset: 0; z-index: 1000002; background: color-mix(in srgb, black 30%, transparent); opacity: 0;
+  transition: opacity 180ms ease-out; }
+.d-cajon { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1000003; width: min(460px, 100vw); overflow-y: auto; box-sizing: border-box;
+  padding: 20px 24px 32px; background: var(--surface); color: var(--ink); font-family: var(--font); box-shadow: -12px 0 32px color-mix(in srgb, black 18%, transparent);
+  transform: translateX(100%); transition: transform 220ms cubic-bezier(.2, .8, .2, 1); }
+.d-cajon-abierto .d-cajon-fondo { opacity: 1; }
+.d-cajon-abierto .d-cajon { transform: none; }
+.d-cajon-cerrar { position: sticky; top: 0; float: right; width: 32px; height: 32px; border: 0; border-radius: 8px; background: var(--sunken);
+  color: var(--ink); font: 400 20px/1 var(--font); cursor: pointer; }
+.d-cajon-cerrar:hover, .d-cajon-cerrar:focus-visible { background: var(--rule); outline: 2px solid var(--accent); outline-offset: 1px; }
+.d-cajon .d-ficha-tipo { font-size: 12px; font-weight: 500; color: var(--ink-3); margin: 6px 0 4px; }
+.d-cajon h2 { font-size: 21px; line-height: 27px; font-weight: 600; letter-spacing: -0.015em; margin: 0 40px 4px 0; padding: 0; color: var(--ink); }
+.d-cajon h3 { font-size: 12px; font-weight: 600; color: var(--ink-3); margin: 22px 0 8px; padding: 0; letter-spacing: 0; }
+.d-cajon p { font-size: 14px; line-height: 21px; color: var(--ink-2); margin: 0; }
+.d-cajon .d-ficha-sub { font-size: 13px; color: var(--ink-3); }
+.d-ficha-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+.d-ficha-meta span { display: inline-flex; align-items: center; gap: 7px; }
+.d-ficha-meta .d-m { width: 10px; height: 10px; }
+.d-ficha-escalas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.d-ficha-escala { padding: 12px 14px; border-radius: 8px; background: var(--sunken); display: grid; gap: 4px; align-content: start; }
+.d-ficha-escala b { font-size: 22px; line-height: 26px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.d-ficha-escala b small { font-size: 13px; font-weight: 400; color: var(--ink-3); }
+.d-ficha-escala span { font-size: 12px; font-weight: 500; color: var(--ink-3); }
+.d-ficha-escala p { font-size: 12px; line-height: 17px; }
+.d-ficha-enlaces { display: grid; gap: 6px; }
+.d-ficha-enlaces button { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 10px; align-items: center; text-align: left;
+  border: 0; border-radius: 8px; padding: 10px 12px; background: var(--sunken); color: var(--ink); font: 500 13px/18px var(--font); cursor: pointer; }
+.d-ficha-enlaces button:hover, .d-ficha-enlaces button:focus-visible { background: var(--accent-tint); outline: none; }
+.d-ficha-enlaces button small { font-weight: 400; color: var(--ink-3); font-size: 12px; }
+.d-ficha-enlaces button i { font-style: normal; color: var(--ink-3); }
+.d-ficha-enlaces .d-mono { color: var(--ink-3); }
+.d-ficha-aporte { display: flex; align-items: baseline; gap: 8px; }
+.d-ficha-aporte b { font-size: 26px; line-height: 30px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.d-cajon .d-lista-sv { display: flex; flex-wrap: wrap; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { .d-cajon, .d-cajon-fondo { transition: none; } }
+
 /* Responsivo */
 @media (max-width: 860px) {
   .d-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -276,7 +339,7 @@ body.d-con-vinculo .d-vinculo.d-activo { background: var(--accent-tint) !importa
   .d-crow .d-cbarra { grid-column: 1; grid-row: 2; }
   .d-crow .d-chev, .d-crow .d-sin-chev { grid-row: 1 / span 2; grid-column: 2; }
   .d-riesgo > summary, .d-riesgos.d-con-sit .d-riesgo > summary { grid-template-columns: 18px minmax(0, 1fr) 28px; padding-left: 14px; }
-  .d-riesgo .d-sev, .d-riesgo .d-rbarra, .d-riesgo .d-sit { grid-column: 2; }
+  .d-riesgo .d-sevp, .d-riesgo .d-rbarra, .d-riesgo .d-sit { grid-column: 2; }
   .d-riesgo .d-chev { grid-column: 3; grid-row: 1 / span 4; }
   .d-rdetalle { grid-template-columns: 1fr; padding-left: 46px; }
 }
@@ -315,6 +378,11 @@ def _apilada(c: dict[str, int], clase: str = "") -> str:
 def _sv(sid: str, matriz: dict[str, Resultado]) -> str:
     e = matriz[sid].estado if sid in matriz else "no_verificado"
     return f'<span class="d-sv">{_m(e)}<span class="d-mono">{esc(sid)}</span>{ETIQUETA_CORTA[e]}</span>'
+
+
+def conteos(ind: dict) -> str:
+    """Conteo por estado para el aviso del filtro («Mostrando N …»): "implementado:3 parcial:30 …"."""
+    return " ".join(f"{e}:{ind[e]}" for e in ESTADOS)
 
 
 def _cab(id_: str, titulo: str, sub: str = "") -> str:
@@ -395,9 +463,9 @@ def resumen(ind: dict, previo: dict | None = None) -> str:
             f'<div class="d-kpi-nota"><b>{ind["no_implementado"]}</b> sin implementar · {ind["parcial"]} parciales</div>{d_cerrar}</div>'
             f'<div class="d-kpi"><div class="d-kpi-nombre">Sin evidencia</div>{cifra(ind["no_verificado"], 0, False)}'
             f'<div class="d-kpi-nota">No verificadas; pueden mover el porcentaje</div>{d_nv}</div>')
-    leyenda = "".join(f'<button type="button" data-foco="{e}" aria-pressed="false">{_m(e)}{ETIQUETA_CORTA[e]} <b>{ind[e]}</b></button>'
-                      for e in ESTADOS)
-    return (f'<section class="d-tarjeta d-crece" id="d-resumen" data-seccion="resumen" aria-label="Resumen" style="scroll-margin-top:80px">'
+    leyenda = "".join(f'<button type="button" data-foco="{e}" aria-pressed="false"{" disabled" if not ind[e] else ""}>'
+                      f'{_m(e)}{ETIQUETA_CORTA[e]} <b>{ind[e]}</b></button>' for e in ESTADOS)
+    return (f'<section class="d-tarjeta d-crece" id="d-resumen" data-seccion="resumen" aria-label="Resumen" data-conteos="{conteos(ind)}" style="scroll-margin-top:80px">'
             f'<div class="d-kpis">{kpis}</div><div class="d-distribucion">'
             f'{_apilada(ind, "d-principal")}'
             f'<div class="d-leyenda" role="group" aria-label="Resaltar un estado en toda la página">{leyenda}</div></div></section>')
@@ -413,8 +481,7 @@ def postura(res: dict, matriz: dict[str, Resultado]) -> str:
         datos += (f'<div class="d-dato"><div class="d-dato-cab"><span>{esc(d.get("etiqueta"))}</span>'
                   f'<b>{d["valor"]} de {d["total"]}</b></div><div class="d-barra"><i{mala} style="width:{ancho:.1f}%"></i></div></div>')
     texto = res.get("postura_inicial") or ""
-    largo = (f'<p class="d-largo">{esc(texto)}</p><button type="button" class="d-leer" aria-expanded="false">Leer más ▾</button>'
-             if texto else "")
+    largo = f'<p class="d-largo d-abierto">{esc(texto)}</p>' if texto else ""  # vista técnica: postura completa
     brechas = res.get("brechas_clave")
     if not brechas:  # evaluaciones anteriores al campo: los No implementado, uno por control
         vistos, brechas = set(), []
@@ -459,7 +526,8 @@ def controles(matriz: dict[str, Resultado], mayores: list[dict], cambiados: set[
                 f'<span class="d-nombre" title="{esc(c.nombre)}">{esc(c.nombre)}</span>{marca}</span>'
                 f'<span class="d-cbarra"><span class="d-segs">{segs}</span>{p}</span><span class="d-chev"></span></div>')
         texto = f'<p>{esc(explic.get(c.id))}</p>' if c.id in rango and explic.get(c.id) else ""
-        cuerpo += (f'<details class="d-cd d-det"><summary>{fila}</summary><div class="d-cdet">'
+        estados = " ".join(e for e in ESTADOS if cnt[e])
+        cuerpo += (f'<details class="d-cd d-det" data-estados="{estados}"><summary>{fila}</summary><div class="d-cdet">'
                    f'{texto}<div class="d-lista-sv">{"".join(_sv(i, matriz) for i in ids)}</div></div></details>')
     return (f'<div class="d-tarjeta"><div class="d-ccab"><span>Control</span><span>Salvaguardas por estado · implementación</span>'
             f'<span></span></div>{cuerpo}</div>')
@@ -469,6 +537,14 @@ def controles(matriz: dict[str, Resultado], mayores: list[dict], cambiados: set[
 def _sev(s: str | None) -> str:
     s = s if s in ("alta", "media", "baja") else ""
     return f'<span class="d-sev d-{s}">{esc((s or "—").capitalize())}</span>'
+
+
+def _sevp(r: dict) -> str:
+    """Severidad del riesgo (la calcula el código con probabilidad × impacto) y, si existen, ambas escalas."""
+    sev = severidad_de(r.get("probabilidad"), r.get("impacto")) or r.get("severidad")
+    escalas = (f'<small title="Probabilidad × impacto">P{r["probabilidad"]} × I{r["impacto"]}</small>'
+               if severidad_de(r.get("probabilidad"), r.get("impacto")) else "")
+    return f'<span class="d-sevp">{_sev(sev)}{escalas}</span>'
 
 
 def riesgos(lista: list[dict], matriz: dict[str, Resultado], grupo: str, situacion: list[dict] | None = None) -> str:
@@ -487,10 +563,10 @@ def riesgos(lista: list[dict], matriz: dict[str, Resultado], grupo: str, situaci
                    f'{SITUACION_RIESGO[clave]}</span>' + (f'<small>Residual: {esc(residual)}</small>' if residual else "") + "</span>")
             if s.get("explicacion"):
                 extra = f'<div class="d-ancho"><h3>Tras las mejoras</h3><p>{esc(s.get("explicacion"))}</p></div>'
-        cuerpo += (f'<details class="d-riesgo d-det d-vinculo" data-riesgo="{grupo}{i}"><summary>'
+        cuerpo += (f'<details class="d-riesgo d-det d-vinculo" data-riesgo="{grupo}{i}" data-abre="r-{grupo}{i}"><summary>'
                    f'<span class="d-rnum">{i}</span>'
                    f'<span class="d-rtitulo">{esc(r.get("titulo"))}<small>{esc(r.get("activo_proceso"))}</small></span>'
-                   f'{_sev(r.get("severidad"))}{sit}'
+                   f'{_sevp(r)}{sit}'
                    f'<span class="d-rbarra">{_apilada(_conteo(sv, matriz))}<small>{len(sv)} salvaguarda{"s" if len(sv) != 1 else ""}</small></span>'
                    f'<span class="d-chev"></span></summary><div class="d-rdetalle">'
                    + (f'<div class="d-ancho"><p>{esc(r.get("descripcion"))}</p></div>' if r.get("descripcion") else "")
@@ -503,6 +579,11 @@ def riesgos(lista: list[dict], matriz: dict[str, Resultado], grupo: str, situaci
 
 
 # --------------------------------------------------------------------------------------- roadmap
+def _plazo(x: dict) -> str:
+    h, estimado = horizonte_de(x)
+    return f'{h} días' + ("<small>estimado</small>" if estimado else "")
+
+
 def roadmap(lista: list[dict], riesgos_ref: list[dict], grupo: str, estados: list[dict] | None = None) -> str:
     """Tabla: prioridad, iniciativa y beneficio, riesgos que reduce (chips con nombre corto), tipo, esfuerzo en
     bloques y cuántas salvaguardas mueve. Con ``estados`` (v2) añade si está completada, en progreso o pendiente."""
@@ -520,16 +601,18 @@ def roadmap(lista: list[dict], riesgos_ref: list[dict], grupo: str, estados: lis
             clave = s.get("estado", "pendiente")
             est = (f'<td><span class="d-estado-ini d-{esc(clave)}" title="{esc(s.get("explicacion"))}">'
                    f'{ESTADO_INICIATIVA.get(clave, "Pendiente")}</span></td>')
-        filas += (f'<tr class="d-vinculo" data-riesgos="{" ".join(f"{grupo}{n}" for n in rs)}">'
+        filas += (f'<tr class="d-vinculo" data-riesgos="{" ".join(f"{grupo}{n}" for n in rs)}" data-abre="i-{grupo}{i + 1}" '
+                  f'tabindex="0" role="button" aria-label="Ver detalle de la iniciativa {i + 1}">'
                   f'<td class="d-prio">{x.get("prioridad", i + 1)}</td>'
                   f'<td><div class="d-ini">{esc(x.get("titulo"))}<small>{esc(x.get("beneficio"))}</small></div></td>'
                   f'<td><div class="d-chips">{chips}</div></td>'
                   f'<td><span class="d-tipo {"d-qw" if qw else "d-pr"}">{"Quick win" if qw else "Proyecto"}</span></td>'
+                  f'<td><span class="d-plazo">{_plazo(x)}</span></td>'
                   f'<td><div class="d-esfuerzo">{bloques}</div><div class="d-esf-txt">{esc((x.get("esfuerzo") or "").capitalize())}</div></td>'
                   f'<td class="d-mono" title="{esc(", ".join(sv))}">{len(sv)}</td>{est}</tr>')
     extra = "<th>Estado</th>" if estados is not None else ""
     return (f'<div class="d-tarjeta d-roadmap"><table class="d-rm"><thead><tr><th>#</th><th>Iniciativa</th><th>Reduce</th>'
-            f'<th>Tipo</th><th>Esfuerzo</th><th>Salvaguardas</th>{extra}</tr></thead><tbody>{filas}</tbody></table></div>')
+            f'<th>Tipo</th><th>Plazo</th><th>Esfuerzo</th><th>Salvaguardas</th>{extra}</tr></thead><tbody>{filas}</tbody></table></div>')
 
 
 # ---------------------------------------------------------------------------------------- matriz
@@ -601,6 +684,82 @@ def estado_lateral(ind: dict) -> str:
             f'{_apilada(ind)}<ul class="d-lado-conteos">{conteos}</ul></div>')
 
 
+# ------------------------------------------------------------------------------- panel lateral
+SEV_ESTADO = {"alta": "no_implementado", "media": "parcial", "baja": "implementado"}
+
+
+def _enlace(destino: str, numero: int, texto: str, extra: str = "") -> str:
+    return (f'<button type="button" data-abre="{destino}"><span class="d-mono">{numero}</span>'
+            f'<span>{esc(texto)}' + (f'<br><small>{esc(extra)}</small>' if extra else "") + '</span><i aria-hidden="true">›</i></button>')
+
+
+def fichas(riesgos: list[dict], iniciativas: list[dict], grupo: str, matriz: dict[str, Resultado], tecnica: bool,
+           aportes: list | None = None, situacion: list[dict] | None = None, estados: list[dict] | None = None) -> str:
+    """Contenido oculto del panel lateral: una ficha por riesgo (``r-<grupo><n>``) y por iniciativa (``i-<grupo><n>``).
+    El script la copia al panel al hacer clic. La vista ejecutiva no lleva salvaguardas ni ids; la técnica, sí."""
+    medida = "salvaguarda" if tecnica else "medida"
+    salida = ""
+    for n, r in enumerate(riesgos, 1):
+        sev = severidad_de(r.get("probabilidad"), r.get("impacto")) or r.get("severidad")
+        meta = (f'<span>{_m(SEV_ESTADO[sev])}Severidad {sev}</span>' if sev in SEV_ESTADO else "")
+        cuerpo = f'<h3>Qué puede pasar</h3><p>{esc(r.get("consecuencia_negocio") or r.get("consecuencia"))}</p>'
+        if r.get("probabilidad") and r.get("impacto"):
+            cuerpo += ('<h3>Probabilidad e impacto</h3><div class="d-ficha-escalas">'
+                       f'<div class="d-ficha-escala"><span>Probabilidad</span><b>{r["probabilidad"]}<small> de 5</small></b>'
+                       f'<p>{esc(r.get("justificacion_probabilidad"))}</p></div>'
+                       f'<div class="d-ficha-escala"><span>Impacto</span><b>{r["impacto"]}<small> de 5</small></b>'
+                       f'<p>{esc(r.get("justificacion_impacto"))}</p></div></div>')
+        else:
+            cuerpo += ('<h3>Probabilidad e impacto</h3><p class="d-ficha-sub">Esta evaluación se generó antes de calificarlos por '
+                       'separado.</p>')
+        if situacion is not None and n <= len(situacion):
+            st_ = situacion[n - 1]
+            cuerpo += (f'<h3>Tras las mejoras</h3><p>{SITUACION_RIESGO.get(st_.get("situacion"), "")}'
+                       + (f' · residual {esc(st_.get("severidad_residual"))}' if st_.get("severidad_residual") else "")
+                       + "</p>" + (f'<p style="margin-top:6px">{esc(st_.get("explicacion"))}</p>' if st_.get("explicacion") else ""))
+        reducen = [(j, x) for j, x in enumerate(iniciativas, 1) if n in (x.get("riesgos") or [])]
+        enlaces = "".join(_enlace(f"i-{grupo}{j}", j, x.get("titulo"), HORIZONTE[horizonte_de(x)[0]]) for j, x in reducen)
+        cuerpo += (f'<h3>Iniciativas que lo reducen</h3>'
+                   + (f'<div class="d-ficha-enlaces">{enlaces}</div>' if enlaces else '<p class="d-ficha-sub">Ninguna iniciativa del plan lo reduce.</p>'))
+        if tecnica:
+            sv = r.get("salvaguardas", [])
+            for titulo_, campo in (("Descripción", "descripcion"), ("Deficiencia", "deficiencia"),
+                                   ("Consecuencia técnica", "consecuencia"), ("Severidad", "justificacion")):
+                if r.get(campo) and not (campo == "consecuencia" and not r.get("consecuencia_negocio")):
+                    cuerpo += f'<h3>{titulo_}</h3><p>{esc(r.get(campo))}</p>'
+            cuerpo += (f'<h3>Salvaguardas que lo sostienen · {len(sv)}</h3>'
+                       f'<div class="d-lista-sv">{"".join(_sv(x, matriz) for x in sv)}</div>')
+        salida += (f'<div class="d-ficha" data-ficha="r-{grupo}{n}"><p class="d-ficha-tipo">Riesgo {n}</p>'
+                   f'<h2>{esc(nombre_corto(r))}</h2><p class="d-ficha-sub">{esc(r.get("titulo"))}</p>'
+                   f'<div class="d-ficha-meta">{meta}</div>{cuerpo}</div>')
+    for j, x in enumerate(iniciativas, 1):
+        h, estimado = horizonte_de(x)
+        meta = (f'<span>{HORIZONTE[h]}{" (plazo estimado)" if estimado else ""}</span>'
+                f'<span>Esfuerzo {esc(x.get("esfuerzo") or "—")}</span>'
+                f'<span>{"Quick win" if x.get("tipo") == "quick_win" else "Proyecto"}</span>')
+        if estados is not None and j <= len(estados):
+            meta += f'<span>{ESTADO_INICIATIVA.get(estados[j - 1].get("estado"), "Pendiente")}</span>'
+        cuerpo = f'<p style="margin-top:14px">{esc(x.get("descripcion") or x.get("beneficio"))}</p>'
+        if x.get("beneficio") and x.get("descripcion"):
+            cuerpo += f'<h3>Beneficio esperado</h3><p>{esc(x.get("beneficio"))}</p>'
+        rs = [n for n in x.get("riesgos", []) if 0 < n <= len(riesgos)]
+        enlaces = "".join(_enlace(f"r-{grupo}{n}", n, nombre_corto(riesgos[n - 1]), riesgos[n - 1].get("titulo")) for n in rs)
+        cuerpo += (f'<h3>Riesgos que reduce</h3>'
+                   + (f'<div class="d-ficha-enlaces">{enlaces}</div>' if enlaces else '<p class="d-ficha-sub">No apunta a ninguno de los cinco riesgos.</p>'))
+        aporte = aportes[j - 1] if aportes and j <= len(aportes) else None
+        if aporte is not None:
+            cuerpo += (f'<h3>Aporte a la madurez</h3><div class="d-ficha-aporte"><b>+{aporte:.1f}</b><span class="d-ficha-sub">'
+                       f'puntos · estimación</span></div><p class="d-ficha-sub" style="margin-top:4px">Si sus {medida}s quedan '
+                       f'implementadas y todo lo demás sigue igual.</p>')
+        if tecnica:
+            sv = x.get("salvaguardas", [])
+            cuerpo += (f'<h3>Salvaguardas que cierra · {len(sv)}</h3>'
+                       f'<div class="d-lista-sv">{"".join(_sv(s_, matriz) for s_ in sv)}</div>')
+        salida += (f'<div class="d-ficha" data-ficha="i-{grupo}{j}"><p class="d-ficha-tipo">Iniciativa {j}</p>'
+                   f'<h2>{esc(x.get("titulo"))}</h2><div class="d-ficha-meta">{meta}</div>{cuerpo}</div>')
+    return f'<div class="d-fichas" aria-hidden="true">{salida}</div>'
+
+
 # ---------------------------------------------------------------------------------------- script
 def script() -> str:
     """Interacciones del dashboard con delegación de eventos: se instala una vez y sirve a todo lo que Streamlit
@@ -611,6 +770,67 @@ const quieto = () => matchMedia('(prefers-reduced-motion: reduce)').matches || d
 let fijado = null;
 const enfocar = e => { if (e) d.body.dataset.foco = e; else delete d.body.dataset.foco; };
 const marcarLeyenda = () => d.querySelectorAll('.d-leyenda [data-foco]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.foco === fijado)));
+// Filtro por estado: oculta las filas sin ese estado (controles y matriz) y muestra «Mostrando N … · Quitar filtro».
+const NOMBRE_T = {implementado: 'Implementado', parcial: 'Parcial', no_implementado: 'No implementado', no_verificado: 'No verificado', no_aplicable: 'No aplicable'};
+const NOMBRE_E = {...NOMBRE_T, no_verificado: 'Sin evidencia', no_aplicable: 'No aplica'};
+let aviso = null;
+const filtrar = e => {
+  fijado = e; marcarLeyenda(); enfocar(e);
+  if (e) d.body.dataset.filtro = e; else delete d.body.dataset.filtro;
+  d.querySelectorAll('.d-matriz').forEach(m => { m.dataset.filtro = e || '';
+    m.querySelectorAll('.d-filtro').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.filtro === (e || '')))); });
+  if (!e) { if (aviso) { aviso.remove(); aviso = null; } return; }
+  const fuente = d.querySelector('[data-conteos]');
+  const n = fuente ? +((fuente.dataset.conteos.match(new RegExp('(^| )' + e + ':(\\\\d+)')) || [])[2] || 0) : 0;
+  const nombre = (d.querySelector('.e-vista') ? NOMBRE_E : NOMBRE_T)[e];
+  const medida = d.querySelector('.e-vista') ? (n === 1 ? 'medida' : 'medidas') : (n === 1 ? 'salvaguarda' : 'salvaguardas');
+  if (!aviso) { aviso = d.createElement('div'); aviso.className = 'd-filtro-aviso'; aviso.setAttribute('role', 'status'); d.body.appendChild(aviso); }
+  aviso.innerHTML = '';
+  const m = d.createElement('span'); m.className = 'd-m d-m-' + e; m.dataset.e = e; aviso.appendChild(m);
+  const t = d.createElement('span'); t.append('Mostrando '); const b = d.createElement('b'); b.textContent = n; t.append(b, ' ' + medida + ' · ' + nombre); aviso.appendChild(t);
+  const q = d.createElement('button'); q.type = 'button'; q.textContent = 'Quitar filtro'; q.addEventListener('click', () => filtrar(null)); aviso.appendChild(q);
+};
+// Panel lateral: copia la ficha oculta [data-ficha] al panel. Se cierra con Esc, con la X o con clic fuera; el foco
+// queda atrapado dentro y vuelve al elemento que lo abrió.
+let cajon = null, origen = null;
+const cerrar = () => {
+  if (!cajon) return; const c = cajon; cajon = null; c.classList.remove('d-cajon-abierto');
+  setTimeout(() => c.remove(), quieto() ? 0 : 230);
+  if (origen && d.contains(origen)) origen.focus({preventScroll: true}); origen = null;
+};
+const abrir = (clave, desde) => {
+  const f = d.querySelector('[data-ficha="' + clave + '"]'); if (!f) return;
+  if (!cajon) {
+    origen = desde || d.activeElement;
+    // Sin HTML en cadenas: st.html descarta el script si lleva etiquetas dentro.
+    const el = (tag, clase, attrs) => { const x = d.createElement(tag); x.className = clase;
+      Object.entries(attrs || {}).forEach(([k, v]) => x.setAttribute(k, v)); return x; };
+    cajon = el('div', 'd-cajon-raiz');
+    const fondo = el('div', 'd-cajon-fondo');
+    const panel = el('aside', 'd-cajon', {role: 'dialog', 'aria-modal': 'true', tabindex: '-1'});
+    const x = el('button', 'd-cajon-cerrar', {type: 'button', 'aria-label': 'Cerrar'}); x.textContent = '×';
+    panel.append(x, el('div', 'd-cajon-cuerpo')); cajon.append(fondo, panel); d.body.appendChild(cajon);
+    fondo.addEventListener('click', cerrar); x.addEventListener('click', cerrar);
+    requestAnimationFrame(() => requestAnimationFrame(() => cajon && cajon.classList.add('d-cajon-abierto')));
+  }
+  const cuerpo = cajon.querySelector('.d-cajon-cuerpo'); cuerpo.innerHTML = f.innerHTML;
+  const panel = cajon.querySelector('.d-cajon'); const h = cuerpo.querySelector('h2');
+  if (h) { h.id = 'd-cajon-titulo'; panel.setAttribute('aria-labelledby', 'd-cajon-titulo'); }
+  panel.scrollTop = 0; cajon.querySelector('.d-cajon-cerrar').focus({preventScroll: true});
+};
+d.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape') { if (cajon) { cerrar(); ev.preventDefault(); } else if (fijado) filtrar(null); return; }
+  if (cajon && ev.key === 'Tab') {
+    const foc = [...cajon.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')];
+    if (!foc.length) return; const pri = foc[0], ult = foc[foc.length - 1];
+    if (ev.shiftKey && d.activeElement === pri) { ult.focus(); ev.preventDefault(); }
+    else if (!ev.shiftKey && d.activeElement === ult) { pri.focus(); ev.preventDefault(); }
+    else if (!cajon.contains(d.activeElement)) { pri.focus(); ev.preventDefault(); }
+    return;
+  }
+  const a = ev.target.closest && ev.target.closest('[data-abre]');
+  if (a && a.tagName !== 'BUTTON' && a.tagName !== 'DETAILS' && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); abrir(a.dataset.abre, a); }
+});
 const vincular = (claves, sola) => {
   d.body.classList.toggle('d-con-vinculo', !!claves);
   d.querySelectorAll('[data-riesgo]').forEach(e => e.classList.toggle('d-activo', !!claves && claves.includes(e.dataset.riesgo)));
@@ -630,7 +850,15 @@ d.addEventListener('focusin', ev => { const f = ev.target.closest('.d-leyenda [d
 d.addEventListener('focusout', ev => { const f = ev.target.closest('.d-leyenda [data-foco]'); if (f && !fijado) enfocar(null); });
 d.addEventListener('click', ev => {
   const f = ev.target.closest('.d-leyenda [data-foco]');
-  if (f) { fijado = fijado === f.dataset.foco ? null : f.dataset.foco; marcarLeyenda(); enfocar(fijado); return; }
+  if (f) { filtrar(fijado === f.dataset.foco ? null : f.dataset.foco); return; }
+  const sg = ev.target.closest('.d-principal .d-s[data-e], .e-pila .d-s[data-e], .d-segs .d-s[data-e]');
+  if (sg) { ev.preventDefault(); filtrar(fijado === sg.dataset.e ? null : sg.dataset.e); return; }
+  const ab = ev.target.closest('[data-abre]');
+  if (ab) {
+    // En un details (riesgos de la vista técnica) solo el resumen abre el panel; el contenido no reacciona.
+    if (ab.tagName === 'DETAILS' && !ev.target.closest('summary')) return;
+    ev.preventDefault(); abrir(ab.dataset.abre, ab.tagName === 'DETAILS' ? ab.querySelector('summary') : ab); return;
+  }
   const l = ev.target.closest('.d-leer');
   if (l) { const t = l.previousElementSibling; const ab = t.classList.toggle('d-abierto');
     l.textContent = ab ? 'Leer menos ▴' : 'Leer más ▾'; l.setAttribute('aria-expanded', String(ab)); return; }
@@ -667,7 +895,8 @@ const entrar = () => {
 };
 const revisar = () => {
   entrar(); espiar();
-  if (!d.querySelector('.d-leyenda') && (fijado || d.body.dataset.foco)) { fijado = null; enfocar(null); }
+  if (!d.querySelector('.d-leyenda') && (fijado || d.body.dataset.foco)) filtrar(null);
+  if (cajon && !d.querySelector('.d-fichas')) cerrar();
   if (!d.querySelector('[data-riesgo]')) d.body.classList.remove('d-con-vinculo');
 };
 new MutationObserver(revisar).observe(d.body, {childList: true, subtree: true});

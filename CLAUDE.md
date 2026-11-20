@@ -25,6 +25,18 @@ Proyecto académico de equipo. **Decisión del equipo (2026-11-17): usa la API d
   - Reporte inicial: matriz v1, Excel v1 y reporte inicial.
   - Reporte actualizado: matriz v2, Excel v2 y reporte final.
   - El Excel v2 y el reporte final no repiten la matriz v1 ni el reporte inicial; solo comparan indicadores.
+- **Vista ejecutiva y vista técnica** (2026-11-19; plan por fases, en curso: Fases 1 a 4 listas). Lo que sale de la ejecutiva se queda en la técnica. Decisiones:
+  - Áreas fijas en `controls.AREAS`: 7 grupos de controles; la madurez por área usa la fórmula global (`state.madurez_por_area`).
+  - La **severidad la calcula el código**: probabilidad × impacto (1-5 cada uno; ≥15 alta, 8-14 media, <8 baja; `state.severidad_de`). El modelo ya no la escribe.
+  - Campos ejecutivos sin IDs ni jerga (`veredicto`, `impactos_negocio`, `peticiones`, `consecuencia_negocio`): `state.validar_ejecutivo` descarta impactos con cifras que no están en la ficha ni en la matriz y señala jerga en la bitácora.
+  - Proyección «hoy → estimado» (`state.proyeccion`) suponiendo implementadas las salvaguardas de las iniciativas; siempre se rotula «estimación».
+  - Evaluaciones anteriores: horizonte deducido del tipo (`horizonte_de`, marcado como estimación) y nivel de riesgo desde la severidad más alta (`nivel_riesgo`); el mapa de riesgos, los impactos y las peticiones se ocultan con aviso.
+  - Selector «Ejecutivo / Técnico» (`st.segmented_control`, clave `modo`, en la URL `?modo=`) junto al título de los dos reportes; Ejecutivo por defecto. La vista ejecutiva vive en `chatbot/ejecutiva.py` (clases `e-`): veredicto, 3 indicadores, qué está en juego, estado por control (barra 100 % apilada por control, nombre en español sin id, de peor a mejor madurez; reemplazó a «madurez por área» el 2026-11-19, aunque `AREAS` sigue en el código), mapa 5×5, plan con antes/después y peticiones. Vocabulario: «medida», «confianza del diagnóstico», «Sin evidencia». En v2 usa `riesgos_v2`, `roadmap` y el cambio desde la v1.
+  - **Estados: punto de color + palabra** (reemplaza «el estado es forma»). Paleta azul / ámbar / bermellón / dos grises, escalonada en luminosidad para daltonismo y escala de grises. Los tintes de zona se mezclan en sRGB (en OKLCH el matiz se desvía hacia morado o verde en Noche).
+  - **Interacciones (Fase 3, en `panel.script()`):** clic en un estado (leyenda o segmento de barra) = filtro global: `body[data-filtro]` oculta las filas `[data-estados]` sin ese estado, filtra las matrices y muestra «Mostrando N … · Quitar filtro» (conteos de `[data-conteos]`); los estados con 0 se deshabilitan (antes, elegirlos ponía todo en gris). Clic en un riesgo o iniciativa (`[data-abre]`) abre el panel lateral con la ficha oculta `[data-ficha]` de `panel.fichas()` (la ejecutiva sin ids ni salvaguardas); Esc, X o clic fuera lo cierran, el foco queda atrapado y vuelve al origen. En la técnica, el riesgo ya no se despliega: abre el panel. El clic en un área se descartó al quitar «Madurez por área».
+  - **Vista técnica (Fase 4):** conserva todo lo anterior (postura completa, ahora sin recorte; estado por control; riesgos; roadmap; matrices; pendientes y «Por qué es preliminar»). La severidad es punto + palabra con «P4 × I5» debajo, y el roadmap tiene columna «Plazo» (estimado en evaluaciones anteriores). El índice lateral muestra las secciones de la vista activa.
+  - **El script de `st.html` no puede contener etiquetas HTML** (ni en cadenas ni en comentarios, p. ej. «<details>»): Streamlit lo descarta sin aviso. Se construye el DOM con `createElement`.
+  - Pendientes de fases siguientes: PDF ejecutivo de 2-3 páginas (cumple el límite de 5) y técnico sin límite, visor de evidencia con PyMuPDF.
 
 ## Stack
 - Python 3.14 (el `python3` del sistema es 3.15 y algunas dependencias aún no tienen wheels).
@@ -105,7 +117,7 @@ tests/                     # conftest (catálogo falso: 18 IG1), test_state (reg
 - **Identidad "Pizarra cálida" (Día) y "Grafito" (Noche)** (2026-11-18), del mockup aprobado `mockup/resumen.html` (reemplaza a "Dictamen técnico").
   - Tokens en `ui.CSS`: Día en `:root`, Noche en `:root[data-theme="dark"]` (y en `prefers-color-scheme` para la primera pintura). Los nombres antiguos (`--bg`, `--text-1`, `--st-cubierto`…) son alias de los nuevos (`--paper`, `--ink`, `--st-implementado`…). No hex sueltos.
   - Tipografía: **solo Geist** (interfaz, títulos y cifras) y **Geist Mono** con números tabulares (IDs, folios). Títulos de sección 21px > títulos de tarjeta.
-  - **El estado es forma, con una sola codificación:** lleno (Implementado), a medias (Parcial), tachado (No implementado), **siempre punteado** (No verificado) y **gris claro** (No aplicable). Los colores `st-*` solo pintan marcas y fondos (`tint-*`, `color-mix`); el texto va en `ink`. Nunca texto en color de estado.
+  - **El estado es un punto de color junto a la palabra** (2026-11-19): azul (Implementado), ámbar (Parcial), bermellón (No implementado), gris medio (No verificado / «Sin evidencia» en la vista ejecutiva) y gris claro (No aplicable). Los colores `st-*` solo pintan marcas y fondos (`tint-*`, `color-mix`); el texto va en `ink`. Nunca texto en color de estado.
 - **Dashboard de los reportes: `chatbot/panel.py`** (clases `d-`). Los HTML descargables siguen usando `ui.tablero/riesgos/roadmap/resumen_ejecutivo`, que conservan todo el texto: no mezclarlos.
   - Piezas: `resumen` (4 KPIs del mismo tamaño, barra apilada y leyenda), `postura`, `controles` (segmentos a escala fija y %; toda fila se abre con sus salvaguardas y solo los 5 de mayor brecha traen además su explicación), `riesgos` (fila plegable con «N salvaguardas»), `roadmap` (chips «R1 nombre corto», esfuerzo en bloques), `matriz`, `pendientes`, `indice` y `estado_lateral`.
   - Barra lateral: en los reportes, **índice de secciones** que marca la visible; en las demás etapas, un resumen compacto de indicadores. Modelo y evaluaciones guardadas debajo.
@@ -134,7 +146,7 @@ pip install -r requirements.txt
 python scripts/importar_cis.py "ruta/CIS_Controls_Version_8.1.2___March_2025.xlsx"   # genera el catálogo local
 cp .env.example .env            # y poner ANTHROPIC_API_KEY (platform.claude.com → API keys)
 streamlit run app.py
-python -m pytest -q             # 38 pruebas sin API
+python -m pytest -q             # 46 pruebas sin API
 python scripts/exportar_prompt.py   # regenera docs/prompt_maestro_centinela_ig1.md
 ```
 

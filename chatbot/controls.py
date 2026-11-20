@@ -106,6 +106,23 @@ def _cargar(ruta: str) -> Catalogo:
     return Catalogo(tuple(controles), meta)
 
 
+# Vista ejecutiva: los 15 controles con IG1 agrupados en 7 áreas de negocio (decisión del equipo, 2026-11-19).
+# Mapeo fijo en código; la madurez de cada área usa la misma fórmula que la implementación global.
+AREAS = (
+    ("activos", "Activos y software", (1, 2)),
+    ("identidades", "Identidades y accesos", (5, 6)),
+    ("datos", "Protección de datos", (3,)),
+    ("equipos", "Equipos y vulnerabilidades", (4, 7, 9, 10, 12)),
+    ("monitoreo", "Monitoreo y respuesta", (8, 17)),
+    ("continuidad", "Continuidad", (11,)),
+    ("personas", "Personas y proveedores", (14, 15)),
+)
+
+
+def area_de_control(numero: int) -> str | None:
+    return next((clave for clave, _, numeros in AREAS if numero in numeros), None)
+
+
 def catalogo() -> Catalogo:
     return _cargar(str(_ruta()))
 

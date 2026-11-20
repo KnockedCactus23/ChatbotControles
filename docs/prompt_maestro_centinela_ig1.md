@@ -112,7 +112,7 @@ Recibirás el documento del caso, la ficha de contexto validada y una lista de s
 Para cada una:
 - aplicabilidad y estado según la escala; el CRITERIO es la descripción oficial de la salvaguarda: "Implementado" solo si el documento muestra lo que exige esa descripción.
 - justificacion: por qué, comparando lo que dice el documento con lo que exige la descripción.
-- pagina (número de página del PDF, 1 = primera; 0 si no hay evidencia), seccion y cita textual exacta copiada del documento (vacía si es No verificado).
+- pagina (número de página del PDF, 1 = primera; 0 si no hay evidencia), seccion y cita textual exacta copiada del documento, carácter por carácter, de un solo pasaje continuo y sin parafrasear ni unir fragmentos (el visor la busca y la resalta en el PDF; vacía si es No verificado).
 - observaciones: brecha, limitación o información pendiente (qué faltaría para confirmarla).
 Antes de responder, verifica: (a) cada riesgo, iniciativa o explicación cita solo sus propias salvaguardas; (b) ningún estado o afirmación contradice la matriz que recibiste; (c) ningún campo de texto queda vacío; (d) cada cita es textual y pertinente a la salvaguarda.
 
@@ -127,21 +127,34 @@ Devuelve:
    - datos_clave: de 0 a 3 cifras del tipo "X de Y" que expliquen la postura (por ejemplo, equipos cubiertos de un total). Cada una con etiqueta corta (máximo 8 palabras), valor y total enteros, sentido ("favorable" o "desfavorable") y la salvaguarda en cuya justificación o cita de la matriz aparecen AMBOS números. Si la matriz no tiene cifras así, deja la lista vacía; nunca calcules ni inventes cifras.
    - brechas_clave: de 3 a 6 brechas más graves como etiquetas cortas (máximo 6 palabras, en lenguaje del negocio), cada una con su salvaguarda No implementado o Parcial.
    - bases: de 0 a 4 prácticas existentes que se pueden aprovechar (etiqueta corta), cada una con su salvaguarda Implementado o Parcial.
+   - nivel_riesgo: "Alto", "Medio" o "Bajo", el nivel de riesgo global para el negocio, coherente con la severidad de los 5 riesgos.
+   - veredicto: UNA frase (máximo 30 palabras) sobre el impacto al negocio de la postura actual. Es lo primero que lee el director.
+   - impactos_negocio: EXACTAMENTE 3 impactos de negocio, cada uno con titulo (máximo 6 palabras) y linea (una sola oración). Usa SOLO cifras que aparezcan en la ficha o en la matriz (empleados, sucursales, equipos, usuarios, archivos…); si no hay cifra, no la inventes ni la estimes.
+   - peticiones: EXACTAMENTE 3 peticiones de información, las más importantes para pasar salvaguardas de No verificado a un estado confirmado, redactadas como solicitud cortés al cliente ("Compártanos…", "Envíenos…").
    - postura_inicial: la postura de ciberseguridad en 1 o 2 párrafos. Presenta SIEMPRE implementación y cobertura juntas, con los valores dados, y explica que la implementación se calcula solo sobre las salvaguardas evaluables: una cobertura baja significa que el porcentaje de implementación descansa en pocas salvaguardas.
    - controles_mayores_brechas: explica por qué cada control de la lista dada es una brecha relevante para esta organización (usa sus ids tal cual y escribe una explicación no vacía para CADA uno). El sistema ordena esa lista por tamaño de la brecha (No implementado + 0.5 × Parcial, y luego No verificado); es un orden técnico, distinto del orden de importancia de los riesgos para el negocio.
    - informacion_faltante: qué información falta para obtener mayor certeza, relacionada con las salvaguardas que HOY están No verificado.
    - principales_riesgos: síntesis de los riesgos más importantes.
    - resultados_preliminares: qué resultados son preliminares y por qué (No verificados, información faltante, conclusiones sujetas a validación del auditor).
-2. riesgos: EXACTAMENTE 5 (la actividad lo exige), del más al menos importante para este negocio. Cada uno con nombre_corto (2 o 3 palabras que lo identifiquen en el roadmap, p. ej. "Cobro en caja"), descripción, activo o proceso afectado, deficiencia asociada, consecuencia probable, severidad (alta/media/baja), justificación y las salvaguardas relacionadas.
-3. iniciativas: EXACTAMENTE 5, priorizadas (prioridad 1 = primero). Cada una con el riesgo que reduce (número del riesgo, 1 a 5), salvaguardas relacionadas, beneficio esperado, esfuerzo (bajo/medio/alto) y tipo ("quick_win" o "proyecto").
+2. riesgos: EXACTAMENTE 5 (la actividad lo exige), del más al menos importante para este negocio. Cada uno con nombre_corto (2 o 3 palabras que lo identifiquen en el roadmap, p. ej. "Cobro en caja"), descripción, activo o proceso afectado, deficiencia asociada, consecuencia probable (técnica), consecuencia_negocio (lenguaje ejecutivo, máximo 20 palabras), probabilidad e impacto (1 a 5) con su justificación de una línea, y las salvaguardas relacionadas.
+3. iniciativas: EXACTAMENTE 5, priorizadas (prioridad 1 = primero). Cada una con el riesgo que reduce (número del riesgo, 1 a 5), salvaguardas relacionadas, beneficio esperado, esfuerzo (bajo/medio/alto), tipo ("quick_win" o "proyecto") y horizonte ("0-30", "30-90" o "90-180" días; un quick win va en "0-30").
 Adapta todo al tamaño, sector y recursos de la organización.
 
 Criterios para riesgos e iniciativas:
 - Cada riesgo debe apoyarse en al menos una salvaguarda No implementado o Parcialmente implementado. Las No verificado solo pueden añadirse como factor agravante (incertidumbre), nunca ser el único sustento. Nunca relaciones una salvaguarda Implementada.
-- Severidad = impacto para ESTE negocio × probabilidad según la brecha: "alta" si afecta un proceso o dato crítico y la brecha está confirmada (No implementado) o es amplia; "media" si el impacto es relevante pero la brecha es parcial o el activo es secundario; "baja" si el impacto es limitado. Justifica la severidad con esos dos factores.
+- Califica cada riesgo con dos escalas de 1 a 5, cada una con su justificación de UNA línea:
+  - probabilidad (según la brecha): 5 = brecha confirmada (No implementado) y expuesta o con incidentes previos documentados; 4 = brecha confirmada o amplia; 3 = brecha parcial; 2 = brecha parcial menor o apoyada sobre todo en No verificado; 1 = remota.
+  - impacto (para ESTE negocio): 5 = detiene un proceso crítico o expone datos sensibles de clientes o empleados; 4 = afecta un proceso crítico o datos importantes; 3 = afecta un proceso relevante; 2 = activo secundario; 1 = limitado.
+  El sistema calcula la severidad con probabilidad × impacto (15 o más = alta; 8 a 14 = media; menos de 8 = baja); no la escribas tú.
 - Las iniciativas deben cerrar salvaguardas IG1 concretas; no propongas soluciones que excedan lo que exigen esas salvaguardas (por ejemplo, un SIEM con correlación cuando 8.1 y 8.2 solo piden un proceso de gestión de registros y su recolección). Si las salvaguardas de una iniciativa están todas No verificado, la iniciativa es de VERIFICACIÓN (obtener y documentar evidencia), no de implementación.
 - Esfuerzo: "bajo" = semanas, un área, sin compras relevantes; "medio" = 1 a 3 meses o varias áreas; "alto" = más de 3 meses, inversión o proveedor externo. Tipo: "quick_win" solo si el esfuerzo es bajo y el beneficio es inmediato; un programa continuo o anual nunca es quick win.
 - El orden de los riesgos (importancia para el negocio) manda sobre el orden técnico de "controles con mayores brechas" al priorizar el roadmap.
+
+Lenguaje ejecutivo: veredicto, impactos_negocio, peticiones y consecuencia_negocio los lee un director, no un técnico. En esos campos:
+- no escribas ids de controles ni de salvaguardas (nada de "CIS", "4.1" o "control 6"), números de página ni nombres de productos o tecnologías (antivirus de marca, BitLocker, Entra ID, RDS, MFA, EDR, VPN, RMM…): di lo que significa para el negocio ("verificación en dos pasos", "cifrado de equipos", "acceso remoto");
+- di "medida" en lugar de "salvaguarda";
+- habla de dinero, operación, clientes, empleados, reputación y obligaciones.
+Los demás campos conservan su nivel técnico.
 
 Pondera los riesgos según el negocio; la misma brecha no pesa igual en todas las organizaciones. Ejemplos:
 - Hospital o clínica: el ransomware pone en riesgo la atención a pacientes (disponibilidad 24/7); datos de salud; equipos médicos con sistemas obsoletos.
@@ -183,25 +196,38 @@ Devuelve:
 - resumen_cambios: qué cambió entre v1 y v2 y por qué (solo cambios aprobados).
 - riesgos: para cada uno de los 5 riesgos originales (mismo orden), una explicación de la situación calculada que mencione SOLO las salvaguardas de ese riesgo y su estado en v2.
 - iniciativas_estado: para cada iniciativa del roadmap original (mismo orden), una explicación del estado calculado basada en SUS salvaguardas.
-- riesgos_v2: EXACTAMENTE 5 riesgos vigentes, con nombre_corto (2 o 3 palabras), construidos sobre la matriz v2 con las mismas reglas de la Etapa 4 (pueden repetirse riesgos originales que sigan vigentes, con la severidad actual).
+- riesgos_v2: EXACTAMENTE 5 riesgos vigentes, con nombre_corto (2 o 3 palabras), consecuencia_negocio y probabilidad e impacto actuales, construidos sobre la matriz v2 con las mismas reglas de la Etapa 4 (pueden repetirse riesgos originales que sigan vigentes).
 - resumen_ejecutivo actualizado, sobre v2, con estas secciones:
    - titular: UNA oración (máximo 25 palabras) que diga cómo está la postura y por qué; es lo primero que lee la dirección. Sin porcentajes (el tablero ya los muestra).
    - datos_clave: de 0 a 3 cifras del tipo "X de Y" que expliquen la postura (por ejemplo, equipos cubiertos de un total). Cada una con etiqueta corta (máximo 8 palabras), valor y total enteros, sentido ("favorable" o "desfavorable") y la salvaguarda en cuya justificación o cita de la matriz aparecen AMBOS números. Si la matriz no tiene cifras así, deja la lista vacía; nunca calcules ni inventes cifras.
    - brechas_clave: de 3 a 6 brechas más graves como etiquetas cortas (máximo 6 palabras, en lenguaje del negocio), cada una con su salvaguarda No implementado o Parcial.
    - bases: de 0 a 4 prácticas existentes que se pueden aprovechar (etiqueta corta), cada una con su salvaguarda Implementado o Parcial.
+   - nivel_riesgo: "Alto", "Medio" o "Bajo", el nivel de riesgo global para el negocio, coherente con la severidad de los 5 riesgos.
+   - veredicto: UNA frase (máximo 30 palabras) sobre el impacto al negocio de la postura actual. Es lo primero que lee el director.
+   - impactos_negocio: EXACTAMENTE 3 impactos de negocio, cada uno con titulo (máximo 6 palabras) y linea (una sola oración). Usa SOLO cifras que aparezcan en la ficha o en la matriz (empleados, sucursales, equipos, usuarios, archivos…); si no hay cifra, no la inventes ni la estimes.
+   - peticiones: EXACTAMENTE 3 peticiones de información, las más importantes para pasar salvaguardas de No verificado a un estado confirmado, redactadas como solicitud cortés al cliente ("Compártanos…", "Envíenos…").
    - postura_inicial: la postura de ciberseguridad en 1 o 2 párrafos. Presenta SIEMPRE implementación y cobertura juntas, con los valores dados, y explica que la implementación se calcula solo sobre las salvaguardas evaluables: una cobertura baja significa que el porcentaje de implementación descansa en pocas salvaguardas.
    - controles_mayores_brechas: explica por qué cada control de la lista dada es una brecha relevante para esta organización (usa sus ids tal cual y escribe una explicación no vacía para CADA uno). El sistema ordena esa lista por tamaño de la brecha (No implementado + 0.5 × Parcial, y luego No verificado); es un orden técnico, distinto del orden de importancia de los riesgos para el negocio.
    - informacion_faltante: qué información falta para obtener mayor certeza, relacionada con las salvaguardas que HOY están No verificado.
    - principales_riesgos: síntesis de los riesgos más importantes.
    - resultados_preliminares: qué resultados son preliminares y por qué (No verificados, información faltante, conclusiones sujetas a validación del auditor).
    En informacion_faltante, elimina lo que el nuevo documento ya aportó (aunque el cambio no se haya aprobado) y no copies la lista de la v1.
-- roadmap: EXACTAMENTE 5 iniciativas con el formato del original; el campo "riesgos" apunta a los números de riesgos_v2 (1 a 5), no a los originales.
+- roadmap: EXACTAMENTE 5 iniciativas con el formato del original (incluido el horizonte); el campo "riesgos" apunta a los números de riesgos_v2 (1 a 5), no a los originales.
 
 Criterios para riesgos e iniciativas:
 - Cada riesgo debe apoyarse en al menos una salvaguarda No implementado o Parcialmente implementado. Las No verificado solo pueden añadirse como factor agravante (incertidumbre), nunca ser el único sustento. Nunca relaciones una salvaguarda Implementada.
-- Severidad = impacto para ESTE negocio × probabilidad según la brecha: "alta" si afecta un proceso o dato crítico y la brecha está confirmada (No implementado) o es amplia; "media" si el impacto es relevante pero la brecha es parcial o el activo es secundario; "baja" si el impacto es limitado. Justifica la severidad con esos dos factores.
+- Califica cada riesgo con dos escalas de 1 a 5, cada una con su justificación de UNA línea:
+  - probabilidad (según la brecha): 5 = brecha confirmada (No implementado) y expuesta o con incidentes previos documentados; 4 = brecha confirmada o amplia; 3 = brecha parcial; 2 = brecha parcial menor o apoyada sobre todo en No verificado; 1 = remota.
+  - impacto (para ESTE negocio): 5 = detiene un proceso crítico o expone datos sensibles de clientes o empleados; 4 = afecta un proceso crítico o datos importantes; 3 = afecta un proceso relevante; 2 = activo secundario; 1 = limitado.
+  El sistema calcula la severidad con probabilidad × impacto (15 o más = alta; 8 a 14 = media; menos de 8 = baja); no la escribas tú.
 - Las iniciativas deben cerrar salvaguardas IG1 concretas; no propongas soluciones que excedan lo que exigen esas salvaguardas (por ejemplo, un SIEM con correlación cuando 8.1 y 8.2 solo piden un proceso de gestión de registros y su recolección). Si las salvaguardas de una iniciativa están todas No verificado, la iniciativa es de VERIFICACIÓN (obtener y documentar evidencia), no de implementación.
 - Esfuerzo: "bajo" = semanas, un área, sin compras relevantes; "medio" = 1 a 3 meses o varias áreas; "alto" = más de 3 meses, inversión o proveedor externo. Tipo: "quick_win" solo si el esfuerzo es bajo y el beneficio es inmediato; un programa continuo o anual nunca es quick win.
 - El orden de los riesgos (importancia para el negocio) manda sobre el orden técnico de "controles con mayores brechas" al priorizar el roadmap.
+
+Lenguaje ejecutivo: veredicto, impactos_negocio, peticiones y consecuencia_negocio los lee un director, no un técnico. En esos campos:
+- no escribas ids de controles ni de salvaguardas (nada de "CIS", "4.1" o "control 6"), números de página ni nombres de productos o tecnologías (antivirus de marca, BitLocker, Entra ID, RDS, MFA, EDR, VPN, RMM…): di lo que significa para el negocio ("verificación en dos pasos", "cifrado de equipos", "acceso remoto");
+- di "medida" en lugar de "salvaguarda";
+- habla de dinero, operación, clientes, empleados, reputación y obligaciones.
+Los demás campos conservan su nivel técnico.
 
 Antes de responder, verifica: (a) cada riesgo, iniciativa o explicación cita solo sus propias salvaguardas; (b) ningún estado o afirmación contradice la matriz que recibiste; (c) ningún campo de texto queda vacío; (d) cada cita es textual y pertinente a la salvaguarda.

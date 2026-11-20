@@ -15,7 +15,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
-from .controls import catalogo, control, salvaguarda
+from .controls import AREAS, catalogo, control, salvaguarda
 from .documentos import Documento, verificar_cita
 
 ESTADOS = ("implementado", "parcial", "no_implementado", "no_verificado", "no_aplicable")
@@ -150,6 +150,70 @@ def brechas_por_control(matriz: dict[str, Resultado]) -> list[dict]:
                       "no_implementado": ind["no_implementado"], "parcial": ind["parcial"],
                       "no_verificado": ind["no_verificado"], "implementacion": ind["implementacion"]})
     return sorted(filas, key=lambda f: (-f["brecha"], -f["no_verificado"]))
+
+
+# ------------------------------------------------------------- vista ejecutiva
+HORIZONTES = ("0-30", "30-90", "90-180")
+
+
+def severidad_de(probabilidad, impacto) -> str | None:
+    """Severidad = probabilidad × impacto (1 a 5 cada uno): 15 o más alta, 8 a 14 media, menos de 8 baja.
+    La calcula el código para que el mapa de riesgos y «Riesgos altos» siempre cuadren."""
+    if not all(isinstance(x, int) and 1 <= x <= 5 for x in (probabilidad, impacto)):
+        return None
+    producto = probabilidad * impacto
+    return "alta" if producto >= 15 else "media" if producto >= 8 else "baja"
+
+
+def madurez_por_area(matriz: dict[str, Resultado]) -> list[dict]:
+    """Las 7 áreas de controls.AREAS, de peor a mejor. Madurez = la fórmula de la implementación global sobre las
+    salvaguardas del área; None si ninguna es evaluable (va al final)."""
+    filas = []
+    for clave, nombre, numeros in AREAS:
+        ids = [s.id for c in catalogo().controles if c.numero in numeros for s in c.ig1]
+        if not ids:
+            continue
+        ind = indicadores({i: matriz[i] for i in ids if i in matriz})
+        filas.append({"clave": clave, "nombre": nombre, "controles": [f"CIS-{n:02d}" for n in numeros],
+                      "salvaguardas": ids, "madurez": ind["implementacion"], "cobertura": ind["cobertura"], **{
+                          e: ind[e] for e in ESTADOS}})
+    return sorted(filas, key=lambda f: (f["madurez"] is None, f["madurez"] if f["madurez"] is not None else 0))
+
+
+def proyeccion(matriz: dict[str, Resultado], iniciativas: list[dict]) -> dict:
+    """ESTIMACIÓN de la implementación si las salvaguardas de las iniciativas pasan a Implementado. Usa la misma
+    fórmula de los indicadores; 'aportes' es lo que suma cada iniciativa por sí sola (en puntos porcentuales)."""
+    hoy = indicadores(matriz)["implementacion"]
+
+    def con(ids) -> float | None:
+        m = {k: (Resultado(k, "implementado") if k in ids and v.estado != "no_aplicable" else v) for k, v in matriz.items()}
+        return indicadores(m)["implementacion"]
+
+    todas = {s for ini in iniciativas for s in ini.get("salvaguardas", []) if s in matriz}
+    aportes = []
+    for ini in iniciativas:
+        valor = con({s for s in ini.get("salvaguardas", []) if s in matriz})
+        aportes.append(round(valor - hoy, 1) if valor is not None and hoy is not None else None)
+    return {"hoy": hoy, "estimado": con(todas) if todas else hoy, "aportes": aportes}
+
+
+def horizonte_de(ini: dict) -> tuple[str, bool]:
+    """Horizonte de la iniciativa y si es una estimación. Las evaluaciones anteriores no lo traen: se deduce del
+    tipo (quick win → 0-30 días; proyecto → 90-180) y se marca como estimación."""
+    if ini.get("horizonte") in HORIZONTES:
+        return ini["horizonte"], False
+    return ("0-30" if ini.get("tipo") == "quick_win" else "90-180"), True
+
+
+def nivel_riesgo(res: dict, riesgos: list[dict]) -> tuple[str | None, bool]:
+    """Nivel global (Alto/Medio/Bajo) y si se calculó. Sin el campo del modelo, sale de la severidad más alta."""
+    if (res or {}).get("nivel_riesgo") in ("Alto", "Medio", "Bajo"):
+        return res["nivel_riesgo"], False
+    sev = {r.get("severidad") for r in riesgos or []}
+    for s, nivel in (("alta", "Alto"), ("media", "Medio"), ("baja", "Bajo")):
+        if s in sev:
+            return nivel, True
+    return None, True
 
 
 # --------------------------------------------------------------------- versiones
@@ -434,7 +498,7 @@ def citas_repetidas(matriz: dict[str, Resultado]) -> list[str]:
 
 
 def validar_reporte(rep: dict, matriz: dict[str, Resultado], ids_brechas: list[str], clave_roadmap: str = "iniciativas",
-                    clave_riesgos: str = "riesgos") -> list[str]:
+                    clave_riesgos: str = "riesgos", texto_fuente: str = "") -> list[str]:
     """Evita contradicciones entre matriz e informe (F10):
     - riesgos e iniciativas solo con salvaguardas que son brecha (no implementadas, parciales o no verificadas);
     - un riesgo apoyado solo en No verificado se señala (B1: la incertidumbre no es incumplimiento);
@@ -459,7 +523,16 @@ def validar_reporte(rep: dict, matriz: dict[str, Resultado], ids_brechas: list[s
             avisos.append(f"El modelo devolvió {len(rep[clave])} {nombre} en lugar de 5 (la actividad pide exactamente 5).")
     for i, r in enumerate(rep.get(clave_riesgos, []), 1):
         filtrar(r, f"Riesgo {i}")
-        vacios(r, f"Riesgo {i}", ("titulo", "descripcion", "consecuencia", "justificacion"))
+        sev = severidad_de(r.get("probabilidad"), r.get("impacto"))
+        if sev:
+            # La severidad la decide el código; la justificación técnica reúne las dos de una línea.
+            r["severidad"] = sev
+            r["justificacion"] = (f"Probabilidad {r['probabilidad']}/5: {str(r.get('justificacion_probabilidad') or '').strip()} "
+                                  f"Impacto {r['impacto']}/5: {str(r.get('justificacion_impacto') or '').strip()}").strip()
+        elif "probabilidad" in r or "impacto" in r:
+            avisos.append(f"Riesgo {i}: probabilidad o impacto fuera de la escala 1-5; no se pudo calcular la severidad.")
+        vacios(r, f"Riesgo {i}", ("titulo", "descripcion", "consecuencia", "justificacion")
+               + (("consecuencia_negocio", "justificacion_probabilidad", "justificacion_impacto") if sev else ()))
         if not r["salvaguardas"]:
             avisos.append(f"Riesgo {i}: no se apoya en ninguna salvaguarda con brecha; el formato de 5 riesgos obligó a "
                           "incluirlo (revisa si sigue siendo vigente).")
@@ -473,6 +546,9 @@ def validar_reporte(rep: dict, matriz: dict[str, Resultado], ids_brechas: list[s
         if not ini["salvaguardas"]:
             avisos.append(f"Iniciativa {i}: no cierra ninguna salvaguarda con brecha en la matriz.")
         ini["riesgos"] = [n for n in ini.get("riesgos", []) if 1 <= n <= 5]
+        if "horizonte" in ini and ini["horizonte"] not in HORIZONTES:
+            ini["horizonte"], _ = horizonte_de({"tipo": ini.get("tipo")})
+            avisos.append(f"Iniciativa {i}: horizonte no válido; se dedujo de su tipo.")
     roadmap.sort(key=lambda x: x.get("prioridad", 9))
     res = rep.get("resumen_ejecutivo", {})
     if "controles_mayores_brechas" in res:
@@ -485,6 +561,7 @@ def validar_reporte(rep: dict, matriz: dict[str, Resultado], ids_brechas: list[s
                 avisos.append(f"{cid}: el modelo no explicó la brecha; se completó con los datos de la matriz.")
             res["controles_mayores_brechas"].append({"control_id": cid, "explicacion": texto})
     avisos += validar_presentacion(res, matriz)
+    avisos += validar_ejecutivo(res, rep.get(clave_riesgos, []), matriz, texto_fuente)
     for i, r in enumerate(rep.get(clave_riesgos, []), 1):
         corto = " ".join(str(r.get("nombre_corto") or "").split()[:4])
         if not corto:
@@ -529,6 +606,72 @@ def validar_presentacion(res: dict, matriz: dict[str, Resultado]) -> list[str]:
             else:
                 avisos.append(f"{nombre} «{x.get('etiqueta')}» ({sid}) descartada: su estado en la matriz no corresponde.")
         res[clave] = quedan[:6]
+    return avisos
+
+
+# Jerga que no debe llegar a la vista ejecutiva (solo se señala: el texto no se reescribe).
+JERGA = ("CIS", "IG1", "salvaguarda", "BitLocker", "Entra ID", "Active Directory", "Azure AD", "RDS", "RDP", "MFA", "2FA",
+         "EDR", "XDR", "SIEM", "RMM", "VPN", "CVE", "SaaS", "MSP", "endpoint", "hardening", "firewall", "antimalware",
+         "SSO", "TLS", "DLP", "GPO", "Intune", "Defender")
+_CIFRA = re.compile(r"\d+(?:[.,]\d+)?")
+
+
+def _cifras(texto: str) -> set[str]:
+    return {c.replace(",", ".") for c in _CIFRA.findall(texto or "")}
+
+
+def jerga_en(texto: str) -> list[str]:
+    """Términos técnicos o ids de salvaguarda/página en un texto para el ejecutivo."""
+    encontrados = [t for t in JERGA if re.search(rf"(?<![\w-]){re.escape(t)}(?![\w-])", texto or "", re.I)]
+    ids = set(catalogo().ids_ig1())
+    encontrados += sorted({m for m in re.findall(r"(?<![\d.])\d{1,2}\.\d{1,2}(?!\.?\d)", texto or "") if m in ids})
+    if re.search(r"\bp(?:p|ág)?\.\s*\d", texto or ""):
+        encontrados.append("número de página")
+    return encontrados
+
+
+def validar_ejecutivo(res: dict, riesgos: list[dict], matriz: dict[str, Resultado], texto_fuente: str = "") -> list[str]:
+    """Campos de la vista ejecutiva (veredicto, impactos, peticiones, consecuencia de negocio):
+    - un impacto de negocio con una cifra que no aparece en la ficha ni en la matriz se descarta (no inventar cifras);
+    - jerga, ids o páginas y textos más largos de lo pedido quedan en la bitácora (no se reescriben);
+    - se conservan como máximo 3 impactos y 3 peticiones."""
+    avisos = []
+    if not res or not any(k in res for k in ("veredicto", "impactos_negocio", "peticiones")):
+        return avisos  # evaluación anterior a la vista ejecutiva
+    ind = indicadores(matriz)
+    permitidas = _cifras(texto_fuente) | {c for r in matriz.values() for c in _cifras(" ".join((r.justificacion, r.cita, r.observaciones)))}
+    permitidas |= {str(ind[k]) for k in ESTADOS} | {str(ind["total"]), "5", "3"}
+    permitidas |= {f"{v:g}" for v in (ind["implementacion"], ind["cobertura"]) if v is not None}
+
+    def revisar(texto: str, donde: str, max_palabras: int | None = None):
+        if jerga := jerga_en(texto):
+            avisos.append(f"{donde}: lenguaje técnico en la vista ejecutiva ({', '.join(jerga)}).")
+        if max_palabras and len(texto.split()) > max_palabras:
+            avisos.append(f"{donde}: {len(texto.split())} palabras (máximo {max_palabras}).")
+
+    res["veredicto"] = str(res.get("veredicto") or "").strip()
+    revisar(res["veredicto"], "Veredicto", 30)
+    impactos = []
+    for x in res.get("impactos_negocio") or []:
+        titulo, linea = str(x.get("titulo") or "").strip(), str(x.get("linea") or "").strip()
+        if not (titulo and linea):
+            continue
+        ajenas = _cifras(f"{titulo} {linea}") - permitidas - set(catalogo().ids_ig1())  # un id es jerga, no cifra
+        if ajenas:
+            avisos.append(f"Impacto «{titulo}» descartado: la cifra {', '.join(sorted(ajenas))} no aparece en la ficha ni en la matriz.")
+            continue
+        revisar(f"{titulo} {linea}", f"Impacto «{titulo}»")
+        impactos.append({"titulo": titulo, "linea": linea})
+    res["impactos_negocio"] = impactos[:3]
+    res["peticiones"] = [t for t in (str(x or "").strip() for x in res.get("peticiones") or []) if t][:3]
+    for n, t in enumerate(res["peticiones"], 1):
+        revisar(t, f"Petición {n}")
+    for clave, minimo in (("impactos_negocio", 3), ("peticiones", 3)):
+        if len(res[clave]) < minimo:
+            avisos.append(f"Vista ejecutiva: {len(res[clave])} {clave.replace('_', ' ')} en lugar de {minimo}.")
+    for i, r in enumerate(riesgos or [], 1):
+        if r.get("consecuencia_negocio"):
+            revisar(str(r["consecuencia_negocio"]), f"Riesgo {i} (consecuencia de negocio)", 20)
     return avisos
 
 

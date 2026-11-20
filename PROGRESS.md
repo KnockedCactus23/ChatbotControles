@@ -124,11 +124,23 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 - **Esquema y prompt del reporte:** campos nuevos (`titular`, `datos_clave`, `brechas_clave`, `bases`, `nombre_corto`), validados contra la matriz (`validar_presentacion`). Las evaluaciones guardadas antes se ven con respaldos hasta regenerar su reporte.
 - Dos pruebas nuevas (38 en total). Revisado en el navegador: Día, Noche, 375px y escritorio, sin errores de consola.
 
+- **Vista ejecutiva, Fase 1 (datos), 2026-11-19:**
+  - Esquema: probabilidad e impacto (1-5) con justificación, `consecuencia_negocio`, horizonte de iniciativas, nivel de riesgo, veredicto, 3 impactos de negocio y 3 peticiones.
+  - Código: severidad por probabilidad × impacto, 7 áreas con su madurez, proyección estimada, valores por defecto para evaluaciones anteriores y validación de jerga y cifras.
+  - Prompt de evaluación: la cita debe ser un solo pasaje copiado carácter por carácter (lo necesitará el visor de evidencia).
+  - Ejemplo real con Haiku 5.5 sobre una copia de NEXOPAY (US$0.011): un solo aviso (una consecuencia de 21 palabras). Cinco pruebas nuevas (43).
+
+- **Vista ejecutiva, Fase 2 (vista), 2026-11-19:** selector Ejecutivo / Técnico en los dos reportes; `chatbot/ejecutiva.py` con las 7 secciones y animación de entrada (cifras y barras, sin animar con movimiento reducido). Estados como punto de color + palabra en toda la app. Evaluaciones anteriores: nivel calculado, plazos estimados y avisos donde faltan campos. Capturas Día/Noche a 1440 y 375 px sobre una copia de NEXOPAY con el reporte de Haiku. Prueba nueva (44). «Madurez por área» se cambió por «Estado por control»: una barra apilada por control, sin ids, de peor a mejor.
+
+- **Vista ejecutiva, Fase 3 (interacciones), 2026-11-19:** filtro por estado en ambas vistas (controles y matriz, aviso «Mostrando N · Quitar filtro», estados sin medidas deshabilitados) y panel lateral de riesgos e iniciativas (consecuencia, probabilidad e impacto, iniciativas que lo reducen, aporte estimado a la madurez; salvaguardas solo en la técnica). Probado en el navegador con clic, teclado, Esc y clic fuera; móvil a pantalla completa. Prueba nueva (45).
+
+- **Vista ejecutiva, Fase 4 (vista técnica), 2026-11-19:** severidad como punto + palabra con probabilidad × impacto, columna de plazo en el roadmap y postura completa sin «Leer más». Revisado con una v2 de prueba (copia de NEXOPAY en el scratchpad, 3 cambios aprobados): ambas vistas del Reporte actualizado funcionan, con los cambios respecto a la v1. Prueba nueva (46).
+
 ---
 
 ## Verificación
 
-- **38 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
+- **46 pruebas automáticas** sin API ni Excel (`python -m pytest -q`): reglas y penalizaciones, flujo completo simulado, exportación, importador y reintentos.
 - **Prueba real con Gemini** y dos PDF ficticios, de punta a punta:
   - ficha con 20 de 20 citas verificadas;
   - evaluación v1 con implementación 31.6 % y cobertura 33.9 %, idéntica en dos corridas;
@@ -148,6 +160,7 @@ Actualizado: **2026-11-17**. Estado general: **la parte 1 de la actividad M3.6 (
 - [ ] Responder las **preguntas de reflexión** de la actividad (dificultad principal, corrección humana, impacto de las iniciativas, etc.).
 - [ ] **Parte 2 de la actividad**, cuando llegue.
 - [ ] Generar un reporte real con Sonnet 5.5 para ver los campos nuevos del dashboard (titular, cifras «X de Y», brechas cortas, nombres cortos de riesgo). Las evaluaciones guardadas usan respaldos. Es una llamada con costo.
+- [ ] Vista ejecutiva: Fases 5 y 6 (vista, interacciones, vista técnica, visor de evidencia, exportaciones).
 - [ ] Decidir si `mockup/` se versiona o se agrega a `.gitignore`.
 
 ## Limitaciones conocidas

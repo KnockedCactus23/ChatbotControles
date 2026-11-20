@@ -19,6 +19,8 @@ def _lista(items: dict, exactos: int | None = None) -> dict:
 _TEXTO = {"type": "string"}
 _TEXTOS = _lista(_TEXTO)
 _PAGINA = {"type": "integer"}
+_ESCALA = {"type": "integer", "enum": [1, 2, 3, 4, 5]}
+HORIZONTES = ["0-30", "30-90", "90-180"]
 
 
 def _enum(valores) -> dict:
@@ -81,6 +83,11 @@ def _resumen_ejecutivo() -> dict:
                                     "sentido": _enum(["favorable", "desfavorable"]), "salvaguarda": _ids_ig1()})),
         "brechas_clave": _lista(etiqueta_salvaguarda),
         "bases": _lista(etiqueta_salvaguarda),
+        # Vista ejecutiva (2026-11-19): sin IDs ni jerga; el código valida vocabulario y cifras (state.validar_ejecutivo).
+        "nivel_riesgo": _enum(["Alto", "Medio", "Bajo"]),
+        "veredicto": _TEXTO,
+        "impactos_negocio": _lista(_obj({"titulo": _TEXTO, "linea": _TEXTO})),
+        "peticiones": _TEXTOS,
         "postura_inicial": _TEXTO,
         "controles_mayores_brechas": _lista(_obj({"control_id": _ids_controles(), "explicacion": _TEXTO})),
         "informacion_faltante": _TEXTOS,
@@ -92,7 +99,10 @@ def _resumen_ejecutivo() -> dict:
 def _riesgo() -> dict:
     return _obj({
         "titulo": _TEXTO, "nombre_corto": _TEXTO, "descripcion": _TEXTO, "activo_proceso": _TEXTO, "deficiencia": _TEXTO,
-        "consecuencia": _TEXTO, "severidad": _enum(["alta", "media", "baja"]), "justificacion": _TEXTO,
+        "consecuencia": _TEXTO, "consecuencia_negocio": _TEXTO,
+        # La severidad no la elige el modelo: el código la calcula con probabilidad × impacto (state.severidad_de).
+        "probabilidad": _ESCALA, "justificacion_probabilidad": _TEXTO,
+        "impacto": _ESCALA, "justificacion_impacto": _TEXTO,
         "salvaguardas": _lista(_ids_ig1()),
     })
 
@@ -101,7 +111,8 @@ def _iniciativa() -> dict:
     return _obj({
         "titulo": _TEXTO, "descripcion": _TEXTO, "riesgos": _lista({"type": "integer", "enum": [1, 2, 3, 4, 5]}),
         "salvaguardas": _lista(_ids_ig1()), "beneficio": _TEXTO, "esfuerzo": _enum(["bajo", "medio", "alto"]),
-        "prioridad": {"type": "integer", "enum": [1, 2, 3, 4, 5]}, "tipo": _enum(["quick_win", "proyecto"]),
+        "prioridad": _ESCALA, "tipo": _enum(["quick_win", "proyecto"]),
+        "horizonte": _enum(HORIZONTES),
     })
 
 

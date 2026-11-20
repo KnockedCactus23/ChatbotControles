@@ -10,3 +10,4 @@ chatbot/data/
 
 # Evaluaciones guardadas (pueden contener los PDF del caso)
 evaluaciones/
+.DS_Store

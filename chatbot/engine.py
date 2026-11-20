@@ -328,7 +328,7 @@ class Motor:
         texto, ids = self._contexto_reporte(proyecto, proyecto.v1)
         rep = self._llamar(prompts.sistema_reporte(), [self._texto(texto)], schemas.reporte(), TIMEOUT_LARGO_S,
                            MAX_TOKENS["reporte"], "Reporte inicial")
-        proyecto.avisos.extend(validar_reporte(rep, proyecto.v1.matriz, ids))
+        proyecto.avisos.extend(validar_reporte(rep, proyecto.v1.matriz, ids, texto_fuente=_json(proyecto.ficha)))
         proyecto.cerrar_v1(rep)
         return rep
 
@@ -414,7 +414,8 @@ class Motor:
                 r["explicacion"] = (f"{SITUACION_RIESGO[r['situacion']]} según la matriz v2. Mejoraron: "
                                     f"{', '.join(r['mejoradas']) or 'ninguna'}; siguen con brecha: {', '.join(r['pendientes']) or 'ninguna'}.")
                 proyecto.avisos.append(f"Riesgo original {n}: sin explicación del modelo; se completó con la matriz.")
-        proyecto.avisos.extend(validar_reporte(rep, v2.matriz, ids, clave_roadmap="roadmap", clave_riesgos="riesgos_v2"))
+        proyecto.avisos.extend(validar_reporte(rep, v2.matriz, ids, clave_roadmap="roadmap", clave_riesgos="riesgos_v2",
+                                              texto_fuente=_json([proyecto.ficha, proyecto.iniciativas])))
         v2.reporte = rep
         v2.cerrada = True
         return rep

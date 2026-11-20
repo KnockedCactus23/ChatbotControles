@@ -39,9 +39,12 @@ CSS = """
   --rule: oklch(0.875 0.007 85); --rule-2: oklch(0.78 0.008 85); --rule-strong: var(--rule-2); --line-control: oklch(0.62 0.01 85);
   --accent: oklch(0.47 0.055 228); --accent-strong: oklch(0.40 0.055 228); --accent-tint: oklch(0.90 0.022 228);
   --on-accent: oklch(0.98 0.004 85);
-  --st-implementado: oklch(0.58 0.075 158); --st-parcial: oklch(0.71 0.095 78); --st-no_implementado: oklch(0.57 0.105 33);
-  --st-no_verificado: oklch(0.56 0.010 255); --st-no_aplicable: oklch(0.84 0.006 85); --st-sin_ig1: oklch(0.875 0.007 85);
-  --tint-implementado: oklch(0.91 0.03 158); --tint-parcial: oklch(0.92 0.040 80); --tint-no_implementado: oklch(0.90 0.040 33);
+  /* Estados (2026-11-19): punto de color + palabra. Tonos Okabe-Ito (azul, ámbar, bermellón) y grises, escalonados en
+     luminosidad para distinguirse con daltonismo rojo/verde y en escala de grises: .48 / .60 / .68 / .80 / .87. */
+  --st-implementado: oklch(0.48 0.115 248); --st-parcial: oklch(0.80 0.135 80); --st-no_implementado: oklch(0.60 0.165 42);
+  --st-no_verificado: oklch(0.68 0.010 255); --st-no_aplicable: oklch(0.87 0.006 85); --st-sin_ig1: oklch(0.90 0.007 85);
+  --tint-implementado: oklch(0.91 0.03 248); --tint-parcial: oklch(0.93 0.045 85); --tint-no_implementado: oklch(0.91 0.040 42);
+  --seg-ink-fuerte: oklch(0.985 0.003 85);
   --tint-no_aplicable: oklch(0.918 0.007 85);
   --seg-ink: oklch(0.22 0.01 255);
   --shadow-1: 0 1px 0 oklch(1 0 0 / .6) inset, 0 1px 2px oklch(0.3 0.02 85 / .06), 0 0 0 1px var(--rule);
@@ -62,9 +65,10 @@ CSS = """
   --rule: oklch(0.300 0.006 255); --rule-2: oklch(0.38 0.007 255); --rule-strong: var(--rule-2); --line-control: oklch(0.50 0.008 255);
   --accent: oklch(0.74 0.065 222); --accent-strong: oklch(0.82 0.06 222); --accent-tint: oklch(0.32 0.035 225);
   --on-accent: oklch(0.20 0.01 255);
-  --st-implementado: oklch(0.70 0.085 158); --st-parcial: oklch(0.78 0.095 80); --st-no_implementado: oklch(0.68 0.110 33);
-  --st-no_verificado: oklch(0.62 0.010 255); --st-no_aplicable: oklch(0.40 0.006 255); --st-sin_ig1: oklch(0.30 0.006 255);
-  --tint-implementado: oklch(0.32 0.045 158); --tint-parcial: oklch(0.34 0.050 80); --tint-no_implementado: oklch(0.33 0.055 33);
+  --st-implementado: oklch(0.62 0.120 248); --st-parcial: oklch(0.84 0.130 82); --st-no_implementado: oklch(0.72 0.150 45);
+  --st-no_verificado: oklch(0.50 0.010 255); --st-no_aplicable: oklch(0.37 0.006 255); --st-sin_ig1: oklch(0.30 0.006 255);
+  --tint-implementado: oklch(0.31 0.050 248); --tint-parcial: oklch(0.34 0.055 82); --tint-no_implementado: oklch(0.33 0.060 45);
+  --seg-ink-fuerte: oklch(0.20 0.01 255);
   --tint-no_aplicable: oklch(0.28 0.006 255);
   --seg-ink: oklch(0.20 0.01 255);
   --shadow-1: 0 1px 0 oklch(1 0 0 / .04) inset, 0 0 0 1px var(--rule);
@@ -79,9 +83,10 @@ CSS = """
   --rule: oklch(0.300 0.006 255); --rule-2: oklch(0.38 0.007 255); --rule-strong: var(--rule-2); --line-control: oklch(0.50 0.008 255);
   --accent: oklch(0.74 0.065 222); --accent-strong: oklch(0.82 0.06 222); --accent-tint: oklch(0.32 0.035 225);
   --on-accent: oklch(0.20 0.01 255);
-  --st-implementado: oklch(0.70 0.085 158); --st-parcial: oklch(0.78 0.095 80); --st-no_implementado: oklch(0.68 0.110 33);
-  --st-no_verificado: oklch(0.62 0.010 255); --st-no_aplicable: oklch(0.40 0.006 255); --st-sin_ig1: oklch(0.30 0.006 255);
-  --tint-implementado: oklch(0.32 0.045 158); --tint-parcial: oklch(0.34 0.050 80); --tint-no_implementado: oklch(0.33 0.055 33);
+  --st-implementado: oklch(0.62 0.120 248); --st-parcial: oklch(0.84 0.130 82); --st-no_implementado: oklch(0.72 0.150 45);
+  --st-no_verificado: oklch(0.50 0.010 255); --st-no_aplicable: oklch(0.37 0.006 255); --st-sin_ig1: oklch(0.30 0.006 255);
+  --tint-implementado: oklch(0.31 0.050 248); --tint-parcial: oklch(0.34 0.055 82); --tint-no_implementado: oklch(0.33 0.060 45);
+  --seg-ink-fuerte: oklch(0.20 0.01 255);
   --tint-no_aplicable: oklch(0.28 0.006 255);
   --seg-ink: oklch(0.20 0.01 255);
   --shadow-1: 0 1px 0 oklch(1 0 0 / .04) inset, 0 0 0 1px var(--rule);
@@ -416,11 +421,11 @@ table.tabla tr:last-child td { border-bottom: 0; }
 
 /* ---------- Identidad Dictamen técnico: marcas de estado, etiquetas y controles ---------- */
 .marca-estado { inline-size: 11px; block-size: 11px; flex: none; border-radius: var(--r-sm); box-sizing: border-box; display: inline-block; }
+.marca-estado { inline-size: 9px; block-size: 9px; border-radius: 50%; }
 .m-implementado { background: var(--st-implementado); }
-.m-parcial { border: 1.5px solid var(--st-parcial); background: linear-gradient(to right, var(--st-parcial) 50%, transparent 50%); }
-.m-no_implementado { border: 1.5px solid var(--st-no_implementado);
-  background: linear-gradient(135deg, transparent 42%, var(--st-no_implementado) 42% 58%, transparent 58%); }
-.m-no_verificado { border: 1.5px dashed var(--st-no_verificado); }
+.m-parcial { background: var(--st-parcial); }
+.m-no_implementado { background: var(--st-no_implementado); }
+.m-no_verificado { background: var(--st-no_verificado); }
 .m-no_aplicable { background: var(--st-no_aplicable); }
 .estado-chip { gap: 7px; padding: 2px 9px 2px 7px; border-radius: var(--r-sm); font-weight: 600; font-size: .74rem; letter-spacing: .01em; color: var(--ink); }
 .estado-chip.e-implementado { background: var(--tint-implementado); }
